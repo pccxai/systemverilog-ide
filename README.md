@@ -67,6 +67,14 @@ PCCX_LAB_BIN=/path/to/pccx-lab \
 python -m pccx_ide_cli index fixtures/modules/simple_module.sv
 python -m pccx_ide_cli index fixtures/modules/ --format text
 
+# Module index with name filter (exact, case-sensitive)
+python -m pccx_ide_cli index fixtures/modules/ --query simple_mod
+python -m pccx_ide_cli index fixtures/modules/ --query simple_mod --format text
+
+# Module locate (early navigation scaffold — not LSP, not stable API)
+python -m pccx_ide_cli locate fixtures/modules/ simple_mod
+python -m pccx_ide_cli locate fixtures/modules/ simple_mod --format text
+
 # Print the diagnostics schema
 python -m pccx_ide_cli schema
 ```
@@ -87,6 +95,17 @@ fixtures/modules/simple_module.sv:1:1: module simple_mod
 fixtures/modules/two_modules.sv:1:1: module mod_a
 fixtures/modules/two_modules.sv:3:1: module mod_b
 ```
+
+Module locate text output format (one match, exit 0):
+```
+module simple_mod
+fixtures/modules/simple_module.sv:1:0
+```
+
+No match exits 1. Multiple matches exit 2 with all candidates listed.
+`locate` is an early navigation scaffold, exact name only, not semantic
+navigation, not LSP, not a stable API. A future editor bridge can consume
+this output.
 
 Tests are run with:
 

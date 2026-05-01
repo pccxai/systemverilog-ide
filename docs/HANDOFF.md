@@ -133,6 +133,56 @@ python -m pccx_ide_cli index fixtures/modules/ --format text
 
 ---
 
+## module locate scaffold (active, pre-stable)
+
+`pccx-ide locate` scans `.sv` and `.v` files for a single module declaration
+by exact name.  This is an early navigation scaffold — not semantic navigation,
+not an LSP implementation, and not a stable API.  A future editor bridge can
+consume this output, but the shape may change before v1.
+
+### Usage
+
+```bash
+# Locate a module — JSON output (default)
+python -m pccx_ide_cli locate fixtures/modules/ simple_mod
+
+# Locate — human-readable text output
+python -m pccx_ide_cli locate fixtures/modules/ simple_mod --format text
+```
+
+### Output shape (JSON)
+
+```json
+{
+  "kind": "locate",
+  "tool": "pccx-ide-cli",
+  "source": "line-scanner",
+  "query": "simple_mod",
+  "matches": [
+    { "module": "simple_mod", "file": "<path>", "line": 1, "column": 0 }
+  ]
+}
+```
+
+### Exit codes
+
+| exit | meaning |
+|------|---------|
+| 0    | exactly one match |
+| 1    | no match found |
+| 2    | multiple matches (ambiguous) |
+
+### Constraints
+
+- Exact case-sensitive name match only.
+- Uses the same line scanner as `index` — same parser limitations apply
+  (no block comment handling, no semantic analysis).
+- `column` is always 0 in locate output (column position not resolved at
+  this stage).
+- Output shape is pre-stable; not a committed API contract.
+
+---
+
 ## xsim handoff (planned)
 
 xsim runs and log surfacing remain on the `pccx-lab` side.  This CLI is

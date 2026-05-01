@@ -65,6 +65,32 @@ def _build_parser() -> argparse.ArgumentParser:
         default="json",
         help="Output format (default: json).",
     )
+    index_cmd.add_argument(
+        "--query",
+        metavar="MODULE_NAME",
+        default=None,
+        help="Filter results to modules with this exact name (case-sensitive).",
+    )
+
+    locate_cmd = sub.add_parser(
+        "locate",
+        help="Locate a module by exact name in a .sv/.v file or directory.",
+    )
+    locate_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    locate_cmd.add_argument(
+        "name",
+        help="Module name to locate (exact, case-sensitive).",
+    )
+    locate_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
 
     sub.add_parser(
         "schema",
@@ -117,13 +143,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0 if not envelope["diagnostics"] else 1
 
     if args.command == "index":
-        from .module_index import build_index, scan_path
+        from .module_index import build_index, filter_modules, scan_path
 
         if not args.path.exists():
             sys.stderr.write(f"error: path does not exist: {args.path}\n")
             return 2
 
         modules = scan_path(args.path)
+        if args.query is not None:
+            modules = filter_modules(modules, args.query)
         index = build_index(str(args.path), modules)
 
         if args.format == "json":
@@ -138,6 +166,49 @@ def main(argv: Sequence[str] | None = None) -> int:
                 sys.stdout.write(
                     f"{m['file']}:{m['line']}:{m['column']}: module {m['name']}\n"
                 )
+        return 0
+
+    if args.command == "locate":
+        from .module_index import locate_module
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        matches = locate_module(args.path, args.name)
+
+        if args.format == "json":
+            envelope = {
+                "kind": "locate",
+                "matches": matches,
+                "query": args.name,
+                "source": "line-scanner",
+                "tool": "pccx-ide-cli",
+            }
+            json.dump(envelope, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            count = len(matches)
+            if count == 1:
+                sys.stdout.write(f"module {matches[0]['module']}\n")
+                sys.stdout.write(f"{matches[0]['file']}:{matches[0]['line']}:0\n")
+            elif count == 0:
+                sys.stdout.write(f"module {args.name}: not found\n")
+            else:
+                sys.stdout.write(
+                    f"module {args.name}: {count} matches (ambiguous)\n"
+                )
+                for m in matches:
+                    sys.stdout.write(f"{m['file']}:{m['line']}:0\n")
+
+        if len(matches) == 0:
+            sys.stderr.write(f"error: module not found: {args.name}\n")
+            return 1
+        if len(matches) > 1:
+            sys.stderr.write(
+                f"error: ambiguous: {len(matches)} matches for module {args.name}\n"
+            )
+            return 2
         return 0
 
     parser.error(f"unknown command: {args.command}")
