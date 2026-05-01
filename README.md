@@ -51,28 +51,41 @@ checks are file-shape level only (file exists, file non-empty,
 that matters; analysis arrives later, through `pccx-lab`.
 
 ```bash
-# JSON output (default)
+# Diagnostics check — JSON output (default)
 python -m pccx_ide_cli check fixtures/ok_module.sv
 python -m pccx_ide_cli check fixtures/missing_endmodule.sv
 
-# Human-readable text output
+# Diagnostics check — human-readable text output
 python -m pccx_ide_cli check fixtures/ok_module.sv --format text
 python -m pccx_ide_cli check fixtures/missing_endmodule.sv --format text
 
-# pccx-lab backend (requires binary)
+# Diagnostics check — pccx-lab backend (requires binary)
 PCCX_LAB_BIN=/path/to/pccx-lab \
     python -m pccx_ide_cli check fixtures/ok_module.sv --backend pccx-lab --format text
+
+# Module index (early scaffold — not a full parser)
+python -m pccx_ide_cli index fixtures/modules/simple_module.sv
+python -m pccx_ide_cli index fixtures/modules/ --format text
 
 # Print the diagnostics schema
 python -m pccx_ide_cli schema
 ```
 
-Text output format:
+Diagnostics text output format:
 ```
 backend: scaffold
 source: fixtures/missing_endmodule.sv
 1 diagnostic
 fixtures/missing_endmodule.sv:1:1: error: PCCX-SCAFFOLD-003: `module` declared but no matching `endmodule` found
+```
+
+Module index text output format:
+```
+source: fixtures/modules/
+3 modules
+fixtures/modules/simple_module.sv:1:1: module simple_mod
+fixtures/modules/two_modules.sv:1:1: module mod_a
+fixtures/modules/two_modules.sv:3:1: module mod_b
 ```
 
 Tests are run with:

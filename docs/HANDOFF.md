@@ -86,6 +86,53 @@ exit 2 with a message on stderr.
 
 ---
 
+## module index scaffold (active, pre-stable)
+
+`pccx-ide index` scans `.sv` and `.v` files for `module` declarations and
+emits a lightweight index.  This is an early scaffold intended to support
+future navigation and editor-bridge work — it is not a full SystemVerilog
+parser.
+
+### Usage
+
+```bash
+# JSON output (default)
+python -m pccx_ide_cli index fixtures/modules/simple_module.sv
+
+# Human-readable text output
+python -m pccx_ide_cli index fixtures/modules/ --format text
+```
+
+### Output shape (JSON)
+
+```json
+{
+  "kind": "module-index",
+  "tool": "pccx-ide-scaffold",
+  "source": "<path passed on CLI>",
+  "modules": [
+    { "name": "simple_mod", "file": "<abs-path>", "line": 1, "column": 1 }
+  ]
+}
+```
+
+### Parser limitations
+
+- Single-line `//` comments are skipped.
+- Block comments (`/* ... */`) are **not** parsed — a `module` keyword
+  inside a block comment will be reported as a false positive.
+- `package`, `interface`, and `class` declarations are ignored.
+- No semantic analysis.  Column is the 1-indexed position of the `module`
+  keyword.
+
+### Scope
+
+- pccx-lab backend is diagnostics-only for now.  `index` always uses the
+  built-in scaffold scanner.
+- No stable ABI or API contract — the output shape may change before v1.
+
+---
+
 ## xsim handoff (planned)
 
 xsim runs and log surfacing remain on the `pccx-lab` side.  This CLI is

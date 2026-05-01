@@ -50,6 +50,22 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    index_cmd = sub.add_parser(
+        "index",
+        help="Scan a .sv/.v file or directory for module declarations.",
+    )
+    index_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    index_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     sub.add_parser(
         "schema",
         help="Print the diagnostics envelope JSON schema.",
@@ -99,6 +115,30 @@ def main(argv: Sequence[str] | None = None) -> int:
         if lab_exit is not None:
             return lab_exit
         return 0 if not envelope["diagnostics"] else 1
+
+    if args.command == "index":
+        from .module_index import build_index, scan_path
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        modules = scan_path(args.path)
+        index = build_index(str(args.path), modules)
+
+        if args.format == "json":
+            json.dump(index, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            count = len(modules)
+            plural = "s" if count != 1 else ""
+            sys.stdout.write(f"source: {index['source']}\n")
+            sys.stdout.write(f"{count} module{plural}\n")
+            for m in modules:
+                sys.stdout.write(
+                    f"{m['file']}:{m['line']}:{m['column']}: module {m['name']}\n"
+                )
+        return 0
 
     parser.error(f"unknown command: {args.command}")
     return 2
