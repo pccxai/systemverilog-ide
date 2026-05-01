@@ -93,7 +93,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: install pytest
+      - name: install deps
         run: python -m pip install --upgrade pip pytest "jsonschema>=4"
       - name: pytest
         run: python -m pytest -q
@@ -122,3 +122,13 @@ jobs:
         run: |
           set -e
           PYTHONPATH=src python -m pccx_ide_cli schema | python -c "import json,sys; json.load(sys.stdin)"
+      - name: cli smoke (pccx-lab backend missing binary fails clearly)
+        run: |
+          set -e
+          # pccx-lab is not installed in CI; the backend must fail without scaffold fallback.
+          if PYTHONPATH=src PCCX_LAB_BIN="" python -m pccx_ide_cli check \
+              fixtures/ok_module.sv --backend pccx-lab; then
+            echo "::error::expected non-zero exit when pccx-lab binary is missing"
+            exit 1
+          fi
+          echo "missing pccx-lab binary correctly fails"

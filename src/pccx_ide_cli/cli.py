@@ -15,9 +15,9 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="pccx-ide",
         description=(
             "Scaffold CLI for the pccx SystemVerilog IDE spin-out. "
-            "Emits a placeholder diagnostics envelope; real analysis "
-            "will be consumed from pccx-lab once its CLI / core "
-            "boundary stabilizes."
+            "Default backend emits a placeholder diagnostics envelope. "
+            "Use --backend pccx-lab to forward through the pccx-lab "
+            "CLI / core boundary."
         ),
     )
     parser.add_argument(
@@ -29,7 +29,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     check = sub.add_parser(
         "check",
-        help="Run the placeholder envelope check on a SystemVerilog file.",
+        help="Run a diagnostics check on a SystemVerilog file.",
     )
     check.add_argument("path", type=Path, help="Path to a .sv / .svh file.")
     check.add_argument(
@@ -37,6 +37,17 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=("json", "text"),
         default="json",
         help="Output format (default: json).",
+    )
+    check.add_argument(
+        "--backend",
+        choices=("scaffold", "pccx-lab"),
+        default="scaffold",
+        help=(
+            "Analysis backend. 'scaffold' runs the built-in placeholder checks. "
+            "'pccx-lab' invokes the pccx-lab binary (requires PCCX_LAB_BIN env var "
+            "or pccx-lab on PATH); fails clearly if binary is missing — "
+            "no silent fallback to scaffold. Default: scaffold."
+        ),
     )
 
     sub.add_parser(
@@ -62,7 +73,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "check":
-        envelope = scan_file(args.path)
+        if args.backend == "pccx-lab":
+            from .pccx_lab_backend import run as _run_pccx_lab
+            envelope, lab_exit = _run_pccx_lab(args.path)
+        else:
+            envelope = scan_file(args.path)
+            lab_exit = None
+
         if args.format == "json":
             json.dump(envelope, sys.stdout, indent=2, sort_keys=True)
             sys.stdout.write("\n")
@@ -72,6 +89,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                     f"{envelope['source']}:{d['line']}: "
                     f"{d['severity']}: {d['code']}: {d['message']}\n"
                 )
+
+        if lab_exit is not None:
+            return lab_exit
         return 0 if not envelope["diagnostics"] else 1
 
     parser.error(f"unknown command: {args.command}")
