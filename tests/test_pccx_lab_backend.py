@@ -356,8 +356,25 @@ def test_text_format_with_pccx_lab_backend(tmp_path):
         extra_env={"PCCX_LAB_BIN": str(fake)},
     )
     assert result.returncode == 1
+    assert "backend: pccx-lab" in result.stdout
+    assert "1 diagnostic" in result.stdout
     assert "PCCX-SCAFFOLD-003" in result.stdout
     assert "error" in result.stdout
+
+
+def test_text_format_clean_pccx_lab_backend(tmp_path):
+    """--format text with zero diagnostics shows backend and source headers."""
+    fake = _make_fake_binary(tmp_path, _CLEAN_ENVELOPE, 0)
+    result = _run_cli(
+        "check",
+        "--backend", "pccx-lab",
+        "--format", "text",
+        "fixtures/ok_module.sv",
+        extra_env={"PCCX_LAB_BIN": str(fake)},
+    )
+    assert result.returncode == 0, result.stderr
+    assert "backend: pccx-lab" in result.stdout
+    assert "0 diagnostics" in result.stdout
 
 
 if __name__ == "__main__":

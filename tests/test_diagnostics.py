@@ -128,6 +128,8 @@ def test_cli_check_text_format():
         str(REPO_ROOT / "fixtures" / "missing_endmodule.sv"),
     )
     assert result.returncode != 0
+    assert "backend: scaffold" in result.stdout
+    assert "1 diagnostic" in result.stdout
     assert "PCCX-SCAFFOLD-003" in result.stdout
     assert "error" in result.stdout
 
@@ -139,7 +141,24 @@ def test_cli_check_text_ok_exits_zero():
         str(REPO_ROOT / "fixtures" / "ok_module.sv"),
     )
     assert result.returncode == 0
-    assert result.stdout.strip() == ""
+    assert "backend: scaffold" in result.stdout
+    assert "0 diagnostics" in result.stdout
+
+
+def test_cli_check_text_includes_column():
+    result = _run_cli(
+        "check",
+        "--format", "text",
+        str(REPO_ROOT / "fixtures" / "missing_endmodule.sv"),
+    )
+    # diagnostic lines must be path:line:col: severity: code: message
+    diag_lines = [
+        ln for ln in result.stdout.splitlines()
+        if "PCCX-SCAFFOLD" in ln
+    ]
+    assert diag_lines, "expected at least one diagnostic line"
+    # column field present: path:L:C: ...
+    assert diag_lines[0].count(":") >= 4
 
 
 def test_cli_schema_smoke():
