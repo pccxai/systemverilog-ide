@@ -64,3 +64,33 @@ def build_index(source: str, modules: list[dict[str, Any]]) -> dict[str, Any]:
         "source": source,
         "tool": "pccx-ide-scaffold",
     }
+
+
+def filter_modules(
+    entries: list[dict[str, Any]], query: str
+) -> list[dict[str, Any]]:
+    """Return entries whose 'name' exactly matches query (case-sensitive)."""
+    return [e for e in entries if e["name"] == query]
+
+
+def locate_module(path: Path, name: str) -> list[dict[str, Any]]:
+    """Scan path for exact case-sensitive module name matches.
+
+    Returns a list of locate-shaped records:
+      {"module": <name>, "file": <path>, "line": N, "column": 0}
+
+    Sorted deterministically by (file, line).
+    """
+    raw = scan_path(path)
+    matches = [
+        {
+            "module": m["name"],
+            "file": m["file"],
+            "line": m["line"],
+            "column": 0,
+        }
+        for m in raw
+        if m["name"] == name
+    ]
+    matches.sort(key=lambda m: (m["file"], m["line"]))
+    return matches
