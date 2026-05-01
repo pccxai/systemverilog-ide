@@ -94,7 +94,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: install pytest
-        run: python -m pip install --upgrade pip pytest
+        run: python -m pip install --upgrade pip pytest "jsonschema>=4"
       - name: pytest
         run: python -m pytest -q
       - name: cli smoke (ok fixture)
@@ -110,6 +110,14 @@ jobs:
             exit 1
           fi
           echo "broken fixture correctly produced diagnostics"
+      - name: cli smoke (empty fixture exits non-zero)
+        run: |
+          set -e
+          if PYTHONPATH=src python -m pccx_ide_cli check fixtures/empty.sv; then
+            echo "::error::expected non-zero exit on empty fixture"
+            exit 1
+          fi
+          echo "empty fixture correctly produced diagnostics"
       - name: schema dump
         run: |
           set -e
