@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pccx-systemverilog-ide"
+name = "systemverilog-ide"
 version = "0.0.1"
 description = "Scaffold CLI for the SystemVerilog IDE spin-out from pccx-lab."
 readme = "README.md"
