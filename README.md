@@ -51,9 +51,28 @@ checks are file-shape level only (file exists, file non-empty,
 that matters; analysis arrives later, through `pccx-lab`.
 
 ```bash
+# JSON output (default)
 python -m pccx_ide_cli check fixtures/ok_module.sv
 python -m pccx_ide_cli check fixtures/missing_endmodule.sv
+
+# Human-readable text output
+python -m pccx_ide_cli check fixtures/ok_module.sv --format text
+python -m pccx_ide_cli check fixtures/missing_endmodule.sv --format text
+
+# pccx-lab backend (requires binary)
+PCCX_LAB_BIN=/path/to/pccx-lab \
+    python -m pccx_ide_cli check fixtures/ok_module.sv --backend pccx-lab --format text
+
+# Print the diagnostics schema
 python -m pccx_ide_cli schema
+```
+
+Text output format:
+```
+backend: scaffold
+source: fixtures/missing_endmodule.sv
+1 diagnostic
+fixtures/missing_endmodule.sv:1:1: error: PCCX-SCAFFOLD-003: `module` declared but no matching `endmodule` found
 ```
 
 Tests are run with:

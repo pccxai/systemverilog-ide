@@ -84,9 +84,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             json.dump(envelope, sys.stdout, indent=2, sort_keys=True)
             sys.stdout.write("\n")
         else:
-            for d in envelope["diagnostics"]:
+            diags = envelope["diagnostics"]
+            count = len(diags)
+            plural = "s" if count != 1 else ""
+            sys.stdout.write(f"backend: {args.backend}\n")
+            sys.stdout.write(f"source: {envelope['source']}\n")
+            sys.stdout.write(f"{count} diagnostic{plural}\n")
+            for d in diags:
                 sys.stdout.write(
-                    f"{envelope['source']}:{d['line']}: "
+                    f"{envelope['source']}:{d['line']}:{d['column']}: "
                     f"{d['severity']}: {d['code']}: {d['message']}\n"
                 )
 
