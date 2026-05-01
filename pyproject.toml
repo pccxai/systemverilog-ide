@@ -16,6 +16,9 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 
+[project.optional-dependencies]
+test = ["pytest", "jsonschema>=4"]
+
 [project.scripts]
 pccx-ide = "pccx_ide_cli.__main__:main"
 

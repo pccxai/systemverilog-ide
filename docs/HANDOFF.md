@@ -25,6 +25,21 @@ The IDE side (later: VS Code extension, GUI shell, MCP-controlled
 flows) consumes that same envelope. There is no private back channel
 between the GUI and `pccx-lab` internals.
 
+### PCCX_LAB_BIN resolution order (planned)
+
+When the handoff is wired up, binary resolution will follow this
+precedence:
+
+1. `PCCX_LAB_BIN` environment variable (absolute path).
+2. `pccx-lab` on `$PATH`.
+3. Hard error with a clear message — no silent fallback to scaffold
+   analysis when the lab binary is expected but missing.
+
+The scaffold will never silently substitute its own placeholder checks
+for a missing `pccx-lab` binary once the handoff contract is active.
+A missing binary is a configuration error, not a graceful degradation
+case.
+
 ## xsim handoff (planned)
 
 xsim runs and log surfacing remain on the `pccx-lab` side. This CLI is
