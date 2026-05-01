@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/pccxai/pccx-systemverilog-ide/schema/diagnostics-v0.json",
+  "$id": "https://github.com/pccxai/systemverilog-ide/schema/diagnostics-v0.json",
   "title": "pccx IDE diagnostics envelope (v0, scaffold)",
   "description": "Wire format the IDE will use to receive diagnostics from pccx-lab once the CLI / core boundary lands. The envelope is intentionally narrow and explicitly versioned via the `envelope` field. v0 is a scaffold contract and may break.",
   "type": "object",
