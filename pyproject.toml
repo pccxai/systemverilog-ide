@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pccx-systemverilog-ide"
+version = "0.0.1"
+description = "Scaffold CLI for the SystemVerilog IDE spin-out from pccx-lab."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+authors = [{ name = "pccxai" }]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+]
+
+[project.scripts]
+pccx-ide = "pccx_ide_cli.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pccx_ide_cli"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "schema", "tests", "fixtures", "README.md", "LICENSE"]
