@@ -2,56 +2,72 @@
 
 SystemVerilog IDE layer for the PCCX tooling stack.
 
+## What this repo is
+
+The IDE-adjacent surface that is being **spun out of [pccx-lab][pccx-lab]**.
+This is not a greenfield project — the initial code base traces back to
+IDE-shaped work that already lives in `pccx-lab`. As that work matures
+its CLI / core boundary, the IDE-side pieces will land here while
+verification, trace analysis, and diagnostics remain in `pccx-lab`.
+
 ## Status
 
-This repository is the **planned IDE spin-out from [pccx-lab][pccx-lab]**.
-Work has begun inside pccx-lab; this repo will hold the IDE code once the
-boundary is stabilized. Until then, expect the public surface to evolve.
-
-The IDE is expected to stay tightly connected to pccx-lab for trace
-analysis, diagnostics, verification workflows, and future AI-assisted
-development flows.
+Public surface is intentionally minimal while the `pccx-lab` CLI / core
+boundary is being stabilized. The IDE will follow that boundary; it does
+not duplicate analysis logic locally.
 
 ## Integration model
 
-The IDE integrates with pccx-lab through the **CLI / core boundary
-first**, not by duplicating analysis logic. The same boundary should
-support future VS Code extensions and MCP-controlled workflows.
+`pccx-lab` is **CLI-first**. The IDE consumes the same CLI / core
+contract that the lab CLI itself uses. VS Code extensions and any
+MCP-controlled flows ride on top of the same contract; they do not get a
+private back channel into the lab internals.
 
 Development order is fixed:
 
-1. CLI / core boundary first (in pccx-lab)
-2. IDE GUI surface second
-3. VS Code extension and MCP integrations on top
+1. CLI / core boundary first (in `pccx-lab`).
+2. IDE GUI surface second (in this repo).
+3. VS Code extension and MCP-controlled flows on top.
 
-## Planned features
+If a feature would need a side channel that bypasses the CLI / core
+contract, that is a signal the contract needs to grow first — not a
+signal to add a back door from the GUI.
 
-- SystemVerilog navigation
-- diagnostics and project-aware analysis
-- xsim / log integration
-- pccx trace and verification workflow integration
-- pccx-lab plugin integration
-- controlled MCP-backed analysis actions
-- future VS Code extension path
-- AI-assisted SystemVerilog development workflow
-- evolutionary generate / simulate / evaluate / refine loop
-- CLI-backed IDE actions
-- shared command boundary with pccx-lab
-- VS Code extension compatibility path
+## Initial track (near-term)
+
+- SystemVerilog navigation backed by `pccx-lab` analysis.
+- Diagnostics surfaced from the same place the lab CLI surfaces them.
+- xsim run launching and log handoff via the CLI / core boundary.
+- Project-aware view of `pccx-lab` artifacts (traces, run reports,
+  verification status).
+
+## Later track (deferred)
+
+- AI workers can interact with `pccx-lab` through a controlled MCP
+  interface; the IDE surfaces those flows but does not own the
+  contract.
+- Evolutionary generate / simulate / evaluate / refine loop, again
+  driven through the lab boundary.
+- VS Code extension distribution.
+
+These items are explicitly *deferred* — not part of the near-term
+surface — and depend on the CLI / core boundary in `pccx-lab` being
+formal enough to bind to.
 
 ## Non-goals
 
-- not a Vivado replacement
-- not claiming complete LSP support yet
-- not production-ready
-- no autonomous hardware design claim
-- no automatic merge / release actions
+- Not a Vivado replacement.
+- No claim of complete LSP coverage today.
+- This repo is not labelled as stable, and there is no commitment to a
+  frozen plugin ABI yet.
+- No autonomous hardware design claim.
+- No automatic merge or release actions driven by the IDE.
 
 ## Related
 
 - [pccxai/pccx][pccx] — spec / docs / roadmap / release coordination
-- [pccxai/pccx-lab][pccx-lab] — verification lab + plugin host + analysis backend
-- [pccxai/pccx-FPGA-NPU-LLM-kv260][pccx-fpga] — RTL / Sail / KV260 / hardware evidence
+- [pccxai/pccx-lab][pccx-lab] — verification lab + CLI / core boundary
+- [pccxai/pccx-FPGA-NPU-LLM-kv260][pccx-fpga] — RTL / KV260 / hardware evidence
 - [pccxai/pccx-llm-launcher][pccx-launcher] — user-facing local LLM launcher
 
 ## License
