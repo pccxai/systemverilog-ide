@@ -132,3 +132,25 @@ jobs:
             exit 1
           fi
           echo "missing pccx-lab binary correctly fails"
+      - name: cli smoke (index single file exits zero, JSON parses)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli index \
+              fixtures/modules/simple_module.sv \
+              | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-index'"
+          echo "index single-file smoke ok"
+      - name: cli smoke (index directory exits zero)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli index fixtures/modules \
+              | python -c "import json,sys; d=json.load(sys.stdin); assert len(d['modules'])>0"
+          echo "index directory smoke ok"
+      - name: cli smoke (index missing path exits non-zero)
+        run: |
+          set -e
+          if PYTHONPATH=src python -m pccx_ide_cli index \
+              fixtures/modules/does_not_exist.sv; then
+            echo "::error::expected non-zero exit for missing index path"
+            exit 1
+          fi
+          echo "index missing path correctly fails"

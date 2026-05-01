@@ -1,0 +1,66 @@
+from __future__ import annotations
+
+import re
+from pathlib import Path
+from typing import Any
+
+# Matches `module <name>` at the start of a line (optional leading whitespace).
+# Conservative: handles  module foo;  /  module foo #(  /  module foo (
+# Does NOT parse block comments — see HANDOFF.md.
+_MODULE_LINE_RE = re.compile(r"^(\s*)module\s+(\w+)")
+
+_IGNORE_DIRS: frozenset[str] = frozenset({".git", "__pycache__", "build", "dist", "target"})
+_SV_SUFFIXES: frozenset[str] = frozenset({".sv", ".v"})
+
+
+def _scan_text(text: str, source: str) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    for line_num, line in enumerate(text.splitlines(), 1):
+        if line.lstrip().startswith("//"):
+            continue
+        m = _MODULE_LINE_RE.match(line)
+        if m:
+            results.append({
+                "name": m.group(2),
+                "file": source,
+                "line": line_num,
+                "column": len(m.group(1)) + 1,
+            })
+    return results
+
+
+def scan_file(path: Path) -> list[dict[str, Any]]:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    return _scan_text(text, str(path))
+
+
+def scan_path(path: Path) -> list[dict[str, Any]]:
+    """Return module records for a single file or a directory tree.
+
+    Directory scan skips _IGNORE_DIRS and collects .sv and .v files only.
+    Output is sorted by (file, line, name) for determinism.
+    """
+    if path.is_file():
+        return scan_file(path)
+
+    sv_files = sorted(
+        f
+        for suffix in _SV_SUFFIXES
+        for f in path.rglob(f"*{suffix}")
+        if not any(part in _IGNORE_DIRS for part in f.parts)
+    )
+    modules: list[dict[str, Any]] = []
+    for f in sv_files:
+        modules.extend(scan_file(f))
+
+    modules.sort(key=lambda m: (m["file"], m["line"], m["name"]))
+    return modules
+
+
+def build_index(source: str, modules: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "kind": "module-index",
+        "modules": modules,
+        "source": source,
+        "tool": "pccx-ide-scaffold",
+    }
