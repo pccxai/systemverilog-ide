@@ -15,6 +15,41 @@ FIXTURES = REPO_ROOT / "fixtures" / "modules"
 sys.path.insert(0, str(SRC))
 
 from pccx_ide_cli.module_index import build_index, scan_file, scan_path  # noqa: E402
+from pccx_ide_cli.module_index import _strip_block_comments  # noqa: E402
+
+
+# ── unit: _strip_block_comments helper ───────────────────────────────────────
+
+def test_strip_single_line_block_comment():
+    visible, in_cmt = _strip_block_comments("/* module fake; */", False)
+    assert "module" not in visible
+    assert in_cmt is False
+
+
+def test_strip_block_comment_opens_does_not_close():
+    visible, in_cmt = _strip_block_comments("/* module fake;", False)
+    assert "module" not in visible
+    assert in_cmt is True
+
+
+def test_strip_block_comment_closes():
+    visible, in_cmt = _strip_block_comments(" * module fake; */", True)
+    assert "module" not in visible
+    assert in_cmt is False
+
+
+def test_strip_no_comment_passthrough():
+    line = "module real_mod;"
+    visible, in_cmt = _strip_block_comments(line, False)
+    assert visible == line
+    assert in_cmt is False
+
+
+def test_strip_inline_comment_then_module():
+    # Block comment before module on same line — visible retains rest of line
+    visible, in_cmt = _strip_block_comments("/* hdr */ module real_mod;", False)
+    assert "real_mod" in visible
+    assert in_cmt is False
 
 
 # ── unit: single-file scanning ────────────────────────────────────────────────
@@ -53,6 +88,32 @@ def test_commented_module_ignored():
     assert "fake_mod" not in names
 
 
+def test_indented_module_real_column():
+    mods = scan_file(FIXTURES / "indented_module.sv")
+    assert len(mods) == 1
+    assert mods[0]["name"] == "indented_mod"
+    assert mods[0]["column"] == 5  # 4 leading spaces → `module` at col 5
+
+
+def test_single_line_block_comment_fake_ignored():
+    mods = scan_file(FIXTURES / "block_comment_module.sv")
+    names = [m["name"] for m in mods]
+    assert "block_fake_mod" not in names
+    assert "block_real_mod" in names
+
+
+def test_multiline_block_comment_fake_ignored():
+    mods = scan_file(FIXTURES / "multiline_block_comment.sv")
+    names = [m["name"] for m in mods]
+    assert "multi_fake_mod" not in names
+    assert "after_block_mod" in names
+
+
+def test_real_module_after_block_comment_found():
+    mods = scan_file(FIXTURES / "multiline_block_comment.sv")
+    assert any(m["name"] == "after_block_mod" for m in mods)
+
+
 def test_v_extension_scanned():
     mods = scan_file(FIXTURES / "nested_dir" / "extra_v_mod.v")
     assert len(mods) == 1
@@ -70,7 +131,13 @@ def test_scan_directory_finds_all_modules():
     assert "child_mod" in names
     assert "real_mod" in names
     assert "extra_v_mod" in names
+    assert "indented_mod" in names
+    assert "block_real_mod" in names
+    assert "after_block_mod" in names
+    # block-commented fakes must not appear
     assert "fake_mod" not in names
+    assert "block_fake_mod" not in names
+    assert "multi_fake_mod" not in names
 
 
 def test_scan_directory_deterministic():

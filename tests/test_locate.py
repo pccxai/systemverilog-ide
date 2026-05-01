@@ -75,7 +75,7 @@ def test_locate_module_one_match_shape():
     assert m["module"] == "simple_mod"
     assert "file" in m
     assert m["line"] == 1
-    assert m["column"] == 0
+    assert m["column"] == 1  # `module` starts at column 1 (no leading whitespace)
 
 
 def test_locate_module_no_match_returns_empty():
@@ -97,9 +97,12 @@ def test_locate_module_sorted_by_file_then_line():
     assert keys == sorted(keys)
 
 
-def test_locate_module_column_is_zero():
-    matches = locate_module(FIXTURES / "simple_module.sv", "simple_mod")
-    assert all(m["column"] == 0 for m in matches)
+def test_locate_module_column_matches_index():
+    """locate column must match the index column for the same declaration."""
+    from pccx_ide_cli.module_index import scan_path
+    index_mods = scan_path(FIXTURES / "simple_module.sv")
+    locate_matches = locate_module(FIXTURES / "simple_module.sv", "simple_mod")
+    assert locate_matches[0]["column"] == index_mods[0]["column"]
 
 
 def test_locate_module_directory_recursive():
@@ -185,7 +188,7 @@ def test_cli_locate_one_match_json():
     assert m["module"] == "simple_mod"
     assert "file" in m
     assert isinstance(m["line"], int)
-    assert m["column"] == 0
+    assert m["column"] == 1  # `module` at column 1 (no leading whitespace in simple_module.sv)
 
 
 def test_cli_locate_one_match_text():
@@ -196,8 +199,8 @@ def test_cli_locate_one_match_text():
     assert result.returncode == 0, result.stderr
     lines = result.stdout.splitlines()
     assert lines[0] == "module simple_mod"
-    # second line: file:line:0
-    assert lines[1].endswith(":1:0")
+    # second line: file:line:col  (col=1 for simple_module.sv which has no leading whitespace)
+    assert lines[1].endswith(":1:1")
 
 
 def test_cli_locate_no_match_exit_1():
@@ -227,8 +230,11 @@ def test_cli_locate_multiple_matches_text_lists_all():
         "locate", str(FIXTURES), "simple_mod", "--format", "text",
     )
     assert result.returncode == 2
-    # At least 2 file:line:0 lines expected
-    colon_lines = [ln for ln in result.stdout.splitlines() if ln.endswith(":0")]
+    # At least 2 file:line:col lines; col is a real 1-based integer, not a placeholder
+    colon_lines = [
+        ln for ln in result.stdout.splitlines()
+        if ":" in ln and ln.split(":")[-1].isdigit()
+    ]
     assert len(colon_lines) >= 2
 
 
