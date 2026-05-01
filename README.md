@@ -41,6 +41,31 @@ signal to add a back door from the GUI.
 - Project-aware view of `pccx-lab` artifacts (traces, run reports,
   verification status).
 
+## Current scaffold
+
+The repository currently contains a placeholder Python CLI that emits
+the **diagnostics envelope** the IDE expects to consume from
+`pccx-lab`. The CLI does not perform real semantic analysis — its
+checks are file-shape level only (file exists, file non-empty,
+`module` / `endmodule` present). The envelope schema is the artifact
+that matters; analysis arrives later, through `pccx-lab`.
+
+```bash
+python -m pccx_ide_cli check fixtures/ok_module.sv
+python -m pccx_ide_cli check fixtures/missing_endmodule.sv
+python -m pccx_ide_cli schema
+```
+
+Tests are run with:
+
+```bash
+python -m pytest -q
+```
+
+The envelope shape is fixed in [`schema/diagnostics-v0.json`](./schema/diagnostics-v0.json).
+Handoff notes for the eventual `pccx-lab` and xsim integration paths
+live in [`docs/HANDOFF.md`](./docs/HANDOFF.md).
+
 ## Later track (deferred)
 
 - AI workers can interact with `pccx-lab` through a controlled MCP
