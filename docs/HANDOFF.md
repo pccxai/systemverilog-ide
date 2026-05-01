@@ -110,3 +110,10 @@ expected to:
   should relax at v1 to allow forward-compatible extension fields.
 
 These are intentionally unresolved while both sides mature.
+
+---
+
+*See also*:
+[AI-assisted engineering discipline](https://github.com/pccxai/pccxai/blob/main/docs/AI_ASSISTED_ENGINEERING.md) —
+org-level rules covering interface-first work and gray-box delegation that govern
+how AI workers interact with the pccx-lab boundary from this IDE layer.
