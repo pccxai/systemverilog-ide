@@ -1,4 +1,4 @@
-# pccx-systemverilog-ide
+# systemverilog-ide
 
 SystemVerilog IDE layer for the PCCX tooling stack.
 
