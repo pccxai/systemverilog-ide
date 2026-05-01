@@ -191,7 +191,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             count = len(matches)
             if count == 1:
                 sys.stdout.write(f"module {matches[0]['module']}\n")
-                sys.stdout.write(f"{matches[0]['file']}:{matches[0]['line']}:0\n")
+                sys.stdout.write(
+                    f"{matches[0]['file']}:{matches[0]['line']}:{matches[0]['column']}\n"
+                )
             elif count == 0:
                 sys.stdout.write(f"module {args.name}: not found\n")
             else:
@@ -199,7 +201,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     f"module {args.name}: {count} matches (ambiguous)\n"
                 )
                 for m in matches:
-                    sys.stdout.write(f"{m['file']}:{m['line']}:0\n")
+                    sys.stdout.write(f"{m['file']}:{m['line']}:{m['column']}\n")
 
         if len(matches) == 0:
             sys.stderr.write(f"error: module not found: {args.name}\n")
