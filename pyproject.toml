@@ -15,9 +15,10 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
 ]
+dependencies = ["jsonschema>=4"]
 
 [project.optional-dependencies]
-test = ["pytest", "jsonschema>=4"]
+test = ["pytest"]
 
 [project.scripts]
 pccx-ide = "pccx_ide_cli.__main__:main"
