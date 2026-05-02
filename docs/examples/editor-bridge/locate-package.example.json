@@ -1,0 +1,16 @@
+{
+  "declaration_kind": "package",
+  "kind": "locate",
+  "matches": [
+    {
+      "column": 1,
+      "file": "fixtures/modules/package_defs.sv",
+      "kind": "package",
+      "line": 1,
+      "name": "pkg_defs"
+    }
+  ],
+  "query": "pkg_defs",
+  "source": "line-scanner",
+  "tool": "pccx-ide-cli"
+}

@@ -1,0 +1,154 @@
+{
+  "declarations": [
+    {
+      "column": 1,
+      "file": "fixtures/modules/block_comment_module.sv",
+      "kind": "module",
+      "line": 2,
+      "name": "block_real_mod"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/commented_module.sv",
+      "kind": "module",
+      "line": 2,
+      "name": "real_mod"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/commented_package_interface.sv",
+      "kind": "package",
+      "line": 9,
+      "name": "real_pkg"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/commented_package_interface.sv",
+      "kind": "interface",
+      "line": 12,
+      "name": "real_if"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/dup_simple_mod.sv",
+      "kind": "module",
+      "line": 2,
+      "name": "simple_mod"
+    },
+    {
+      "column": 5,
+      "file": "fixtures/modules/indented_module.sv",
+      "kind": "module",
+      "line": 1,
+      "name": "indented_mod"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/interface_decl.sv",
+      "kind": "interface",
+      "line": 1,
+      "name": "bus_if"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/mixed_declarations.sv",
+      "kind": "package",
+      "line": 1,
+      "name": "mixed_pkg"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/mixed_declarations.sv",
+      "kind": "interface",
+      "line": 4,
+      "name": "mixed_if"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/mixed_declarations.sv",
+      "kind": "module",
+      "line": 7,
+      "name": "mixed_mod"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/multiline_block_comment.sv",
+      "kind": "module",
+      "line": 4,
+      "name": "after_block_mod"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/nested_dir/child_module.sv",
+      "kind": "module",
+      "line": 1,
+      "name": "child_mod"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/nested_dir/extra_v_mod.v",
+      "kind": "module",
+      "line": 2,
+      "name": "extra_v_mod"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/package_decl.sv",
+      "kind": "package",
+      "line": 1,
+      "name": "util_pkg"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/package_defs.sv",
+      "kind": "package",
+      "line": 1,
+      "name": "pkg_defs"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/same_name_declarations.sv",
+      "kind": "package",
+      "line": 1,
+      "name": "shared_decl"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/same_name_declarations.sv",
+      "kind": "interface",
+      "line": 4,
+      "name": "shared_decl"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/same_name_declarations.sv",
+      "kind": "module",
+      "line": 7,
+      "name": "shared_decl"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/simple_module.sv",
+      "kind": "module",
+      "line": 1,
+      "name": "simple_mod"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/two_modules.sv",
+      "kind": "module",
+      "line": 1,
+      "name": "mod_a"
+    },
+    {
+      "column": 1,
+      "file": "fixtures/modules/two_modules.sv",
+      "kind": "module",
+      "line": 4,
+      "name": "mod_b"
+    }
+  ],
+  "kind": "declarations",
+  "source": "fixtures/modules",
+  "tool": "pccx-ide-cli"
+}

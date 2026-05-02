@@ -1,0 +1,45 @@
+{
+  "kind": "editor-problems",
+  "problems": [
+    {
+      "code": "VRFC 10-1234",
+      "message": "syntax error near token ';'",
+      "raw": "ERROR: [VRFC 10-1234] syntax error near token ';'",
+      "severity": "error",
+      "source_kind": "xsim-log"
+    },
+    {
+      "message": "elaboration started",
+      "raw": "INFO: elaboration started",
+      "severity": "info",
+      "source_kind": "xsim-log"
+    },
+    {
+      "code": "XSIM 43-9999",
+      "message": "signal has no driver",
+      "raw": "WARNING: [XSIM 43-9999] signal has no driver",
+      "severity": "warning",
+      "source_kind": "xsim-log"
+    },
+    {
+      "file": "src/top.sv",
+      "line": 12,
+      "message": "module declaration failed",
+      "raw": "src/top.sv:12: error: module declaration failed",
+      "severity": "error",
+      "source_kind": "xsim-log"
+    },
+    {
+      "column": 5,
+      "file": "src/warn.sv",
+      "line": 7,
+      "message": "implicit net created",
+      "raw": "src/warn.sv:7:5: warning: implicit net created",
+      "severity": "warning",
+      "source_kind": "xsim-log"
+    }
+  ],
+  "source": "fixtures/xsim/mixed.log",
+  "source_kind": "xsim-log",
+  "tool": "pccx-ide-cli"
+}

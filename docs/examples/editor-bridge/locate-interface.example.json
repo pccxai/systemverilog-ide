@@ -1,0 +1,16 @@
+{
+  "declaration_kind": "interface",
+  "kind": "locate",
+  "matches": [
+    {
+      "column": 1,
+      "file": "fixtures/modules/interface_decl.sv",
+      "kind": "interface",
+      "line": 1,
+      "name": "bus_if"
+    }
+  ],
+  "query": "bus_if",
+  "source": "line-scanner",
+  "tool": "pccx-ide-cli"
+}

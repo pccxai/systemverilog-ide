@@ -1,0 +1,17 @@
+{
+  "declaration_kind": "module",
+  "kind": "locate",
+  "matches": [
+    {
+      "column": 1,
+      "file": "fixtures/modules/simple_module.sv",
+      "kind": "module",
+      "line": 1,
+      "module": "simple_mod",
+      "name": "simple_mod"
+    }
+  ],
+  "query": "simple_mod",
+  "source": "line-scanner",
+  "tool": "pccx-ide-cli"
+}

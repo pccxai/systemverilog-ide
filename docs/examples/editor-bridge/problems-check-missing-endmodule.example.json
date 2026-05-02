@@ -1,0 +1,17 @@
+{
+  "kind": "editor-problems",
+  "problems": [
+    {
+      "code": "PCCX-SCAFFOLD-003",
+      "column": 1,
+      "file": "fixtures/missing_endmodule.sv",
+      "line": 1,
+      "message": "`module` declared but no matching `endmodule` found",
+      "severity": "error",
+      "source_kind": "check"
+    }
+  ],
+  "source": "fixtures/missing_endmodule.sv",
+  "source_kind": "check",
+  "tool": "pccx-ide-cli"
+}

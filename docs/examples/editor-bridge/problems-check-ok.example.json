@@ -1,0 +1,7 @@
+{
+  "kind": "editor-problems",
+  "problems": [],
+  "source": "fixtures/ok_module.sv",
+  "source_kind": "check",
+  "tool": "pccx-ide-cli"
+}
