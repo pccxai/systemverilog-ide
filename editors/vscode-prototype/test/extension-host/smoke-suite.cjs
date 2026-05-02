@@ -484,6 +484,29 @@ async function run() {
     assert.equal(cacheStatus.status.latest.status, "passed");
     assert.equal(cacheStatus.status.summaryOnly, true);
     assert.equal(cacheStatus.status.fullLogsExcluded, true);
+
+    const clearValidationCache = await vscode.commands.executeCommand(
+      "pccxSystemVerilog.clearValidationResultCache",
+    );
+    assert.equal(clearValidationCache.ok, true);
+    assert.equal(clearValidationCache.kind, "validation-result-cache-clear");
+    assert.equal(clearValidationCache.clearedCount, 2);
+
+    const emptyCacheStatus = await vscode.commands.executeCommand(
+      "pccxSystemVerilog.showValidationCacheStatus",
+    );
+    assert.equal(emptyCacheStatus.ok, true);
+    assert.equal(emptyCacheStatus.kind, "validation-result-cache-status");
+    assert.equal(emptyCacheStatus.status.count, 0);
+    assert.equal(emptyCacheStatus.status.latest, null);
+
+    const recentValidationResultsEmpty = await vscode.commands.executeCommand(
+      "pccxSystemVerilog.showRecentValidationResults",
+    );
+    assert.equal(recentValidationResultsEmpty.ok, true);
+    assert.equal(recentValidationResultsEmpty.kind, "validation-result-cache");
+    assert.deepEqual(recentValidationResultsEmpty.entries, []);
+    assert.equal(recentValidationResultsEmpty.selected, null);
   } finally {
     await updatePrototypeConfig("validationRunner.enabled", false);
     await updatePrototypeConfig("validationRunner.mode", "disabled");

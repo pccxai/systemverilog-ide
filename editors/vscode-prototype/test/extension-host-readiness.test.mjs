@@ -172,6 +172,8 @@ async function testRuntimeRunnerIsPinnedAndBounded() {
   assert.match(suite, /showRecentValidationResults/);
   assert.match(suite, /showValidationCacheStatus/);
   assert.match(suite, /clearValidationResultCache/);
+  assert.match(suite, /clearValidationCache/);
+  assert.match(suite, /recentValidationResultsEmpty/);
   assert.match(suite, /showPatchProposalPreview/);
   assert.match(suite, /clearPatchProposalPreview/);
   assert.match(suite, /showLocalWorkflowStatus/);
