@@ -1,3 +1,7 @@
+import {
+  assertThemeNeutralPresentation,
+} from "./presentation-boundary.mjs";
+
 const DEFAULT_FILE = "";
 const DEFAULT_POSITION = Object.freeze({ line: 0, character: 0 });
 
@@ -83,6 +87,19 @@ function fallbackDiagnostic(range, message, severity) {
   return { range, message, severity };
 }
 
+function applyDiagnosticMetadata(vsCodeDiagnostic, diagnostic) {
+  if (!vsCodeDiagnostic || typeof vsCodeDiagnostic !== "object") {
+    return vsCodeDiagnostic;
+  }
+  if (diagnostic?.source != null && String(diagnostic.source).length > 0) {
+    vsCodeDiagnostic.source = String(diagnostic.source);
+  }
+  if (diagnostic?.code != null && String(diagnostic.code).length > 0) {
+    vsCodeDiagnostic.code = String(diagnostic.code);
+  }
+  return vsCodeDiagnostic;
+}
+
 function toVsCodeLikeDiagnostic(diagnostic, deps) {
   const range = safeRange(diagnostic);
   const vsCodeRange = (deps.createRange ?? fallbackRange)(
@@ -92,16 +109,18 @@ function toVsCodeLikeDiagnostic(diagnostic, deps) {
     range.end.character,
   );
   const severity = mapDiagnosticSeverity(diagnostic?.severity, deps.diagnosticSeverity);
-  return (deps.createDiagnostic ?? fallbackDiagnostic)(
+  const vsCodeDiagnostic = (deps.createDiagnostic ?? fallbackDiagnostic)(
     vsCodeRange,
     String(diagnostic?.message ?? ""),
     severity,
     diagnostic,
   );
+  return applyDiagnosticMetadata(vsCodeDiagnostic, diagnostic);
 }
 
 export function presentDiagnostics(action, deps = {}) {
   const presentation = createDiagnosticsPresentation(action);
+  assertThemeNeutralPresentation(presentation);
   const collection = deps.diagnosticsCollection;
 
   if (presentation.files.length === 0) {
@@ -168,6 +187,7 @@ export function createNavigationPresentation(action) {
 
 export async function presentNavigation(action, deps = {}) {
   const presentation = createNavigationPresentation(action);
+  assertThemeNeutralPresentation(presentation);
   if (presentation.items.length === 0) {
     await deps.showInformationMessage?.(presentation.summary, presentation);
     return presentation;

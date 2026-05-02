@@ -13,6 +13,7 @@
     "Other"
   ],
   "activationEvents": [
+    "onCommand:pccxSystemVerilog.publishCheckedExampleDiagnostics",
     "onCommand:pccxSystemVerilog.showDiagnosticsExample",
     "onCommand:pccxSystemVerilog.showNavigationExample",
     "onCommand:pccxSystemVerilog.runDiagnosticsLive",
@@ -20,6 +21,10 @@
   ],
   "contributes": {
     "commands": [
+      {
+        "command": "pccxSystemVerilog.publishCheckedExampleDiagnostics",
+        "title": "PCCX SystemVerilog: Publish Checked Example Diagnostics (Experimental)"
+      },
       {
         "command": "pccxSystemVerilog.showDiagnosticsExample",
         "title": "PCCX SystemVerilog: Show Diagnostics Example"

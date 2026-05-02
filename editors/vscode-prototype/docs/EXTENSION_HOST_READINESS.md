@@ -19,6 +19,8 @@ should earn CI promotion separately.
 - Known facade argument arrays.
 - Command handlers and UI action models.
 - Presenter behavior with mocked VS Code-like dependencies.
+- Real VS Code `DiagnosticCollection` population for the checked-example
+  diagnostics command when the local runtime smoke is explicitly enabled.
 - Checked editor bridge examples.
 - Live CLI runner for known local JSON flows.
 - Guard behavior for the local-only Extension Host runtime smoke.
@@ -27,7 +29,6 @@ should earn CI promotion separately.
 
 ## Not Tested Today
 
-- Real `DiagnosticCollection`.
 - Real QuickPick.
 - Packaging.
 - `vsce`.
@@ -54,10 +55,27 @@ PCCX_RUN_EXTENSION_HOST_SMOKE=1 bash scripts/vscode-extension-host-smoke.sh
 The runner lives under `editors/vscode-prototype/test/extension-host/`.
 It uses `@vscode/test-electron@2.5.2`, pins VS Code to `1.90.2`, creates
 a temporary workspace, loads the local extension package, verifies the
-expected command IDs, and executes only the checked-example diagnostics
-command.  It does not execute live CLI commands by default.
+expected command IDs, and executes only
+`pccxSystemVerilog.publishCheckedExampleDiagnostics`.  That command uses
+checked example diagnostics by default, goes through the facade boundary,
+and verifies that VS Code receives at least one diagnostic with URI,
+range, severity, message, and source fields.  It does not execute live
+CLI commands by default.
 
 The guarded script is not run by CI today.
+
+## Theme Boundary
+
+The current presentation boundary is intentionally small and
+theme-neutral.  Diagnostic records and command output do not carry
+hardcoded editor colors or styles; VS Code diagnostics use native
+severity and `DiagnosticCollection` APIs.  Future UI or webview surfaces
+should use host theme tokens first, with explicit user-provided theme
+tokens as the customization path.
+
+VS Code, Xcode, and JetBrains are future presentation preset families.
+They are not implemented skins and do not imply a completed custom theme
+system.
 
 ## Dependency and CI Policy
 

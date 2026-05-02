@@ -122,7 +122,26 @@ function testDiagnosticsPresenterCallsCollectionSet() {
     endCharacter: 5,
   });
   assert.equal(calls.set[0].diagnostics[0].severity, 1);
+  assert.equal(calls.set[0].diagnostics[0].source, undefined);
   assert.equal(calls.warning[0].message, "1 diagnostic(s)");
+}
+
+function testDiagnosticsPresenterMapsSourceAndCode() {
+  const { calls, deps } = mockPresenterDeps();
+  const action = diagnosticsAction([
+    {
+      file: "a.sv",
+      message: "bad",
+      severity: "Error",
+      source: "check",
+      code: "PCCX-SCAFFOLD-003",
+    },
+  ]);
+
+  presentDiagnostics(action, deps);
+
+  assert.equal(calls.set[0].diagnostics[0].source, "check");
+  assert.equal(calls.set[0].diagnostics[0].code, "PCCX-SCAFFOLD-003");
 }
 
 function testDiagnosticsZeroCaseClearsCollection() {
@@ -311,6 +330,7 @@ function testPresenterDoesNotReturnShellStrings() {
 
 testDiagnosticsPresentationGroupsByFile();
 testDiagnosticsPresenterCallsCollectionSet();
+testDiagnosticsPresenterMapsSourceAndCode();
 testDiagnosticsZeroCaseClearsCollection();
 testDiagnosticsSeverityMapping();
 testDiagnosticsMissingFileAndLocation();

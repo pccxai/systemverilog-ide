@@ -93,6 +93,32 @@ async function testDiagnosticsExampleAction() {
   assert.equal(calls.warning[0].message, "1 diagnostic(s)");
 }
 
+async function testPublishCheckedExampleDiagnosticsAction() {
+  const diagnostic = { file: "a.sv", message: "bad", severity: "Error" };
+  const { calls, deps } = mockDeps({
+    kind: "vscode-diagnostics",
+    diagnostics: [diagnostic],
+  });
+
+  const result = await runPrototypeCommand(
+    "pccxSystemVerilog.publishCheckedExampleDiagnostics",
+    { mode: "live", defaultSource: "live.sv", pythonPath: "python-custom" },
+    deps,
+  );
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(calls.runFacade[0].args, [
+    "diagnostics",
+    "--mode",
+    "example",
+    "--source",
+    "check-missing-endmodule",
+  ]);
+  assert.deepEqual(calls.runFacade[0].env, {});
+  assert.equal(result.action.kind, "diagnostics");
+  assert.equal(result.action.diagnostics.length, 1);
+}
+
 async function testDiagnosticsLiveAction() {
   const { calls, deps } = mockDeps({
     kind: "vscode-diagnostics",
@@ -293,6 +319,7 @@ async function testExtensionExportsAndRegistration() {
 testPlansForKnownCommands();
 testUnknownCommandRejected();
 await testDiagnosticsExampleAction();
+await testPublishCheckedExampleDiagnosticsAction();
 await testDiagnosticsLiveAction();
 await testNavigationExampleAction();
 await testNavigationLiveAction();

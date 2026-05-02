@@ -5,6 +5,7 @@ import {
   activate,
   buildFacadeArgsForCommand,
   buildFacadeInvocationForCommand,
+  createPresenterDeps,
   createCommandHandler,
   deactivate,
   readExtensionConfig,
@@ -12,6 +13,10 @@ import {
 } from "../src/extension.mjs";
 
 const EXPECTED_ARGS = new Map([
+  [
+    "pccxSystemVerilog.publishCheckedExampleDiagnostics",
+    ["diagnostics", "--mode", "example", "--source", "check-missing-endmodule"],
+  ],
   [
     "pccxSystemVerilog.showDiagnosticsExample",
     ["diagnostics", "--mode", "example", "--source", "check-missing-endmodule"],
@@ -56,6 +61,16 @@ function testUnknownCommandsRejected() {
   );
 }
 
+function testCheckedExampleDiagnosticsCommandStaysExampleMode() {
+  assert.deepEqual(
+    buildFacadeArgsForCommand(
+      "pccxSystemVerilog.publishCheckedExampleDiagnostics",
+      { mode: "live", defaultSource: "configured.sv", pythonPath: "python-custom" },
+    ),
+    ["diagnostics", "--mode", "example", "--source", "check-missing-endmodule"],
+  );
+}
+
 function testFacadeInvocationIsArgumentArray() {
   const invocation = buildFacadeInvocationForCommand(
     "pccxSystemVerilog.runDiagnosticsLive",
@@ -69,6 +84,30 @@ function testFacadeInvocationIsArgumentArray() {
   assert.ok(Array.isArray(invocation.args));
   assert.deepEqual(invocation.args.slice(1), EXPECTED_ARGS.get("pccxSystemVerilog.runDiagnosticsLive"));
   assert.doesNotMatch(invocation.args.join("\n"), /(?:&&|\|\||;|`|\$\()/);
+}
+
+function testPresenterDepsResolveRelativeDiagnosticFiles() {
+  const created = [];
+  const deps = createPresenterDeps(
+    {
+      Uri: {
+        file(file) {
+          created.push(file);
+          return { fsPath: file };
+        },
+      },
+    },
+    { diagnosticFileRoot: "/repo/root" },
+  );
+
+  assert.deepEqual(deps.createUri("fixtures/missing_endmodule.sv"), {
+    fsPath: "/repo/root/fixtures/missing_endmodule.sv",
+  });
+  assert.deepEqual(deps.createUri("/tmp/file.sv"), { fsPath: "/tmp/file.sv" });
+  assert.deepEqual(created, [
+    "/repo/root/fixtures/missing_endmodule.sv",
+    "/tmp/file.sv",
+  ]);
 }
 
 function testResolveCommandRequestUsesVsCodeSettings() {
@@ -212,7 +251,9 @@ async function testCommandHandlerCanBeUsedWithoutRealVsCode() {
 
 testKnownFacadeArgs();
 testUnknownCommandsRejected();
+testCheckedExampleDiagnosticsCommandStaysExampleMode();
 testFacadeInvocationIsArgumentArray();
+testPresenterDepsResolveRelativeDiagnosticFiles();
 testResolveCommandRequestUsesVsCodeSettings();
 await testEntrypointExportsAndActivation();
 await testNoVsCodeRuntimeIsANoop();

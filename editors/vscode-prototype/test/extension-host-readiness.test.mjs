@@ -92,6 +92,9 @@ async function testReadinessDocsAndCiPolicy() {
   assert.match(readiness, /(?:not LSP|LSP support|LSP server)/i);
   assert.match(readiness, /(?:not a stable ABI\/API|stable ABI\/API claim)/i);
   assert.match(readiness, /facade boundary/i);
+  assert.match(`${readme}\n${readiness}`, /DiagnosticCollection/);
+  assert.match(`${readme}\n${readiness}`, /host theme first/i);
+  assert.match(`${readme}\n${readiness}`, /not a completed\s+custom theme system/i);
   assert.doesNotMatch(ci, /vscode-extension-host-smoke\.sh/);
   assert.doesNotMatch(ci, /PCCX_RUN_EXTENSION_HOST_SMOKE/);
   assert.doesNotMatch(extensionEntrypoint, /pccx_ide_cli/);
@@ -117,7 +120,9 @@ async function testRuntimeRunnerIsPinnedAndBounded() {
   assert.match(runner, /--extensions-dir=/);
   assert.match(runner, /--user-data-dir=/);
   assert.match(suite, /getCommands/);
-  assert.match(suite, /showDiagnosticsExample/);
+  assert.match(suite, /publishCheckedExampleDiagnostics/);
+  assert.match(suite, /getDiagnostics/);
+  assert.match(suite, /DiagnosticSeverity\.Error/);
   assert.doesNotMatch(suite, /executeCommand\(\s*"pccxSystemVerilog\.runDiagnosticsLive"/);
   assert.doesNotMatch(suite, /executeCommand\(\s*"pccxSystemVerilog\.runNavigationLive"/);
 }

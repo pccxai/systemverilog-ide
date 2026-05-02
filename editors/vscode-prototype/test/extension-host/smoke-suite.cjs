@@ -28,7 +28,9 @@ async function importExtensionEntrypoint() {
 
 async function run() {
   assert.ok(extensionRoot, "PCCX_EXTENSION_ROOT must be set");
+  assert.ok(process.env.PCCX_REPO_ROOT, "PCCX_REPO_ROOT must be set");
   assert.deepEqual(expectedCommandIds, [
+    "pccxSystemVerilog.publishCheckedExampleDiagnostics",
     "pccxSystemVerilog.showDiagnosticsExample",
     "pccxSystemVerilog.showNavigationExample",
     "pccxSystemVerilog.runDiagnosticsLive",
@@ -56,12 +58,39 @@ async function run() {
   }
 
   const result = await vscode.commands.executeCommand(
-    "pccxSystemVerilog.showDiagnosticsExample",
+    "pccxSystemVerilog.publishCheckedExampleDiagnostics",
   );
   assert.equal(result.ok, true);
-  assert.equal(result.commandId, "pccxSystemVerilog.showDiagnosticsExample");
+  assert.equal(result.commandId, "pccxSystemVerilog.publishCheckedExampleDiagnostics");
   assert.equal(result.action.kind, "diagnostics");
   assert.ok(result.action.diagnostics.length > 0);
+
+  const expectedDiagnostic = result.action.diagnostics[0];
+  const expectedUri = vscode.Uri.file(path.resolve(
+    process.env.PCCX_REPO_ROOT,
+    expectedDiagnostic.file,
+  ));
+  const publishedDiagnostics = vscode.languages.getDiagnostics(expectedUri);
+  assert.ok(
+    publishedDiagnostics.length > 0,
+    `no diagnostics were published for ${expectedUri.toString()}`,
+  );
+  const publishedDiagnostic = publishedDiagnostics.find(
+    (diagnostic) => diagnostic.message === expectedDiagnostic.message,
+  );
+  assert.ok(publishedDiagnostic, "published diagnostic message was not found");
+  assert.equal(publishedDiagnostic.source, expectedDiagnostic.source);
+  assert.equal(publishedDiagnostic.severity, vscode.DiagnosticSeverity.Error);
+  assert.equal(publishedDiagnostic.range.start.line, expectedDiagnostic.range.start.line);
+  assert.equal(
+    publishedDiagnostic.range.start.character,
+    expectedDiagnostic.range.start.character,
+  );
+  assert.equal(publishedDiagnostic.range.end.line, expectedDiagnostic.range.end.line);
+  assert.equal(
+    publishedDiagnostic.range.end.character,
+    expectedDiagnostic.range.end.character,
+  );
 
   const extensionModule = await importExtensionEntrypoint();
   assert.equal(typeof extensionModule.deactivate, "function");
