@@ -84,6 +84,7 @@ VS Code manifest wrapper; the implementation stays in `src/extension.mjs`.
 The contributed commands are:
 
 - `pccxSystemVerilog.publishCheckedExampleDiagnostics`
+- `pccxSystemVerilog.showCheckedExampleNavigation`
 - `pccxSystemVerilog.showDiagnosticsExample`
 - `pccxSystemVerilog.showNavigationExample`
 - `pccxSystemVerilog.runDiagnosticsLive`
@@ -101,7 +102,13 @@ The prototype-only settings are:
 The default diagnostics publishing command is
 `pccxSystemVerilog.publishCheckedExampleDiagnostics`.  It is experimental
 and always uses the checked `check-missing-endmodule` example through the
-facade boundary.  The explicit example commands always build
+facade boundary.  The checked-example navigation command is
+`pccxSystemVerilog.showCheckedExampleNavigation`.  It is experimental,
+command-first navigation, and always uses
+`navigation --mode example --source declarations` through the facade
+boundary.  It maps the checked declaration records into VS Code
+`Uri`/`Range`/`Location`-style records and returns them to callers; it
+has no LSP provider yet.  The explicit example commands always build
 checked-example facade arguments, and the explicit live commands always
 build known live facade arguments.  Live diagnostics uses
 `--from-check <defaultSource>`.  Live navigation uses
@@ -134,14 +141,17 @@ navigation presentation creates deterministic QuickPick-like items.
 The opt-in Extension Host runtime smoke additionally verifies that the
 checked-example diagnostics command publishes at least one real VS Code
 diagnostic with URI, range, severity, message, and source fields through
-a `DiagnosticCollection`.  A guarded local-only Extension Host runtime
-smoke now exists at
+a `DiagnosticCollection`, and that the checked-example navigation
+command returns at least one Location-style record with URI, range,
+symbol, target kind, and source fields.  A guarded local-only Extension
+Host runtime smoke now exists at
 `scripts/vscode-extension-host-smoke.sh`, but it exits 2 by default and
 only runs when `PCCX_RUN_EXTENSION_HOST_SMOKE=1` is set.  The runtime
 smoke loads the local extension package, verifies activation/command
 registration, and executes the checked-example diagnostics publishing
-command.  It does not run the live CLI path, package the extension, or
-install from the marketplace.  Extension Host gates are tracked in
+command plus the checked-example navigation command.  It does not run
+the live CLI path, package the extension, add an LSP provider, or install
+from the marketplace.  Extension Host gates are tracked in
 [`docs/EXTENSION_HOST_READINESS.md`](./docs/EXTENSION_HOST_READINESS.md).
 
 ## Theme-Neutral Presentation Boundary
@@ -156,7 +166,7 @@ The current policy is host theme first.  Future UI or webview surfaces
 should use host theme tokens or explicit user-provided theme tokens.
 VS Code, Xcode, and JetBrains are future presentation preset families,
 not implemented skins and not completion claims.  This is not a completed
-custom theme system.
+custom theme system, and the current work is not a custom theme engine.
 
 This scaffold is not LSP, not a full IDE replacement, not a stable
 ABI/API, and not a marketplace-ready or published extension.

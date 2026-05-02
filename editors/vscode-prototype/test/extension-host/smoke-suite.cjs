@@ -31,6 +31,7 @@ async function run() {
   assert.ok(process.env.PCCX_REPO_ROOT, "PCCX_REPO_ROOT must be set");
   assert.deepEqual(expectedCommandIds, [
     "pccxSystemVerilog.publishCheckedExampleDiagnostics",
+    "pccxSystemVerilog.showCheckedExampleNavigation",
     "pccxSystemVerilog.showDiagnosticsExample",
     "pccxSystemVerilog.showNavigationExample",
     "pccxSystemVerilog.runDiagnosticsLive",
@@ -91,6 +92,40 @@ async function run() {
     publishedDiagnostic.range.end.character,
     expectedDiagnostic.range.end.character,
   );
+
+  const navigationResult = await vscode.commands.executeCommand(
+    "pccxSystemVerilog.showCheckedExampleNavigation",
+  );
+  assert.equal(navigationResult.ok, true);
+  assert.equal(navigationResult.commandId, "pccxSystemVerilog.showCheckedExampleNavigation");
+  assert.deepEqual(navigationResult.plan.facadeArgs, [
+    "navigation",
+    "--mode",
+    "example",
+    "--source",
+    "declarations",
+  ]);
+  assert.equal(navigationResult.action.kind, "navigation");
+  assert.ok(navigationResult.action.items.length > 0);
+  assert.ok(Array.isArray(navigationResult.locations));
+  assert.ok(navigationResult.locations.length > 0);
+
+  const firstLocation = navigationResult.locations[0];
+  assert.ok(firstLocation.uri instanceof vscode.Uri);
+  assert.ok(firstLocation.range instanceof vscode.Range);
+  assert.ok(firstLocation.location instanceof vscode.Location);
+  assert.ok(firstLocation.uri.fsPath.endsWith(firstLocation.file));
+  assert.ok(firstLocation.range.start.line >= 0);
+  assert.ok(firstLocation.range.start.character >= 0);
+  assert.equal(firstLocation.range.end.line, firstLocation.range.start.line);
+  assert.equal(firstLocation.range.end.character, firstLocation.range.start.character + 1);
+  assert.equal(typeof firstLocation.symbol, "string");
+  assert.ok(firstLocation.symbol.length > 0);
+  assert.equal(typeof firstLocation.targetKind, "string");
+  assert.ok(firstLocation.targetKind.length > 0);
+  assert.equal(firstLocation.source, "pccx-vscode-prototype");
+  assert.equal(firstLocation.location.uri.toString(), firstLocation.uri.toString());
+  assert.equal(firstLocation.location.range.start.line, firstLocation.range.start.line);
 
   const extensionModule = await importExtensionEntrypoint();
   assert.equal(typeof extensionModule.deactivate, "function");

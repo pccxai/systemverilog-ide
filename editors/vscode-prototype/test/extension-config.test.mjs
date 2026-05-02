@@ -90,6 +90,10 @@ function testFacadeArgsForKnownCommands() {
     ["diagnostics", "--mode", "example", "--source", "check-missing-endmodule"],
   );
   assert.deepEqual(
+    buildFacadeArgsForCommand("pccxSystemVerilog.showCheckedExampleNavigation"),
+    ["navigation", "--mode", "example", "--source", "declarations"],
+  );
+  assert.deepEqual(
     buildFacadeArgsForCommand("pccxSystemVerilog.showNavigationExample"),
     ["navigation", "--mode", "example", "--source", "declarations"],
   );
@@ -131,6 +135,7 @@ function testUnknownCommandAndShellShape() {
 
   for (const commandId of [
     "pccxSystemVerilog.showDiagnosticsExample",
+    "pccxSystemVerilog.showCheckedExampleNavigation",
     "pccxSystemVerilog.showNavigationExample",
     "pccxSystemVerilog.runDiagnosticsLive",
     "pccxSystemVerilog.runNavigationLive",

@@ -5,6 +5,7 @@ import {
   activate,
   buildFacadeArgsForCommand,
   buildFacadeInvocationForCommand,
+  createNavigationLocationRecords,
   createPresenterDeps,
   createCommandHandler,
   deactivate,
@@ -20,6 +21,10 @@ const EXPECTED_ARGS = new Map([
   [
     "pccxSystemVerilog.showDiagnosticsExample",
     ["diagnostics", "--mode", "example", "--source", "check-missing-endmodule"],
+  ],
+  [
+    "pccxSystemVerilog.showCheckedExampleNavigation",
+    ["navigation", "--mode", "example", "--source", "declarations"],
   ],
   [
     "pccxSystemVerilog.showNavigationExample",
@@ -71,6 +76,16 @@ function testCheckedExampleDiagnosticsCommandStaysExampleMode() {
   );
 }
 
+function testCheckedExampleNavigationCommandStaysExampleMode() {
+  assert.deepEqual(
+    buildFacadeArgsForCommand(
+      "pccxSystemVerilog.showCheckedExampleNavigation",
+      { mode: "live", defaultModule: "pkg_defs", pythonPath: "python-custom" },
+    ),
+    ["navigation", "--mode", "example", "--source", "declarations"],
+  );
+}
+
 function testFacadeInvocationIsArgumentArray() {
   const invocation = buildFacadeInvocationForCommand(
     "pccxSystemVerilog.runDiagnosticsLive",
@@ -108,6 +123,46 @@ function testPresenterDepsResolveRelativeDiagnosticFiles() {
     "/repo/root/fixtures/missing_endmodule.sv",
     "/tmp/file.sv",
   ]);
+}
+
+function testNavigationLocationMapping() {
+  const records = createNavigationLocationRecords(
+    [
+      {
+        name: "pkg_defs",
+        kind: "package",
+        file: "fixtures/modules/package_defs.sv",
+        line: 1,
+        column: 1,
+        zero_based_line: 0,
+        zero_based_column: 0,
+      },
+    ],
+    {
+      fileRoot: "/repo/root",
+      createUri(file) {
+        return { fsPath: file };
+      },
+      createRange(startLine, startCharacter, endLine, endCharacter) {
+        return {
+          start: { line: startLine, character: startCharacter },
+          end: { line: endLine, character: endCharacter },
+        };
+      },
+      createLocation(uri, range) {
+        return { uri, range };
+      },
+    },
+  );
+
+  assert.equal(records.length, 1);
+  assert.equal(records[0].uri.fsPath, "/repo/root/fixtures/modules/package_defs.sv");
+  assert.equal(records[0].range.start.line, 0);
+  assert.equal(records[0].range.start.character, 0);
+  assert.equal(records[0].range.end.character, 1);
+  assert.equal(records[0].targetKind, "package");
+  assert.equal(records[0].symbol, "pkg_defs");
+  assert.equal(records[0].source, "pccx-vscode-prototype");
 }
 
 function testResolveCommandRequestUsesVsCodeSettings() {
@@ -226,6 +281,86 @@ async function testEntrypointExportsAndActivation() {
   assert.ok(outputLines.some((line) => line.includes("pccxSystemVerilog.showDiagnosticsExample")));
 }
 
+async function testCheckedExampleNavigationCommandReturnsLocations() {
+  const registered = new Map();
+  const quickPickCalls = [];
+  const vscodeApi = {
+    Uri: {
+      file(file) {
+        return { fsPath: file };
+      },
+    },
+    Range: class Range {
+      constructor(startLine, startCharacter, endLine, endCharacter) {
+        this.start = { line: startLine, character: startCharacter };
+        this.end = { line: endLine, character: endCharacter };
+      }
+    },
+    Location: class Location {
+      constructor(uri, range) {
+        this.uri = uri;
+        this.range = range;
+      }
+    },
+    commands: {
+      registerCommand(commandId, handler) {
+        registered.set(commandId, handler);
+        return { dispose() {} };
+      },
+    },
+    window: {
+      createOutputChannel() {
+        return { appendLine() {}, show() {}, dispose() {} };
+      },
+      showInformationMessage() {},
+      showErrorMessage() {},
+      showQuickPick(...args) {
+        quickPickCalls.push(args);
+      },
+    },
+  };
+
+  await activate(
+    { subscriptions: [] },
+    vscodeApi,
+    {
+      async runFacade(args) {
+        assert.deepEqual(args, ["navigation", "--mode", "example", "--source", "declarations"]);
+        return {
+          ok: true,
+          json: {
+            kind: "vscode-navigation",
+            items: [
+              {
+                name: "simple_mod",
+                kind: "module",
+                file: "fixtures/modules/simple_module.sv",
+                line: 1,
+                column: 1,
+                zero_based_line: 0,
+                zero_based_column: 0,
+              },
+            ],
+          },
+        };
+      },
+    },
+  );
+
+  const result = await registered.get("pccxSystemVerilog.showCheckedExampleNavigation")();
+  assert.equal(result.ok, true);
+  assert.equal(result.commandId, "pccxSystemVerilog.showCheckedExampleNavigation");
+  assert.equal(result.action.kind, "navigation");
+  assert.equal(result.locations.length, 1);
+  assert.match(result.locations[0].uri.fsPath, /fixtures\/modules\/simple_module\.sv$/);
+  assert.equal(result.locations[0].range.start.line, 0);
+  assert.equal(result.locations[0].targetKind, "module");
+  assert.equal(result.locations[0].symbol, "simple_mod");
+  assert.equal(result.locations[0].source, "pccx-vscode-prototype");
+  assert.deepEqual(result.locations[0].location.uri, result.locations[0].uri);
+  assert.equal(quickPickCalls.length, 0);
+}
+
 async function testNoVsCodeRuntimeIsANoop() {
   const activation = await activate({ subscriptions: [] }, { commands: null });
   assert.deepEqual(activation.registered, []);
@@ -252,10 +387,13 @@ async function testCommandHandlerCanBeUsedWithoutRealVsCode() {
 testKnownFacadeArgs();
 testUnknownCommandsRejected();
 testCheckedExampleDiagnosticsCommandStaysExampleMode();
+testCheckedExampleNavigationCommandStaysExampleMode();
 testFacadeInvocationIsArgumentArray();
 testPresenterDepsResolveRelativeDiagnosticFiles();
+testNavigationLocationMapping();
 testResolveCommandRequestUsesVsCodeSettings();
 await testEntrypointExportsAndActivation();
+await testCheckedExampleNavigationCommandReturnsLocations();
 await testNoVsCodeRuntimeIsANoop();
 await testCommandHandlerCanBeUsedWithoutRealVsCode();
 
