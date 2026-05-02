@@ -3,7 +3,7 @@
 ## Current Status
 
 This is a local experimental VS Code extension scaffold.  It is not
-published, not marketplace-ready, not LSP, and not a stable ABI/API.
+published, has no marketplace packaging, is not LSP, and is not a stable ABI/API.
 
 Feasibility decision for this phase: Option A, local-only.  A limited
 Extension Host runtime smoke is enabled behind
@@ -21,8 +21,8 @@ should earn CI promotion separately.
   require both `mode=liveWorkspace` and `liveWorkspace.enabled=true`.
 - Known facade argument arrays.
 - Command handlers and UI action models.
-- AI assistant boundary and token-saving context bundle unit tests.  The
-  current AI assistant work is boundary/stub only.
+- AI assistant status/context commands and token-saving context bundle
+  unit tests.  The current AI assistant work is boundary-only.
 - Presenter behavior with mocked VS Code-like dependencies.
 - Real VS Code `DiagnosticCollection` population for the checked-example
   diagnostics command when the local runtime smoke is explicitly enabled.
@@ -36,6 +36,10 @@ should earn CI promotion separately.
   VS Code `Location` results in the opt-in runtime smoke.
 - Checked editor bridge examples.
 - Live CLI runner for known local JSON flows.
+- Controlled live workspace fixture diagnostics in the opt-in Extension
+  Host runtime smoke.
+- AI assistant status and context bundle command smoke with provider and
+  runtime calls reported as unimplemented.
 - Guard behavior for the local-only Extension Host runtime smoke.
 - Pinned Extension Host activation and command-registration smoke when
   explicitly enabled locally.
@@ -54,9 +58,10 @@ should earn CI promotion separately.
   calls, or MCP server implementation.
 
 The runtime smoke is limited coverage for the activation, command facade,
-and VS Code-native provider boundary only.  It is not a product claim and
-does not imply marketplace readiness, a published extension, LSP support,
-complete semantic navigation, or a stable ABI/API.
+controlled fixture, context bundle, and VS Code-native provider boundary
+only.  It is not a product claim and does not imply a published extension,
+marketplace packaging, LSP support, complete semantic navigation, or a
+stable ABI/API.
 
 ## Guarded Local Scaffold
 
@@ -72,26 +77,34 @@ PCCX_RUN_EXTENSION_HOST_SMOKE=1 bash scripts/vscode-extension-host-smoke.sh
 ```
 
 The runner lives under `editors/vscode-prototype/test/extension-host/`.
-It uses `@vscode/test-electron@2.5.2`, pins VS Code to `1.90.2`, creates
-a temporary workspace, loads the local extension package, verifies the
-expected command IDs, checks that
-`pccxSystemVerilog.publishLiveWorkspaceDiagnostics` fails clearly while
-live workspace is disabled by default, and executes only the
-checked-example diagnostics/navigation command paths.  The diagnostics
-command uses checked example diagnostics by default, goes through the
-facade boundary, and verifies that VS Code receives at least one
-diagnostic with URI, range, severity, message, and source fields.  The
-navigation command uses checked example mode by default through
+It uses `@vscode/test-electron@2.5.2`, pins VS Code to `1.90.2`, opens
+`test/fixtures/live-workspace`, loads the local extension package,
+verifies the expected command IDs, checks that live diagnostics and
+navigation fail clearly while live workspace is disabled, and executes
+the checked-example diagnostics/navigation command paths.  The
+diagnostics command uses checked example diagnostics by default, goes
+through the facade boundary, and verifies that VS Code receives at least
+one diagnostic with URI, range, severity, message, and source fields.
+The navigation command uses checked example mode by default through
 `navigation --mode example --source declarations`; it returns
 Location-style records with URI, range, symbol, target kind, and source
-fields.  The same smoke opens a temporary SystemVerilog-like document
-and executes `vscode.executeDefinitionProvider` to verify that the
+fields.  The same smoke opens a fixture SystemVerilog document and
+executes `vscode.executeDefinitionProvider` to verify that the
 experimental VS Code-native `DefinitionProvider` returns at least one
-`Location` with sane URI and range fields.  The provider currently
-reuses the checked-example declaration result and does not complete
-semantic cursor/symbol resolution.  Live mode remains explicit and
-separate, and the runtime smoke does not execute enabled live CLI
-commands by default.  This is not LSP, and there is no LSP provider yet.
+`Location` with sane URI and range fields.  The provider currently reuses
+the checked-example declaration result and does not complete semantic
+cursor/symbol resolution.
+
+The enabled live path is limited to the controlled fixture.  The smoke
+explicitly sets `mode=liveWorkspace` and `liveWorkspace.enabled=true`,
+runs `pccxSystemVerilog.publishLiveWorkspaceDiagnostics` against
+`broken_missing_endmodule.sv`, and asserts the returned diagnostics came
+from that fixture rather than checked examples.  It also executes
+`pccxSystemVerilog.showAIAssistantStatus` and
+`pccxSystemVerilog.buildAIContextBundle`, verifying disabled/backend
+`none` status, proposal-only actions, bounded active-file context, and no
+provider/runtime calls.  This is not LSP, and there is no LSP provider
+yet.
 
 ## AI Assistant Boundary
 
@@ -100,7 +113,9 @@ boundary, not a model integration.  pccx-llm-launcher is a future local LLM/chat
 contract.  The current extension code makes no AI provider calls, no
 pccx-llm-launcher runtime calls, and implements no MCP server.  AI
 actions are modeled as proposals, including command proposal and
-validation proposal shapes, rather than direct execution.
+validation proposal shapes, rather than direct execution.  User approval
+is still required before applying patches, running validation commands,
+or committing changes.
 
 The guarded script is not run by CI today.
 
@@ -137,7 +152,8 @@ system.
 
 1. Keep the facade boundary.
 2. Do not call `pccx_ide_cli` directly from activation.
-3. Do not run live CLI commands in the runtime smoke by default.
+3. Keep runtime live CLI coverage limited to the controlled fixture until
+   broader live workspace behavior has separate evidence.
 4. Keep the VS Code-native `DefinitionProvider` separate from any LSP
    implementation.
 5. Promote the runtime smoke to CI only after separate stability evidence.

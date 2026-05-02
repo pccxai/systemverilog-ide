@@ -14,6 +14,8 @@ const COMMAND_IDS = [
   "pccxSystemVerilog.showNavigationExample",
   "pccxSystemVerilog.runDiagnosticsLive",
   "pccxSystemVerilog.runNavigationLive",
+  "pccxSystemVerilog.showAIAssistantStatus",
+  "pccxSystemVerilog.buildAIContextBundle",
 ];
 
 async function readText(path) {
@@ -98,7 +100,7 @@ async function testDocsKeepExperimentalScope() {
 
   assert.match(combined, /experimental local VS Code extension scaffold/i);
   assert.match(combined, /not published/i);
-  assert.match(combined, /not marketplace-ready/i);
+  assert.match(combined, /no marketplace packaging/i);
   assert.match(combined, /no LSP/i);
   assert.match(combined, /not a stable ABI\/API/i);
   assert.match(combined, /static\/mock tests/i);
@@ -107,7 +109,9 @@ async function testDocsKeepExperimentalScope() {
   assert.match(combined, /checked-example remains the default/i);
   assert.match(combined, /live workspace .*opt-in/i);
   assert.match(combined, /AI-assisted SystemVerilog development workflow/i);
-  assert.match(combined, /boundary\/stub/i);
+  assert.match(combined, /boundary-only/i);
+  assert.match(combined, /context bundle command/i);
+  assert.match(combined, /AI assistant status command/i);
   assert.match(combined, /no AI provider calls/i);
   assert.match(combined, /no MCP server implementation/i);
 }

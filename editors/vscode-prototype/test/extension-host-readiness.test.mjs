@@ -89,7 +89,7 @@ async function testReadinessDocsAndCiPolicy() {
   assert.match(readiness, /local-only Extension Host runtime smoke/i);
   assert.match(readiness, /not a product claim/i);
   assert.match(readiness, /PCCX_RUN_EXTENSION_HOST_SMOKE=1/);
-  assert.match(readiness, /does not imply\s+marketplace readiness/i);
+  assert.match(readiness, /marketplace packaging/i);
   assert.match(readiness, /(?:not LSP|LSP support|LSP server)/i);
   assert.match(readiness, /(?:not a stable ABI\/API|stable ABI\/API claim)/i);
   assert.match(readiness, /facade boundary/i);
@@ -99,6 +99,10 @@ async function testReadinessDocsAndCiPolicy() {
   assert.match(`${readme}\n${readiness}`, /VS Code-native\s+provider smoke/i);
   assert.match(`${readme}\n${readiness}`, /command-first navigation/i);
   assert.match(`${readme}\n${readiness}`, /live workspace .*opt-in/i);
+  assert.match(`${readme}\n${readiness}`, /controlled fixture/i);
+  assert.match(`${readme}\n${readiness}`, /showAIAssistantStatus/);
+  assert.match(`${readme}\n${readiness}`, /buildAIContextBundle/);
+  assert.match(`${readme}\n${readiness}`, /context bundle command/i);
   assert.match(`${readme}\n${readiness}`, /AI assistant .*boundary/i);
   assert.match(`${readme}\n${readiness}`, /pccx-llm-launcher .*future local LLM\/chat backend/i);
   assert.match(`${readme}\n${readiness}`, /no LSP provider/i);
@@ -129,6 +133,8 @@ async function testRuntimeRunnerIsPinnedAndBounded() {
   assert.match(runner, /VSCODE_TEST_VERSION = "1\.90\.2"/);
   assert.match(runner, /runTests/);
   assert.match(runner, /extensionDevelopmentPath/);
+  assert.match(runner, /LIVE_WORKSPACE_FIXTURE/);
+  assert.match(runner, /test\/fixtures\/live-workspace/);
   assert.match(runner, /\.vscode-test/);
   assert.match(runner, /--extensions-dir=/);
   assert.match(runner, /--user-data-dir=/);
@@ -136,7 +142,12 @@ async function testRuntimeRunnerIsPinnedAndBounded() {
   assert.match(suite, /publishCheckedExampleDiagnostics/);
   assert.match(suite, /showCheckedExampleNavigation/);
   assert.match(suite, /publishLiveWorkspaceDiagnostics/);
+  assert.match(suite, /showLiveWorkspaceNavigation/);
   assert.match(suite, /live workspace commands require/);
+  assert.match(suite, /broken_missing_endmodule\.sv/);
+  assert.match(suite, /showAIAssistantStatus/);
+  assert.match(suite, /buildAIContextBundle/);
+  assert.match(suite, /providerCallsImplemented/);
   assert.match(suite, /getDiagnostics/);
   assert.match(suite, /DiagnosticSeverity\.Error/);
   assert.match(suite, /navigationResult\.locations/);

@@ -89,10 +89,10 @@ Checked-example remains the default.  Live workspace mode is explicit
 opt-in and requires both `pccxSystemVerilog.mode=liveWorkspace` and
 `pccxSystemVerilog.liveWorkspace.enabled=true`; disabled live workspace
 commands fail clearly instead of falling back to examples.  The current
-AI-assisted SystemVerilog development workflow work is boundary/stub
-only: a context bundle JSON contract and proposal model, with no AI
-provider calls, no pccx-llm-launcher runtime calls yet, and no MCP server
-implementation.
+AI-assisted SystemVerilog development workflow work is boundary-only:
+AI assistant status and context bundle commands expose local status,
+bounded context, and proposal actions, with no AI provider calls, no
+pccx-llm-launcher runtime calls yet, and no MCP server implementation.
 
 The same directory now includes an experimental local VS Code extension
 scaffold.  Its command handlers are thin wrappers around the local facade:
@@ -106,11 +106,13 @@ The presenter scaffold maps those UI action models to mockable
 DiagnosticCollection-like and QuickPick-like APIs without requiring real
 VS Code GUI tests.  A limited opt-in Extension Host runtime smoke exists,
 but it is disabled by default, remains local-only, and is not a product
-claim.
-The scaffold is not published, is not marketplace-ready, has no LSP, and
-is not a stable ABI/API.  Current coverage is mostly static/mock tests
-and smoke tests; CI does not run the real Extension Host runtime smoke
-yet.
+claim.  When explicitly enabled, it opens the controlled
+`editors/vscode-prototype/test/fixtures/live-workspace` fixture and runs
+live diagnostics only against that tiny fixture path.
+The scaffold is not published, has no marketplace packaging, has no LSP,
+and is not a stable ABI/API.  Current coverage is mostly static/mock
+tests and smoke tests; CI does not run the real Extension Host runtime
+smoke yet.
 The prototype documents the 1-based CLI position to 0-based editor
 position conversion expected by editor adapters.
 
@@ -136,11 +138,11 @@ VS Code command
 
 Future local coding-assistant mode should use the same controlled data
 path.  Context bundle records should carry selected file/range,
-diagnostics, declaration references, validation summaries, and bounded
-snippets by path/range instead of whole workspaces.  Any command proposal
-or validation proposal must route through the facade or pccx-lab
-CLI/core boundary and remain a proposal until an editor/user-controlled
-executor accepts it.
+diagnostics, declaration references, recent command status, current mode,
+validation summaries, and bounded snippets by path/range instead of whole
+workspaces.  Any command proposal or validation proposal must route
+through the facade or pccx-lab CLI/core boundary and remain a proposal
+until an editor/user-controlled executor accepts it.
 
 `problems` converts local diagnostics and log records into editor-friendly
 problem records.  `index` provides scanner-based module/package/interface
@@ -151,7 +153,8 @@ declaration records.  `declarations` exports those records directly, and
 
 - Scanner-based scaffolds, not full SystemVerilog parsing.
 - No LSP server in this repository today.
-- No published or marketplace-ready editor extension is implemented here.
+- No published editor extension or marketplace packaging is implemented
+  here.
 - No VS Code GUI integration test in this repository today.
 - No stable schema yet.
 - No real xsim or Vivado execution.

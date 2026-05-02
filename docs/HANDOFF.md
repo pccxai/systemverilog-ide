@@ -335,10 +335,10 @@ python -m pccx_ide_cli problems from-xsim-log fixtures/xsim/mixed.log --format t
   should relax at v1 to allow forward-compatible extension fields.
 - How a future local coding-assistant mode should pass token-saving
   context bundles to pccx-llm-launcher or an MCP-style controlled tool
-  boundary.  The current VS Code prototype only has boundary/stub types
-  and tests: no AI provider calls, no local chat backend runtime calls,
-  no MCP server implementation, and no direct execution of command or
-  validation proposals.
+  boundary.  The current VS Code prototype only has boundary types,
+  status/context commands, and tests: no AI provider calls, no local chat
+  backend runtime calls, no MCP server implementation, and no direct
+  execution of command or validation proposals.
 
 These are intentionally unresolved while both sides mature.
 

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
   AI_ASSISTANT_BACKENDS,
   DECLARATION_KINDS,
+  FACADE_COMMAND_IDS,
   MODES,
   buildFacadeArgsForCommand,
   defaultConfig,
@@ -24,6 +25,7 @@ const REQUIRED_SETTINGS = new Map([
   ["pccxSystemVerilog.pythonPath", { type: "string", default: "python3" }],
   ["pccxSystemVerilog.defaultSource", { type: "string", default: "fixtures/missing_endmodule.sv" }],
   ["pccxSystemVerilog.defaultLog", { type: "string", default: "fixtures/xsim/mixed.log" }],
+  ["pccxSystemVerilog.defaultNavigationRoot", { type: "string", default: "fixtures/modules" }],
   ["pccxSystemVerilog.defaultModule", { type: "string", default: "simple_mod" }],
   ["pccxSystemVerilog.defaultDeclarationKind", { type: "string", default: "module" }],
 ]);
@@ -84,6 +86,7 @@ function testDefaultConfig() {
     pythonPath: "python3",
     defaultSource: "fixtures/missing_endmodule.sv",
     defaultLog: "fixtures/xsim/mixed.log",
+    defaultNavigationRoot: "fixtures/modules",
     defaultModule: "simple_mod",
     defaultDeclarationKind: "module",
   });
@@ -117,6 +120,10 @@ function testNormalizeConfigRejectsInvalidSettings() {
   assert.throws(
     () => normalizeConfig({ defaultSource: "fixtures/ok_module.sv; rm -rf /" }),
     /pccxSystemVerilog\.defaultSource must not contain shell control syntax/,
+  );
+  assert.throws(
+    () => normalizeConfig({ defaultNavigationRoot: "fixtures/modules && whoami" }),
+    /pccxSystemVerilog\.defaultNavigationRoot must not contain shell control syntax/,
   );
 }
 
@@ -164,6 +171,7 @@ function testFacadeArgsUseNormalizedLiveConfig() {
       "liveWorkspace.enabled": true,
       defaultSource: "rtl/top.sv",
       defaultLog: "logs/xsim.log",
+      defaultNavigationRoot: "rtl",
       pythonPath: "python-custom",
     }),
     ["diagnostics", "--mode", "live", "--from-check", "rtl/top.sv"],
@@ -173,10 +181,11 @@ function testFacadeArgsUseNormalizedLiveConfig() {
     buildFacadeArgsForCommand("pccxSystemVerilog.runNavigationLive", {
       mode: "liveWorkspace",
       liveWorkspace: { enabled: true },
+      defaultNavigationRoot: "rtl",
       defaultModule: "pkg_defs",
       defaultDeclarationKind: "any",
     }),
-    ["navigation", "--mode", "live", "--locate", "fixtures/modules", "pkg_defs", "--kind", "any"],
+    ["navigation", "--mode", "live", "--locate", "rtl", "pkg_defs", "--kind", "any"],
   );
 }
 
@@ -208,16 +217,7 @@ function testUnknownCommandAndShellShape() {
     /unknown PCCX SystemVerilog command/,
   );
 
-  for (const commandId of [
-    "pccxSystemVerilog.showDiagnosticsExample",
-    "pccxSystemVerilog.publishCheckedExampleDiagnostics",
-    "pccxSystemVerilog.showCheckedExampleNavigation",
-    "pccxSystemVerilog.showNavigationExample",
-    "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
-    "pccxSystemVerilog.showLiveWorkspaceNavigation",
-    "pccxSystemVerilog.runDiagnosticsLive",
-    "pccxSystemVerilog.runNavigationLive",
-  ]) {
+  for (const commandId of FACADE_COMMAND_IDS) {
     const args = commandId.includes("Live")
       ? buildFacadeArgsForCommand(commandId, LIVE_WORKSPACE_CONFIG)
       : buildFacadeArgsForCommand(commandId);

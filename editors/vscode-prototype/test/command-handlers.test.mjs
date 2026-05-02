@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 
 import {
-  COMMAND_IDS,
   createCommandExecutionPlan,
   runPrototypeCommand,
   toDiagnosticsUiAction,
   toNavigationUiAction,
 } from "../src/command-handlers.mjs";
+import {
+  COMMAND_IDS,
+  FACADE_COMMAND_IDS,
+} from "../src/config.mjs";
 import {
   activate,
   deactivate,
@@ -57,7 +60,7 @@ function mockDeps(payloadOrResult) {
 }
 
 function testPlansForKnownCommands() {
-  for (const commandId of COMMAND_IDS) {
+  for (const commandId of FACADE_COMMAND_IDS) {
     const plan = createCommandExecutionPlan(commandId, configForCommand(commandId));
     assert.equal(plan.commandId, commandId);
     assert.ok(Array.isArray(plan.facadeArgs));
@@ -233,6 +236,7 @@ async function testShowLiveWorkspaceNavigationAction() {
     {
       mode: "liveWorkspace",
       liveWorkspace: { enabled: true },
+      defaultNavigationRoot: "editors/vscode-prototype/test/fixtures/live-workspace",
       defaultModule: "pkg_defs",
       defaultDeclarationKind: "package",
       pythonPath: "python-custom",
@@ -247,7 +251,7 @@ async function testShowLiveWorkspaceNavigationAction() {
     "--mode",
     "live",
     "--locate",
-    "fixtures/modules",
+    "editors/vscode-prototype/test/fixtures/live-workspace",
     "pkg_defs",
     "--kind",
     "package",

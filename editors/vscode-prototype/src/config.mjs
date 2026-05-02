@@ -9,11 +9,12 @@ export const CONFIG_KEYS = Object.freeze([
   "pythonPath",
   "defaultSource",
   "defaultLog",
+  "defaultNavigationRoot",
   "defaultModule",
   "defaultDeclarationKind",
 ]);
 
-export const COMMAND_IDS = Object.freeze([
+export const FACADE_COMMAND_IDS = Object.freeze([
   "pccxSystemVerilog.publishCheckedExampleDiagnostics",
   "pccxSystemVerilog.showCheckedExampleNavigation",
   "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
@@ -22,6 +23,16 @@ export const COMMAND_IDS = Object.freeze([
   "pccxSystemVerilog.showNavigationExample",
   "pccxSystemVerilog.runDiagnosticsLive",
   "pccxSystemVerilog.runNavigationLive",
+]);
+
+export const AI_COMMAND_IDS = Object.freeze([
+  "pccxSystemVerilog.showAIAssistantStatus",
+  "pccxSystemVerilog.buildAIContextBundle",
+]);
+
+export const COMMAND_IDS = Object.freeze([
+  ...FACADE_COMMAND_IDS,
+  ...AI_COMMAND_IDS,
 ]);
 
 export const MODES = Object.freeze(["checkedExample", "liveWorkspace"]);
@@ -49,11 +60,11 @@ const DEFAULT_CONFIG = Object.freeze({
   pythonPath: "python3",
   defaultSource: "fixtures/missing_endmodule.sv",
   defaultLog: "fixtures/xsim/mixed.log",
+  defaultNavigationRoot: "fixtures/modules",
   defaultModule: "simple_mod",
   defaultDeclarationKind: "module",
 });
 
-const NAVIGATION_ROOT = "fixtures/modules";
 const SHELL_CONTROL_PATTERN = /(?:&&|\|\||;|`|\$\()/;
 
 function rawConfigValue(rawConfig, key) {
@@ -159,6 +170,11 @@ export function normalizeConfig(rawConfig = {}) {
     pythonPath: stringSetting(rawConfig, "pythonPath", DEFAULT_CONFIG.pythonPath),
     defaultSource: stringSetting(rawConfig, "defaultSource", DEFAULT_CONFIG.defaultSource),
     defaultLog: stringSetting(rawConfig, "defaultLog", DEFAULT_CONFIG.defaultLog),
+    defaultNavigationRoot: stringSetting(
+      rawConfig,
+      "defaultNavigationRoot",
+      DEFAULT_CONFIG.defaultNavigationRoot,
+    ),
     defaultModule: stringSetting(rawConfig, "defaultModule", DEFAULT_CONFIG.defaultModule),
     defaultDeclarationKind: enumSetting(
       rawConfig,
@@ -173,9 +189,20 @@ export function isKnownCommandId(commandId) {
   return COMMAND_IDS.includes(commandId);
 }
 
+export function isFacadeCommandId(commandId) {
+  return FACADE_COMMAND_IDS.includes(commandId);
+}
+
 export function assertKnownCommandId(commandId) {
   if (!isKnownCommandId(commandId)) {
     throw new Error(`unknown PCCX SystemVerilog command: ${commandId}`);
+  }
+}
+
+export function assertFacadeCommandId(commandId) {
+  if (!isFacadeCommandId(commandId)) {
+    assertKnownCommandId(commandId);
+    throw new Error(`PCCX SystemVerilog command does not use the facade: ${commandId}`);
   }
 }
 
@@ -197,7 +224,7 @@ export function assertLiveWorkspaceEnabled(config) {
 }
 
 export function buildFacadeArgsForCommand(commandId, rawConfig = {}) {
-  assertKnownCommandId(commandId);
+  assertFacadeCommandId(commandId);
   const config = normalizeConfig(rawConfig);
 
   if (
@@ -232,7 +259,7 @@ export function buildFacadeArgsForCommand(commandId, rawConfig = {}) {
       "--mode",
       "live",
       "--locate",
-      NAVIGATION_ROOT,
+      config.defaultNavigationRoot,
       config.defaultModule,
       "--kind",
       config.defaultDeclarationKind,

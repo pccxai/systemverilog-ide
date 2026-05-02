@@ -43,9 +43,9 @@ signal to add a back door from the GUI.
   CLI/core contract instead of being duplicated here.
 - `pccx-llm-launcher` is a future local LLM/chat backend candidate for
   local coding-assistant mode. This repository currently contains only
-  boundary/stub work for AI-assisted SystemVerilog development workflow
-  experiments: no AI provider calls, no pccx-llm-launcher runtime calls
-  yet, and no MCP server implementation.
+  boundary work for AI-assisted SystemVerilog development workflow
+  experiments: AI assistant status/context commands, no AI provider calls,
+  no pccx-llm-launcher runtime calls yet, and no MCP server implementation.
 
 ## Initial track (near-term)
 
@@ -167,16 +167,19 @@ python -m pytest -q
 bash scripts/editor-bridge-smoke.sh
 ```
 
-The envelope shape is fixed in [`schema/diagnostics-v0.json`](./schema/diagnostics-v0.json).
+The current pre-stable envelope shape is described in
+[`schema/diagnostics-v0.json`](./schema/diagnostics-v0.json).
 Handoff notes for the eventual `pccx-lab` and xsim integration paths
 live in [`docs/HANDOFF.md`](./docs/HANDOFF.md).
 
 The experimental VS Code prototype under
 [`editors/vscode-prototype`](./editors/vscode-prototype) keeps
 checked-example mode as the safe default. Live workspace commands are
-opt-in and require an explicit configuration gate; the current AI
-assistant work is only a proposal boundary and token-saving context
-bundle stub.
+opt-in and require an explicit configuration gate; the current local
+coding-assistant mode work is limited to AI assistant status and
+token-saving context bundle commands with no provider calls.  The
+guarded Extension Host runtime smoke uses only the controlled fixture
+under `editors/vscode-prototype/test/fixtures/live-workspace`.
 
 ## Later track (deferred)
 

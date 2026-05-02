@@ -16,20 +16,21 @@ export const AI_PROPOSAL_KINDS = Object.freeze([
   "explainDiagnostics",
   "proposePatch",
   "proposeValidationCommand",
-  "summarizeXsimLogOutput",
+  "summarizeLog",
   "askForMoreContext",
   "openRelatedSymbol",
-  "callPccxLabTool",
 ]);
 
 export const DISALLOWED_AI_ACTIONS = Object.freeze([
-  "directFileWrite",
-  "directGitCommit",
-  "directGitPush",
-  "directReleaseOrTag",
-  "directRulesetSettingsOrSecretsChange",
-  "stagingOrPrivateRepoAccess",
-  "arbitraryShellCommand",
+  "writeFile",
+  "commit",
+  "push",
+  "merge",
+  "release",
+  "tag",
+  "changeRuleset",
+  "accessSecrets",
+  "accessStaging",
 ]);
 
 function proposalAction(kind) {
@@ -41,30 +42,35 @@ function proposalAction(kind) {
 
 export function createAssistantBoundaryStatus(rawConfig = {}) {
   const config = normalizeConfig(rawConfig);
+  const baseStatus = {
+    version: AI_ASSISTANT_BOUNDARY_VERSION,
+    backend: config.aiAssistant.backend,
+    providerCalls: false,
+    runtimeCalls: false,
+    providerCallsImplemented: false,
+    runtimeCallsImplemented: false,
+    mcpServerImplemented: false,
+    directExecution: false,
+    proposalOnly: true,
+    allowedActions: AI_PROPOSAL_KINDS.map(proposalAction),
+    disallowedActions: [...DISALLOWED_AI_ACTIONS],
+  };
+
   if (!config.aiAssistant.enabled) {
     return {
-      version: AI_ASSISTANT_BOUNDARY_VERSION,
+      ...baseStatus,
       status: AI_ASSISTANT_STATUSES.DISABLED,
-      backend: config.aiAssistant.backend,
-      providerCalls: false,
-      runtimeCalls: false,
     };
   }
   if (config.aiAssistant.backend === "none") {
     return {
-      version: AI_ASSISTANT_BOUNDARY_VERSION,
+      ...baseStatus,
       status: AI_ASSISTANT_STATUSES.NOT_CONFIGURED,
-      backend: config.aiAssistant.backend,
-      providerCalls: false,
-      runtimeCalls: false,
     };
   }
   return {
-    version: AI_ASSISTANT_BOUNDARY_VERSION,
+    ...baseStatus,
     status: AI_ASSISTANT_STATUSES.PROPOSAL_BOUNDARY,
-    backend: config.aiAssistant.backend,
-    providerCalls: false,
-    runtimeCalls: false,
   };
 }
 
@@ -74,10 +80,9 @@ export function createAssistantRequest(rawConfig = {}, contextInput = {}, option
 
   return {
     ...status,
+    kind: "ai-context-bundle",
     contextBundle,
     contextSummary: summarizeContextBundle(contextBundle),
-    allowedActions: AI_PROPOSAL_KINDS.map(proposalAction),
-    disallowedActions: [...DISALLOWED_AI_ACTIONS],
   };
 }
 

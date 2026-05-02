@@ -20,7 +20,9 @@
     "onCommand:pccxSystemVerilog.showDiagnosticsExample",
     "onCommand:pccxSystemVerilog.showNavigationExample",
     "onCommand:pccxSystemVerilog.runDiagnosticsLive",
-    "onCommand:pccxSystemVerilog.runNavigationLive"
+    "onCommand:pccxSystemVerilog.runNavigationLive",
+    "onCommand:pccxSystemVerilog.showAIAssistantStatus",
+    "onCommand:pccxSystemVerilog.buildAIContextBundle"
   ],
   "contributes": {
     "commands": [
@@ -55,6 +57,14 @@
       {
         "command": "pccxSystemVerilog.runNavigationLive",
         "title": "PCCX SystemVerilog: Run Navigation Live (Experimental, Opt-In Alias)"
+      },
+      {
+        "command": "pccxSystemVerilog.showAIAssistantStatus",
+        "title": "PCCX SystemVerilog: Show AI Assistant Status (Experimental)"
+      },
+      {
+        "command": "pccxSystemVerilog.buildAIContextBundle",
+        "title": "PCCX SystemVerilog: Build AI Context Bundle (Experimental)"
       }
     ],
     "configuration": {
@@ -108,6 +118,11 @@
           "type": "string",
           "default": "fixtures/xsim/mixed.log",
           "description": "Experimental local prototype workspace-relative default synthetic xsim-style log used by live diagnostics; not a stable API."
+        },
+        "pccxSystemVerilog.defaultNavigationRoot": {
+          "type": "string",
+          "default": "fixtures/modules",
+          "description": "Experimental local prototype workspace-relative source root used by live navigation; not a stable API."
         },
         "pccxSystemVerilog.defaultModule": {
           "type": "string",

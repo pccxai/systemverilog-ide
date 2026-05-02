@@ -18,6 +18,23 @@ const EXCLUDED_PATH_SEGMENTS = new Set([
   "node_modules",
 ]);
 
+const EXCLUDED_PATH_NAMES = new Set([
+  "AGENTS.md",
+  "package-lock.json",
+]);
+
+const EXCLUDED_PATH_PATTERNS = Object.freeze([
+  ".git/**",
+  ".vscode-test/**",
+  "node_modules/**",
+  "AGENTS.md",
+  "package-lock.json",
+  ".codex/**",
+  "private-worker/**",
+  "worker-instruction/**",
+  "subagent-instruction/**",
+]);
+
 const SECRET_LIKE_PATTERN =
   /\b(?:api[_-]?key|authorization|bearer|client[_-]?secret|password|private[_-]?key|secret|token)\b/i;
 const SECRET_ASSIGNMENT_PATTERN =
@@ -44,6 +61,11 @@ function normalizeWorkspacePath(workspaceRoot) {
 function hasExcludedPathSegment(path) {
   const segments = path.split("/").filter(Boolean);
   return segments.some((segment) => EXCLUDED_PATH_SEGMENTS.has(segment));
+}
+
+function hasExcludedPathName(path) {
+  const segments = path.split("/").filter(Boolean);
+  return segments.some((segment) => EXCLUDED_PATH_NAMES.has(segment));
 }
 
 function normalizePathRef(path, workspaceRoot = null) {
@@ -74,6 +96,7 @@ function normalizePathRef(path, workspaceRoot = null) {
     normalizedPath.startsWith("../") ||
     normalizedPath === ".." ||
     hasExcludedPathSegment(normalizedPath) ||
+    hasExcludedPathName(normalizedPath) ||
     SECRET_LIKE_PATTERN.test(normalizedPath) ||
     PRIVATE_INSTRUCTION_PATH_PATTERN.test(normalizedPath)
   ) {
@@ -90,7 +113,7 @@ function normalizeRange(range) {
   if (!range || typeof range !== "object") {
     return null;
   }
-  return {
+  const normalized = {
     start: {
       line: Math.max(0, Math.floor(clampNumber(range.start?.line))),
       character: Math.max(0, Math.floor(clampNumber(range.start?.character))),
@@ -100,17 +123,30 @@ function normalizeRange(range) {
       character: Math.max(0, Math.floor(clampNumber(range.end?.character))),
     },
   };
+  if (
+    normalized.end.line < normalized.start.line ||
+    (
+      normalized.end.line === normalized.start.line &&
+      normalized.end.character < normalized.start.character
+    )
+  ) {
+    normalized.end = { ...normalized.start };
+  }
+  return normalized;
+}
+
+function redactSecretAssignments(value) {
+  return value
+    .split(/\r?\n/)
+    .map((line) => (SECRET_ASSIGNMENT_PATTERN.test(line) ? "[redacted]" : line))
+    .join("\n");
 }
 
 function scrubText(value, maxCharacters) {
   if (typeof value !== "string" || value.length === 0 || maxCharacters === 0) {
     return "";
   }
-  return value
-    .split(/\r?\n/)
-    .map((line) => (SECRET_ASSIGNMENT_PATTERN.test(line) ? "[redacted]" : line))
-    .join("\n")
-    .slice(0, maxCharacters);
+  return redactSecretAssignments(value).slice(0, maxCharacters);
 }
 
 function isBinaryLike(text) {
@@ -124,6 +160,20 @@ function boundedLines(value, limit, maxCharacters) {
   return scrubText(value, maxCharacters)
     .split(/\r?\n/)
     .slice(0, limit);
+}
+
+function boundedSnippetLines(value, limit, maxCharacters) {
+  if (typeof value !== "string" || limit === 0 || maxCharacters === 0) {
+    return { lines: [], truncated: typeof value === "string" && value.length > 0 };
+  }
+  const redacted = redactSecretAssignments(value);
+  const charLimited = redacted.slice(0, maxCharacters);
+  const allLines = charLimited.split(/\r?\n/);
+  const lines = allLines.slice(0, limit);
+  return {
+    lines,
+    truncated: redacted.length > charLimited.length || allLines.length > lines.length,
+  };
 }
 
 function normalizeDiagnostic(diagnostic, workspaceRoot, limits) {
@@ -162,13 +212,17 @@ function normalizeSnippet(file, workspaceRoot, limits) {
     return null;
   }
 
-  const lines = boundedLines(file.text ?? "", limits.maxSnippetLines, limits.maxTextCharacters);
+  const snippet = boundedSnippetLines(
+    file.text ?? "",
+    limits.maxSnippetLines,
+    limits.maxTextCharacters,
+  );
   return {
     path,
     language: scrubText(file.language ?? "systemverilog", 80),
     range: normalizeRange(file.range),
-    lines,
-    truncated: typeof file.text === "string" && file.text.split(/\r?\n/).length > lines.length,
+    lines: snippet.lines,
+    truncated: snippet.truncated,
   };
 }
 
@@ -179,6 +233,38 @@ function sortedByPathAndName(items) {
       return pathOrder;
     }
     return String(a.name ?? a.message ?? "").localeCompare(String(b.name ?? b.message ?? ""));
+  });
+}
+
+function sortedSnippets(items, selectedPath) {
+  return sortedByPathAndName(items).sort((a, b) => {
+    const aSelected = selectedPath && a.path === selectedPath ? 0 : 1;
+    const bSelected = selectedPath && b.path === selectedPath ? 0 : 1;
+    return aSelected - bSelected;
+  });
+}
+
+function rangeStartsWithin(range, selectedRange) {
+  if (!range || !selectedRange) {
+    return false;
+  }
+  const line = range.start?.line;
+  const selectedStart = selectedRange.start?.line;
+  const selectedEnd = selectedRange.end?.line;
+  return Number.isInteger(line) &&
+    Number.isInteger(selectedStart) &&
+    Number.isInteger(selectedEnd) &&
+    line >= selectedStart &&
+    line <= selectedEnd;
+}
+
+function sortedDiagnostics(items, selectedPath, selectedRange) {
+  return sortedByPathAndName(items).sort((a, b) => {
+    const aScore = (selectedPath && a.path === selectedPath ? 0 : 2) +
+      (rangeStartsWithin(a.range, selectedRange) ? 0 : 1);
+    const bScore = (selectedPath && b.path === selectedPath ? 0 : 2) +
+      (rangeStartsWithin(b.range, selectedRange) ? 0 : 1);
+    return aScore - bScore;
   });
 }
 
@@ -193,6 +279,67 @@ function normalizeLogSummary(entry, limits) {
   };
 }
 
+function normalizeConfiguration(configuration) {
+  if (!configuration || typeof configuration !== "object") {
+    return {
+      mode: "unknown",
+      liveWorkspace: { enabled: false },
+      aiAssistant: { enabled: false, backend: "none" },
+      pccxLab: { commandBoundary: "pccx_ide_cli" },
+    };
+  }
+  return {
+    mode: scrubText(configuration.mode ?? "unknown", 80),
+    liveWorkspace: {
+      enabled: configuration.liveWorkspace?.enabled === true,
+    },
+    aiAssistant: {
+      enabled: configuration.aiAssistant?.enabled === true,
+      backend: scrubText(configuration.aiAssistant?.backend ?? "none", 80),
+    },
+    pccxLab: {
+      commandBoundary: scrubText(configuration.pccxLab?.commandBoundary ?? "pccx_ide_cli", 120),
+    },
+  };
+}
+
+function normalizeSelectedSymbol(symbol, workspaceRoot) {
+  if (!symbol) {
+    return null;
+  }
+  const path = normalizePathRef(symbol.path ?? symbol.file, workspaceRoot);
+  if (!path) {
+    return null;
+  }
+  return {
+    name: scrubText(symbol.name ?? "", 160),
+    kind: scrubText(symbol.kind ?? "any", 80),
+    path,
+    range: normalizeRange(symbol.range),
+  };
+}
+
+function normalizeRecentCommandStatus(status, limits) {
+  if (!status || typeof status !== "object") {
+    return null;
+  }
+  return {
+    commandId: scrubText(status.commandId ?? "", 160),
+    ok: status.ok === true,
+    actionKind: scrubText(status.actionKind ?? "", 80),
+    summary: scrubText(status.summary ?? "", 500),
+    facade: status.facade
+      ? {
+          command: scrubText(status.facade.command ?? "", 80),
+          mode: scrubText(status.facade.mode ?? "", 80),
+        }
+      : null,
+    diagnosticCount: Math.max(0, Math.floor(clampNumber(status.diagnosticCount))),
+    navigationItemCount: Math.max(0, Math.floor(clampNumber(status.navigationItemCount))),
+    error: scrubText(status.error ?? "", limits.maxTextCharacters),
+  };
+}
+
 export function buildContextBundle(input = {}, options = {}) {
   const limits = mergeLimits(options.limits);
   const workspaceRoot = options.workspaceRoot ?? input.workspaceRoot ?? null;
@@ -202,36 +349,33 @@ export function buildContextBundle(input = {}, options = {}) {
     ? input.symbolContext.declarations
     : [];
   const pccxLabOutputs = Array.isArray(input.pccxLabOutputs) ? input.pccxLabOutputs : [];
+  const selectedPath = normalizePathRef(input.selectedFilePath, workspaceRoot);
+  const selectedRange = normalizeRange(input.selectedRange);
 
-  const snippets = sortedByPathAndName(
+  const snippets = sortedSnippets(
     files
       .map((file) => normalizeSnippet(file, workspaceRoot, limits))
       .filter(Boolean),
+    selectedPath,
   ).slice(0, limits.maxFiles);
-
-  const selectedPath = normalizePathRef(input.selectedFilePath, workspaceRoot);
 
   return {
     version: CONTEXT_BUNDLE_VERSION,
     source: CONTEXT_BUNDLE_SOURCE,
     limits,
+    configuration: normalizeConfiguration(input.configuration),
     selectedFile: selectedPath ? { path: selectedPath } : null,
-    selectedRange: normalizeRange(input.selectedRange),
+    selectedRange,
     userIntent: scrubText(input.userIntent ?? "", limits.maxTextCharacters),
-    diagnostics: sortedByPathAndName(
+    diagnostics: sortedDiagnostics(
       diagnostics
         .map((diagnostic) => normalizeDiagnostic(diagnostic, workspaceRoot, limits))
         .filter(Boolean),
+      selectedPath,
+      selectedRange,
     ).slice(0, limits.maxDiagnostics),
     symbols: {
-      selected: input.selectedSymbol
-        ? {
-            name: scrubText(input.selectedSymbol.name ?? "", 160),
-            kind: scrubText(input.selectedSymbol.kind ?? "any", 80),
-            path: normalizePathRef(input.selectedSymbol.path ?? input.selectedSymbol.file, workspaceRoot),
-            range: normalizeRange(input.selectedSymbol.range),
-          }
-        : null,
+      selected: normalizeSelectedSymbol(input.selectedSymbol, workspaceRoot),
       declarations: sortedByPathAndName(
         declarations
           .map((declaration) => normalizeDeclaration(declaration, workspaceRoot, limits))
@@ -250,6 +394,7 @@ export function buildContextBundle(input = {}, options = {}) {
           }
         : null,
     },
+    recentCommand: normalizeRecentCommandStatus(input.recentCommandStatus, limits),
     pccxLab: {
       commandBoundary: "pccx_ide_cli",
       outputs: pccxLabOutputs
@@ -257,6 +402,12 @@ export function buildContextBundle(input = {}, options = {}) {
         .slice(0, limits.maxFiles),
     },
     excludedPathSegments: [...EXCLUDED_PATH_SEGMENTS].sort(),
+    excludedPathPatterns: [...EXCLUDED_PATH_PATTERNS],
+    redaction: {
+      assignmentPolicy: "secret-like-lines-redacted",
+      absolutePaths: "workspaceRelativeOnly",
+      privateInstructionPathsExcluded: true,
+    },
   };
 }
 
