@@ -10,6 +10,7 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 node editors/vscode-prototype/test/adapter.test.mjs
+node editors/vscode-prototype/test/cli-runner.test.mjs
 node editors/vscode-prototype/src/adapter.mjs diagnostics \
   docs/examples/editor-bridge/problems-xsim-mixed.example.json \
   | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const d=JSON.parse(s);if(!Array.isArray(d)||d.length===0)process.exit(1);})"
