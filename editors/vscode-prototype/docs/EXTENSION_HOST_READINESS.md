@@ -46,6 +46,10 @@ should earn CI promotion separately.
   symbol context is lexical and bounded, not full semantic analysis.
 - Validation command proposal smoke.  The command returns data only and
   does not execute validation commands.
+- Approved validation runner smoke.  The command blocks by default,
+  then runs one fast allowlisted proposal only after explicit test
+  configuration and feeds a bounded validation summary into the context
+  bundle.
 - pccx-lab backend status smoke.  The command reports the configured
   boundary and does not execute pccx-lab.
 - Guard behavior for the local-only Extension Host runtime smoke.
@@ -115,11 +119,13 @@ checked-example symbols.  It executes
 `pccxSystemVerilog.showAIAssistantStatus`,
 `pccxSystemVerilog.buildAIContextBundle`,
 `pccxSystemVerilog.proposeValidationCommand`, and
+`pccxSystemVerilog.runApprovedValidationCommand`, and
 `pccxSystemVerilog.showPccxLabBackendStatus`, verifying disabled/backend
-`none` status, proposal-only actions, bounded active-file and
-selected-symbol context, status-only pccx-lab boundary data, and no
-provider/runtime calls.  This is not LSP, and there is no LSP provider
-yet.
+`none` status, proposal-only actions, disabled runner blocking behavior,
+one explicitly enabled allowlisted validation run, bounded active-file
+and selected-symbol context, bounded validation summary handoff,
+status-only pccx-lab boundary data, and no provider/runtime calls.  This
+is not LSP, and there is no LSP provider yet.
 
 ## AI Assistant Boundary
 
@@ -138,11 +144,25 @@ smoke, example drift check, pytest baseline, and opt-in Extension Host
 smoke.  The command returns JSON data with reasons, risk levels, and a
 required user approval marker; it does not execute the command.
 
+`pccxSystemVerilog.runApprovedValidationCommand` is a separate approved
+validation runner.  It is disabled unless
+`validationRunner.enabled=true` and `validationRunner.mode=allowlisted`
+are set.  It accepts proposal IDs only and executes only fixed
+allowlisted command/argument arrays.  Output is bounded and summarized
+for token-saving context bundles.  It does not execute raw command
+strings, destructive commands, git write operations,
+release/tag/settings/secrets commands, pccx-lab commands, AI provider calls,
+pccx-llm-launcher runtime calls, or MCP server operations.  It does not
+add a UI approval prompt in this prototype; callers should invoke it only
+after a user-approved validation proposal.
+
 `pccxSystemVerilog.showPccxLabBackendStatus` is preparation for future
 command palette integration.  It reports the configured
 `pccxSystemVerilog.pccxLab.command`, lists future controlled operations
 such as diagnostics, index, locate, declarations, xsim-log analysis, and
-validation summary, and does not execute pccx-lab.
+validation summary, lists future safety requirements such as fixed args,
+no shell interpolation, explicit user approval, bounded output, and
+context bundle summary, and does not execute pccx-lab.
 
 The guarded script is not run by CI today.
 
@@ -190,3 +210,5 @@ system.
 8. Do not make live workspace mode the default.
 9. Do not add AI provider calls, pccx-llm-launcher runtime calls, or MCP
    server implementation without a separate contract review.
+10. Keep approved validation execution disabled by default and restricted
+    to allowlisted proposal IDs.

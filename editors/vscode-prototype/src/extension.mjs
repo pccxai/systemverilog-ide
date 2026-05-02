@@ -38,6 +38,9 @@ import {
   createValidationCommandProposal,
 } from "./validation-proposals.mjs";
 import {
+  runApprovedValidationProposal,
+} from "./approved-validation-runner.mjs";
+import {
   createPccxLabBackendStatus,
 } from "./pccx-lab-status.mjs";
 
@@ -58,6 +61,8 @@ export const AI_CONTEXT_BUNDLE_COMMAND =
   "pccxSystemVerilog.buildAIContextBundle";
 export const VALIDATION_PROPOSAL_COMMAND =
   "pccxSystemVerilog.proposeValidationCommand";
+export const APPROVED_VALIDATION_RUNNER_COMMAND =
+  "pccxSystemVerilog.runApprovedValidationCommand";
 export const PCCX_LAB_BACKEND_STATUS_COMMAND =
   "pccxSystemVerilog.showPccxLabBackendStatus";
 
@@ -230,6 +235,15 @@ function appendCommandOutput(outputChannel, commandId, result) {
       kind: result.kind,
       proposalCount: result.proposals?.length ?? 0,
       execution: result.execution,
+    }, null, 2));
+  }
+  if (result.kind === "approved-validation-result") {
+    outputChannel.appendLine(JSON.stringify({
+      kind: result.kind,
+      proposalId: result.proposalId,
+      status: result.status,
+      exitCode: result.exitCode,
+      durationMs: result.durationMs,
     }, null, 2));
   }
   if (result.status?.kind === "pccx-lab-backend-status") {
@@ -413,6 +427,13 @@ function contextConfiguration(config) {
         ? defaultPccxLabCommand
         : "custom",
     },
+    validationRunner: {
+      enabled: config.validationRunner.enabled,
+      mode: config.validationRunner.mode,
+      defaultWorkingDirectory: config.validationRunner.defaultWorkingDirectory,
+      maxOutputLines: config.validationRunner.maxOutputLines,
+      timeoutMs: config.validationRunner.timeoutMs,
+    },
   };
 }
 
@@ -503,6 +524,7 @@ function collectActiveDocumentContext(vscodeApi, runtime, config) {
       files,
       configuration: contextConfiguration(config),
       recentCommandStatus: runtime.recentCommandStatus ?? null,
+      recentValidation: runtime.recentValidationSummary ?? null,
     },
   };
 }
@@ -587,6 +609,30 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
         result = { ok: false, commandId, error: error.message };
         vscodeApi?.window?.showWarningMessage?.(result.error, result);
       }
+      appendCommandOutput(runtime.outputChannel, commandId, result);
+      return result;
+    }
+
+    if (commandId === APPROVED_VALIDATION_RUNNER_COMMAND) {
+      let result;
+      try {
+        const workspaceRoot = vscodeApi?.workspace?.workspaceFolders?.[0]?.uri?.fsPath ?? null;
+        result = await runApprovedValidationProposal(
+          input,
+          rawConfig,
+          {
+            repoRoot: runtime.repoRoot ?? DEFAULT_DIAGNOSTIC_FILE_ROOT,
+            workspaceRoot,
+            execFile: runtime.validationExecFile,
+            env: runtime.env,
+          },
+        );
+        runtime.recentValidationSummary = result.resultSummary ?? null;
+      } catch (error) {
+        result = { ok: false, commandId, error: error.message };
+        vscodeApi?.window?.showWarningMessage?.(result.error, result);
+      }
+      result.commandId = commandId;
       appendCommandOutput(runtime.outputChannel, commandId, result);
       return result;
     }

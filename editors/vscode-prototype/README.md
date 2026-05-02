@@ -28,7 +28,8 @@ rather than being duplicated inside this extension scaffold.
 `pccx-llm-launcher` is a future local LLM/chat/model backend candidate.
 This prototype only adds AI assistant status and context bundle commands
 behind a controlled tool boundary, plus a validation command proposal
-surface that returns data only.  There are no AI provider calls, no
+surface that returns data only and a disabled-by-default approved
+validation runner for allowlisted proposal IDs.  There are no AI provider calls, no
 pccx-llm-launcher runtime calls, and no MCP server implementation in this
 scaffold.
 
@@ -136,6 +137,7 @@ The contributed commands are:
 - `pccxSystemVerilog.showAIAssistantStatus`
 - `pccxSystemVerilog.buildAIContextBundle`
 - `pccxSystemVerilog.proposeValidationCommand`
+- `pccxSystemVerilog.runApprovedValidationCommand`
 - `pccxSystemVerilog.showPccxLabBackendStatus`
 
 The prototype-only settings are:
@@ -145,6 +147,11 @@ The prototype-only settings are:
 - `pccxSystemVerilog.pccxLab.command`, default `pccx_ide_cli`
 - `pccxSystemVerilog.aiAssistant.enabled`, default `false`
 - `pccxSystemVerilog.aiAssistant.backend`, default `none`
+- `pccxSystemVerilog.validationRunner.enabled`, default `false`
+- `pccxSystemVerilog.validationRunner.mode`, default `disabled`
+- `pccxSystemVerilog.validationRunner.defaultWorkingDirectory`, default `repo-root`
+- `pccxSystemVerilog.validationRunner.maxOutputLines`, default `120`
+- `pccxSystemVerilog.validationRunner.timeoutMs`, default `30000`
 - `pccxSystemVerilog.pythonPath`, default `python3`
 - `pccxSystemVerilog.defaultSource`, default `fixtures/missing_endmodule.sv`
 - `pccxSystemVerilog.defaultLog`, default `fixtures/xsim/mixed.log`
@@ -182,7 +189,9 @@ status surface for future pccx-lab integration.  It returns the configured
 `pccxSystemVerilog.pccxLab.command` value, marks the integration as a
 placeholder/status-only boundary, lists future controlled operations such
 as diagnostics, index, locate, declarations, xsim-log analysis, and
-validation summary, and does not execute pccx-lab.
+validation summary, lists required future safety properties such as fixed
+args, no shell interpolation, explicit user approval, bounded output, and
+context bundle summary, and does not execute pccx-lab.
 
 `src/command-handlers.mjs` is the experimental local command-handler
 scaffold.  It maps command ID -> normalized prototype settings -> known
@@ -231,7 +240,9 @@ executes live navigation against the same fixture without QuickPick
 blocking.  It also executes the checked-example diagnostics/navigation
 command paths plus the provider smoke.  It checks the AI assistant status
 command, selected-symbol context bundle command, validation command
-proposal, and pccx-lab backend status command without provider/runtime
+proposal, disabled approved validation runner behavior, one explicit
+allowlisted validation run, validation summary handoff into the context
+bundle, and pccx-lab backend status command without provider/runtime
 calls.  It does not
 package the extension, add an LSP provider, or install through a
 marketplace flow.  Extension Host gates are
@@ -257,7 +268,10 @@ for the active editor state without calling a provider.  It prefers the
 current file path, selected range, bounded lexical selected-symbol
 context, active diagnostics near the selection, recent navigation
 references, recent command status, current mode/configuration, and small
-bounded snippets only for explicit selections.  The selected-symbol
+bounded snippets only for explicit selections.  It can also include the
+latest approved validation runner summary: proposal ID, status, command
+label, exit code, duration/timestamps, bounded stdout/stderr summaries,
+failure hints, and safety metadata.  The selected-symbol
 context extracts simple SystemVerilog-like lexical cues such as the symbol
 text, current line, and nearby module/package/interface/parameter/function
 or task declaration; it is not full semantic analysis.  The bundle
@@ -273,9 +287,26 @@ The boundary notes are tracked in
 
 `pccxSystemVerilog.proposeValidationCommand` returns allowlisted
 validation command proposals as JSON data.  The proposal includes
-argument-array templates, reasons, risk levels, and explicit user approval
-requirements.  It does not spawn a process, call pccx-lab, call an AI
-provider, write files, or run git operations.
+allowlisted proposal IDs, argument-array templates, reasons, risk levels, and
+explicit user approval requirements.  It does not spawn a process, call
+pccx-lab, call an AI provider, write files, or run git operations.
+
+`pccxSystemVerilog.runApprovedValidationCommand` is a separate approved
+validation runner boundary.  It is disabled by default; execution requires
+`pccxSystemVerilog.validationRunner.enabled=true` and
+`pccxSystemVerilog.validationRunner.mode=allowlisted`.  The command
+accepts proposal IDs only, not raw command strings, and re-resolves those
+IDs through the internal allowlist before execution.  Initial runnable IDs
+are `vscodeAdapterSmoke`, `editorBridgeSmoke`, `exampleDriftCheck`, and
+`pytestBaseline`.  `extensionHostSmokeOptIn` remains proposal-only from
+inside the runner.  The runner uses fixed executable and argument arrays
+with `shell=false`, enforces a timeout, bounds stdout/stderr summaries,
+and returns JSON with safety metadata.  The runner does not add a UI
+approval prompt in this prototype; callers should invoke it only after a
+user-approved validation proposal.  It does not execute destructive
+commands, git write operations, release/tag/settings/secrets commands,
+patch proposals, AI provider calls, pccx-llm-launcher runtime calls, MCP
+server operations, or pccx-lab commands.
 
 ## Theme-Neutral Presentation Boundary
 
@@ -305,15 +336,16 @@ Now:
 - AI assistant status command and bounded context bundle command
 - selected-symbol context
 - validation command proposal
+- disabled-by-default approved validation runner boundary
+- recent validation summary in the context bundle
 - pccx-lab backend status command
 
 Next:
 
-- pccx-lab command palette execution with allowlisted commands
 - selected-symbol to declaration context through live navigation
 - diagnostics-aware prompt builder
-- validation result cache
 - patch proposal format
+- pccx-lab command palette execution with allowlisted commands
 
 Later:
 
@@ -321,6 +353,16 @@ Later:
 - MCP controlled tool boundary
 - richer editor UI/panels
 - optional theme presets through host/user theme tokens
+
+## Prototype Daily-Driver Loop
+
+1. Inspect checked-example or explicit live workspace diagnostics and navigation.
+2. Build a selected-symbol AI context bundle for the active editor state.
+3. Propose a validation command as data with `pccxSystemVerilog.proposeValidationCommand`.
+4. User approves an allowlisted validation proposal ID.
+5. Run `pccxSystemVerilog.runApprovedValidationCommand` only after the runner is explicitly enabled.
+6. Feed the bounded validation result summary back into the context bundle.
+7. Future local coding-assistant mode can propose a patch or next validation step, but does not execute either directly.
 
 ## Local Smoke
 
@@ -334,6 +376,8 @@ node editors/vscode-prototype/test/context-bundle.test.mjs
 node editors/vscode-prototype/test/selected-symbol-context.test.mjs
 node editors/vscode-prototype/test/ai-assistant-boundary.test.mjs
 node editors/vscode-prototype/test/validation-proposals.test.mjs
+node editors/vscode-prototype/test/validation-result-summary.test.mjs
+node editors/vscode-prototype/test/approved-validation-runner.test.mjs
 node editors/vscode-prototype/test/static-boundary.test.mjs
 node editors/vscode-prototype/test/extension-entrypoint.test.mjs
 node editors/vscode-prototype/test/command-handlers.test.mjs

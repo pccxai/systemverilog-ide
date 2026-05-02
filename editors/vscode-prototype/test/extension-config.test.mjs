@@ -8,6 +8,8 @@ import {
   DECLARATION_KINDS,
   FACADE_COMMAND_IDS,
   MODES,
+  VALIDATION_RUNNER_CWD_KINDS,
+  VALIDATION_RUNNER_MODES,
   buildFacadeArgsForCommand,
   defaultConfig,
   normalizeConfig,
@@ -22,6 +24,11 @@ const REQUIRED_SETTINGS = new Map([
   ["pccxSystemVerilog.pccxLab.command", { type: "string", default: "pccx_ide_cli" }],
   ["pccxSystemVerilog.aiAssistant.enabled", { type: "boolean", default: false }],
   ["pccxSystemVerilog.aiAssistant.backend", { type: "string", default: "none" }],
+  ["pccxSystemVerilog.validationRunner.enabled", { type: "boolean", default: false }],
+  ["pccxSystemVerilog.validationRunner.mode", { type: "string", default: "disabled" }],
+  ["pccxSystemVerilog.validationRunner.defaultWorkingDirectory", { type: "string", default: "repo-root" }],
+  ["pccxSystemVerilog.validationRunner.maxOutputLines", { type: "integer", default: 120 }],
+  ["pccxSystemVerilog.validationRunner.timeoutMs", { type: "integer", default: 30000 }],
   ["pccxSystemVerilog.pythonPath", { type: "string", default: "python3" }],
   ["pccxSystemVerilog.defaultSource", { type: "string", default: "fixtures/missing_endmodule.sv" }],
   ["pccxSystemVerilog.defaultLog", { type: "string", default: "fixtures/xsim/mixed.log" }],
@@ -68,6 +75,14 @@ async function testPackageConfigurationSchema() {
     configuration.properties["pccxSystemVerilog.defaultDeclarationKind"].enum,
     DECLARATION_KINDS,
   );
+  assert.deepEqual(
+    configuration.properties["pccxSystemVerilog.validationRunner.mode"].enum,
+    VALIDATION_RUNNER_MODES,
+  );
+  assert.deepEqual(
+    configuration.properties["pccxSystemVerilog.validationRunner.defaultWorkingDirectory"].enum,
+    VALIDATION_RUNNER_CWD_KINDS,
+  );
 }
 
 function testDefaultConfig() {
@@ -82,6 +97,13 @@ function testDefaultConfig() {
     aiAssistant: {
       enabled: false,
       backend: "none",
+    },
+    validationRunner: {
+      enabled: false,
+      mode: "disabled",
+      defaultWorkingDirectory: "repo-root",
+      maxOutputLines: 120,
+      timeoutMs: 30000,
     },
     pythonPath: "python3",
     defaultSource: "fixtures/missing_endmodule.sv",
@@ -108,6 +130,26 @@ function testNormalizeConfigRejectsInvalidSettings() {
   assert.throws(
     () => normalizeConfig({ aiAssistant: { backend: "openai" } }),
     /pccxSystemVerilog\.aiAssistant\.backend must be one of: none, pccx-llm-launcher, mcp/,
+  );
+  assert.throws(
+    () => normalizeConfig({ validationRunner: { enabled: "yes" } }),
+    /pccxSystemVerilog\.validationRunner\.enabled must be a boolean/,
+  );
+  assert.throws(
+    () => normalizeConfig({ validationRunner: { mode: "shell" } }),
+    /pccxSystemVerilog\.validationRunner\.mode must be one of: disabled, allowlisted/,
+  );
+  assert.throws(
+    () => normalizeConfig({ validationRunner: { defaultWorkingDirectory: "tmp" } }),
+    /pccxSystemVerilog\.validationRunner\.defaultWorkingDirectory must be one of: repo-root, workspace/,
+  );
+  assert.throws(
+    () => normalizeConfig({ validationRunner: { maxOutputLines: 0 } }),
+    /pccxSystemVerilog\.validationRunner\.maxOutputLines must be between 1 and 500/,
+  );
+  assert.throws(
+    () => normalizeConfig({ validationRunner: { timeoutMs: 999 } }),
+    /pccxSystemVerilog\.validationRunner\.timeoutMs must be between 1000 and 120000/,
   );
   assert.throws(
     () => normalizeConfig({ defaultDeclarationKind: "class" }),

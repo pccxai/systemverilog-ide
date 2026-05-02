@@ -150,6 +150,42 @@ async function testProposalAndStatusModulesAreDataOnly() {
   assert.match(proposalAndStatusSource, /backendCommandExecuted: false/);
 }
 
+async function testApprovedValidationRunnerUsesOnlyAllowlistedExecution() {
+  const runnerSource = await readText(resolve(EXTENSION_ROOT, "src/approved-validation-runner.mjs"));
+  const proposalModule = await import(pathToFileURL(resolve(
+    EXTENSION_ROOT,
+    "src/validation-proposals.mjs",
+  )).href);
+  const proposals = proposalModule.listValidationCommandProposals();
+  const runnable = proposals.filter((proposal) => (
+    proposal.command && proposal.runnerPolicy !== "proposalOnly"
+  ));
+  const flattened = runnable.flatMap((proposal) => proposal.command.argv);
+
+  assert.match(runnerSource, /execFile/);
+  assert.match(runnerSource, /shell:\s*false/);
+  assert.match(runnerSource, /PROPOSAL_ID_PATTERN/);
+  assert.doesNotMatch(runnerSource, /\bexec\s*\(/);
+  assert.doesNotMatch(runnerSource, /shell\s*:\s*true/);
+  assert.ok(runnable.length >= 4);
+  assert.deepEqual(
+    runnable.map((proposal) => proposal.id),
+    ["vscodeAdapterSmoke", "editorBridgeSmoke", "exampleDriftCheck", "pytestBaseline"],
+  );
+  assert.ok(runnable.every((proposal) => proposal.command.cwd === "repo-root"));
+  assert.ok(runnable.every((proposal) => Array.isArray(proposal.command.argv)));
+  assert.ok(runnable.every((proposal) => ["bash", "python3"].includes(proposal.command.argv[0])));
+  assert.doesNotMatch(flattened.join("\n"), /(?:&&|\|\||;|`|\$\(|>|<)/);
+  assert.doesNotMatch(
+    flattened.join("\n"),
+    /\b(?:git|gh)\s+(?:push|commit|merge|release|tag|secret|ruleset|api)\b/i,
+  );
+  assert.equal(
+    proposals.find((proposal) => proposal.id === "extensionHostSmokeOptIn").runnerPolicy,
+    "proposalOnly",
+  );
+}
+
 async function testContextBundleDoesNotSerializePrivateInstructionNames() {
   const contextBundleModule = await import(pathToFileURL(resolve(
     EXTENSION_ROOT,
@@ -184,7 +220,7 @@ async function testNoPositiveReadinessClaims() {
     !path.endsWith("/editors/vscode-prototype/test/static-boundary.test.mjs")
   ));
   const positiveClaim =
-    /\b(?:production[- ]ready|(?<!pre-)stable API|(?<!pre-)stable ABI|(?<!pre-)stable diagnostics envelope|marketplace-ready|complete AI integration)\b/i;
+    /\b(?:production[- ]ready|(?<!pre-)stable API|(?<!pre-)stable ABI|(?<!pre-)stable diagnostics envelope|marketplace-ready|complete AI integration|fully validated|CI-covered|approved runner proves)\b/i;
   const negation = /\b(?:no|not|never|without|does not|is not|are not|avoid|do not)\b/i;
   const violations = [];
 
@@ -212,6 +248,7 @@ await testNoDirectCliCallsFromUiOrProviderLayers();
 await testNoPackagingPublisherOrLspDependencies();
 await testNoDirectShellInterpolation();
 await testProposalAndStatusModulesAreDataOnly();
+await testApprovedValidationRunnerUsesOnlyAllowlistedExecution();
 await testContextBundleDoesNotSerializePrivateInstructionNames();
 await testNoPositiveReadinessClaims();
 

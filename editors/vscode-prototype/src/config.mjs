@@ -6,6 +6,11 @@ export const CONFIG_KEYS = Object.freeze([
   "pccxLab.command",
   "aiAssistant.enabled",
   "aiAssistant.backend",
+  "validationRunner.enabled",
+  "validationRunner.mode",
+  "validationRunner.defaultWorkingDirectory",
+  "validationRunner.maxOutputLines",
+  "validationRunner.timeoutMs",
   "pythonPath",
   "defaultSource",
   "defaultLog",
@@ -29,6 +34,7 @@ export const AI_COMMAND_IDS = Object.freeze([
   "pccxSystemVerilog.showAIAssistantStatus",
   "pccxSystemVerilog.buildAIContextBundle",
   "pccxSystemVerilog.proposeValidationCommand",
+  "pccxSystemVerilog.runApprovedValidationCommand",
 ]);
 
 export const PCCX_LAB_COMMAND_IDS = Object.freeze([
@@ -44,6 +50,8 @@ export const COMMAND_IDS = Object.freeze([
 export const MODES = Object.freeze(["checkedExample", "liveWorkspace"]);
 export const AI_ASSISTANT_BACKENDS = Object.freeze(["none", "pccx-llm-launcher", "mcp"]);
 export const DECLARATION_KINDS = Object.freeze(["module", "package", "interface", "any"]);
+export const VALIDATION_RUNNER_MODES = Object.freeze(["disabled", "allowlisted"]);
+export const VALIDATION_RUNNER_CWD_KINDS = Object.freeze(["repo-root", "workspace"]);
 export const LIVE_WORKSPACE_COMMAND_IDS = Object.freeze([
   "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
   "pccxSystemVerilog.showLiveWorkspaceNavigation",
@@ -62,6 +70,13 @@ const DEFAULT_CONFIG = Object.freeze({
   aiAssistant: Object.freeze({
     enabled: false,
     backend: "none",
+  }),
+  validationRunner: Object.freeze({
+    enabled: false,
+    mode: "disabled",
+    defaultWorkingDirectory: "repo-root",
+    maxOutputLines: 120,
+    timeoutMs: 30000,
   }),
   pythonPath: "python3",
   defaultSource: "fixtures/missing_endmodule.sv",
@@ -138,12 +153,29 @@ function enumSetting(rawConfig, key, fallback, allowedValues) {
   return value;
 }
 
+function integerSetting(rawConfig, key, fallback, options = {}) {
+  const value = rawConfigValue(rawConfig, key);
+  if (value == null) {
+    return fallback;
+  }
+  if (!Number.isInteger(value)) {
+    throw new Error(`${CONFIG_SECTION}.${key} must be an integer`);
+  }
+  const min = Number.isInteger(options.min) ? options.min : Number.MIN_SAFE_INTEGER;
+  const max = Number.isInteger(options.max) ? options.max : Number.MAX_SAFE_INTEGER;
+  if (value < min || value > max) {
+    throw new Error(`${CONFIG_SECTION}.${key} must be between ${min} and ${max}`);
+  }
+  return value;
+}
+
 export function defaultConfig() {
   return {
     ...DEFAULT_CONFIG,
     liveWorkspace: { ...DEFAULT_CONFIG.liveWorkspace },
     pccxLab: { ...DEFAULT_CONFIG.pccxLab },
     aiAssistant: { ...DEFAULT_CONFIG.aiAssistant },
+    validationRunner: { ...DEFAULT_CONFIG.validationRunner },
   };
 }
 
@@ -171,6 +203,37 @@ export function normalizeConfig(rawConfig = {}) {
         "aiAssistant.backend",
         DEFAULT_CONFIG.aiAssistant.backend,
         AI_ASSISTANT_BACKENDS,
+      ),
+    },
+    validationRunner: {
+      enabled: booleanSetting(
+        rawConfig,
+        "validationRunner.enabled",
+        DEFAULT_CONFIG.validationRunner.enabled,
+      ),
+      mode: enumSetting(
+        rawConfig,
+        "validationRunner.mode",
+        DEFAULT_CONFIG.validationRunner.mode,
+        VALIDATION_RUNNER_MODES,
+      ),
+      defaultWorkingDirectory: enumSetting(
+        rawConfig,
+        "validationRunner.defaultWorkingDirectory",
+        DEFAULT_CONFIG.validationRunner.defaultWorkingDirectory,
+        VALIDATION_RUNNER_CWD_KINDS,
+      ),
+      maxOutputLines: integerSetting(
+        rawConfig,
+        "validationRunner.maxOutputLines",
+        DEFAULT_CONFIG.validationRunner.maxOutputLines,
+        { min: 1, max: 500 },
+      ),
+      timeoutMs: integerSetting(
+        rawConfig,
+        "validationRunner.timeoutMs",
+        DEFAULT_CONFIG.validationRunner.timeoutMs,
+        { min: 1000, max: 120000 },
       ),
     },
     pythonPath: stringSetting(rawConfig, "pythonPath", DEFAULT_CONFIG.pythonPath),

@@ -24,6 +24,7 @@
     "onCommand:pccxSystemVerilog.showAIAssistantStatus",
     "onCommand:pccxSystemVerilog.buildAIContextBundle",
     "onCommand:pccxSystemVerilog.proposeValidationCommand",
+    "onCommand:pccxSystemVerilog.runApprovedValidationCommand",
     "onCommand:pccxSystemVerilog.showPccxLabBackendStatus"
   ],
   "contributes": {
@@ -73,6 +74,10 @@
         "title": "PCCX SystemVerilog: Propose Validation Command (Experimental)"
       },
       {
+        "command": "pccxSystemVerilog.runApprovedValidationCommand",
+        "title": "PCCX SystemVerilog: Run Approved Validation Command (Experimental, Opt-In)"
+      },
+      {
         "command": "pccxSystemVerilog.showPccxLabBackendStatus",
         "title": "PCCX SystemVerilog: Show pccx-lab Backend Status (Experimental)"
       }
@@ -113,6 +118,43 @@
           ],
           "default": "none",
           "description": "Experimental local prototype AI assistant backend selector for future controlled tool boundaries; no runtime calls in this scaffold and not a stable API."
+        },
+        "pccxSystemVerilog.validationRunner.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Experimental local prototype opt-in gate for approved validation runner execution; disabled by default and not a stable API."
+        },
+        "pccxSystemVerilog.validationRunner.mode": {
+          "type": "string",
+          "enum": [
+            "disabled",
+            "allowlisted"
+          ],
+          "default": "disabled",
+          "description": "Experimental local prototype validation runner mode; allowlisted mode must be explicit and is not a stable API."
+        },
+        "pccxSystemVerilog.validationRunner.defaultWorkingDirectory": {
+          "type": "string",
+          "enum": [
+            "repo-root",
+            "workspace"
+          ],
+          "default": "repo-root",
+          "description": "Experimental local prototype working-directory label for approved validation runner commands; fixed allowlisted commands may override it and this is not a stable API."
+        },
+        "pccxSystemVerilog.validationRunner.maxOutputLines": {
+          "type": "integer",
+          "default": 120,
+          "minimum": 1,
+          "maximum": 500,
+          "description": "Experimental local prototype maximum stdout/stderr lines retained in approved validation summaries; not a stable API."
+        },
+        "pccxSystemVerilog.validationRunner.timeoutMs": {
+          "type": "integer",
+          "default": 30000,
+          "minimum": 1000,
+          "maximum": 120000,
+          "description": "Experimental local prototype timeout in milliseconds for approved validation runner commands; not a stable API."
         },
         "pccxSystemVerilog.pythonPath": {
           "type": "string",

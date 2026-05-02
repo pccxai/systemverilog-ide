@@ -12,6 +12,7 @@ export const VALIDATION_PROPOSAL_CATEGORIES = Object.freeze([
 
 const PROPOSALS = Object.freeze([
   Object.freeze({
+    id: "vscodeAdapterSmoke",
     category: "vscodeAdapterSmoke",
     label: "VS Code adapter smoke",
     command: Object.freeze({
@@ -23,6 +24,7 @@ const PROPOSALS = Object.freeze([
     riskLevel: "low",
   }),
   Object.freeze({
+    id: "editorBridgeSmoke",
     category: "editorBridgeSmoke",
     label: "Editor bridge smoke",
     command: Object.freeze({
@@ -34,6 +36,7 @@ const PROPOSALS = Object.freeze([
     riskLevel: "low",
   }),
   Object.freeze({
+    id: "exampleDriftCheck",
     category: "exampleDriftCheck",
     label: "Editor bridge example drift check",
     command: Object.freeze({
@@ -45,17 +48,22 @@ const PROPOSALS = Object.freeze([
     riskLevel: "low",
   }),
   Object.freeze({
+    id: "pytestBaseline",
     category: "pytestBaseline",
     label: "Python pytest baseline",
     command: Object.freeze({
       cwd: "repo-root",
       argv: Object.freeze(["python3", "-m", "pytest", "-q"]),
-      env: Object.freeze({}),
+      env: Object.freeze({
+        PYTHONDONTWRITEBYTECODE: "1",
+        PYTEST_ADDOPTS: "-p no:cacheprovider",
+      }),
     }),
     reason: "Runs the repository Python baseline used by the lightweight CI path.",
     riskLevel: "low",
   }),
   Object.freeze({
+    id: "extensionHostSmokeOptIn",
     category: "extensionHostSmoke",
     label: "VS Code Extension Host smoke",
     command: Object.freeze({
@@ -65,8 +73,11 @@ const PROPOSALS = Object.freeze([
     }),
     reason: "Runs the opt-in local Extension Host smoke against the controlled fixture workspace.",
     riskLevel: "medium",
+    runnerPolicy: "proposalOnly",
+    runnerBlockedReason: "Extension Host smoke remains opt-in local-only and is not executed from inside the approved validation runner.",
   }),
   Object.freeze({
+    id: "futurePccxLabDiagnostics",
     category: "futurePccxLabDiagnostics",
     label: "Future pccx-lab diagnostics validation",
     command: null,
@@ -75,6 +86,7 @@ const PROPOSALS = Object.freeze([
     riskLevel: "medium",
   }),
   Object.freeze({
+    id: "futureXsimLogAnalysis",
     category: "futureXsimLogAnalysis",
     label: "Future xsim-log analysis validation",
     command: null,
@@ -97,15 +109,30 @@ function cloneCommand(command) {
 
 function cloneProposal(proposal) {
   return {
+    id: proposal.id,
     category: proposal.category,
     label: proposal.label,
     command: cloneCommand(proposal.command),
     placeholder: proposal.placeholder === true,
     reason: proposal.reason,
     riskLevel: proposal.riskLevel,
+    runnerPolicy: proposal.runnerPolicy ?? "allowlisted",
+    runnerBlockedReason: proposal.runnerBlockedReason ?? "",
     requiresUserApproval: true,
     executes: false,
   };
+}
+
+export function listValidationCommandProposals() {
+  return PROPOSALS.map(cloneProposal);
+}
+
+export function findValidationCommandProposalById(proposalId) {
+  if (typeof proposalId !== "string" || proposalId.trim().length === 0) {
+    return null;
+  }
+  const proposal = PROPOSALS.find((item) => item.id === proposalId);
+  return proposal ? cloneProposal(proposal) : null;
 }
 
 export function createValidationCommandProposal(_input = {}) {
@@ -119,7 +146,7 @@ export function createValidationCommandProposal(_input = {}) {
     providerCalls: false,
     runtimeCalls: false,
     commandSource: "allowlistedTemplates",
-    proposals: PROPOSALS.map(cloneProposal),
+    proposals: listValidationCommandProposals(),
     disallowedActions: [
       "executeCommand",
       "spawnProcess",

@@ -37,6 +37,11 @@ async function resetPrototypeConfig() {
   await updatePrototypeConfig("liveWorkspace.enabled", false);
   await updatePrototypeConfig("aiAssistant.enabled", false);
   await updatePrototypeConfig("aiAssistant.backend", "none");
+  await updatePrototypeConfig("validationRunner.enabled", false);
+  await updatePrototypeConfig("validationRunner.mode", "disabled");
+  await updatePrototypeConfig("validationRunner.defaultWorkingDirectory", "repo-root");
+  await updatePrototypeConfig("validationRunner.maxOutputLines", 120);
+  await updatePrototypeConfig("validationRunner.timeoutMs", 30000);
   await updatePrototypeConfig("pythonPath", "python3");
   await updatePrototypeConfig("pccxLab.command", "pccx_ide_cli");
   await updatePrototypeConfig("defaultSource", "fixtures/missing_endmodule.sv");
@@ -62,6 +67,7 @@ async function run() {
     "pccxSystemVerilog.showAIAssistantStatus",
     "pccxSystemVerilog.buildAIContextBundle",
     "pccxSystemVerilog.proposeValidationCommand",
+    "pccxSystemVerilog.runApprovedValidationCommand",
     "pccxSystemVerilog.showPccxLabBackendStatus",
   ]);
 
@@ -356,11 +362,65 @@ async function run() {
   assert.equal(validationProposal.providerCalls, false);
   assert.equal(validationProposal.runtimeCalls, false);
   assert.ok(validationProposal.proposals.some((proposal) => (
+    proposal.id === "vscodeAdapterSmoke"
+  )));
+  assert.ok(validationProposal.proposals.some((proposal) => (
     proposal.command?.argv?.join(" ") === "bash scripts/vscode-adapter-smoke.sh"
   )));
   assert.ok(validationProposal.proposals.some((proposal) => (
     proposal.command?.env?.PCCX_RUN_EXTENSION_HOST_SMOKE === "1"
   )));
+
+  const disabledValidationRun = await vscode.commands.executeCommand(
+    "pccxSystemVerilog.runApprovedValidationCommand",
+    "vscodeAdapterSmoke",
+  );
+  assert.equal(disabledValidationRun.ok, false);
+  assert.equal(disabledValidationRun.kind, "approved-validation-result");
+  assert.equal(disabledValidationRun.status, "blocked");
+  assert.match(disabledValidationRun.blockedReason, /runner is disabled/);
+  assert.equal(disabledValidationRun.safety.allowlisted, true);
+  assert.equal(disabledValidationRun.safety.shell, false);
+
+  await updatePrototypeConfig("validationRunner.enabled", true);
+  await updatePrototypeConfig("validationRunner.mode", "allowlisted");
+  await updatePrototypeConfig("validationRunner.maxOutputLines", 20);
+  try {
+    const approvedValidationRun = await vscode.commands.executeCommand(
+      "pccxSystemVerilog.runApprovedValidationCommand",
+      { proposalId: "vscodeAdapterSmoke" },
+    );
+    assert.equal(approvedValidationRun.ok, true);
+    assert.equal(approvedValidationRun.status, "passed");
+    assert.equal(approvedValidationRun.command, "bash");
+    assert.deepEqual(approvedValidationRun.args, ["scripts/vscode-adapter-smoke.sh"]);
+    assert.equal(approvedValidationRun.safety.allowlisted, true);
+    assert.equal(approvedValidationRun.safety.shell, false);
+    assert.ok(approvedValidationRun.stdoutSummary.lines.length <= 20);
+    assert.equal(approvedValidationRun.resultSummary.proposalId, "vscodeAdapterSmoke");
+
+    const postValidationContext = await vscode.commands.executeCommand(
+      "pccxSystemVerilog.buildAIContextBundle",
+    );
+    assert.equal(postValidationContext.ok, true);
+    assert.equal(postValidationContext.contextBundle.validation.recent.proposalId, "vscodeAdapterSmoke");
+    assert.equal(postValidationContext.contextBundle.validation.recent.status, "passed");
+    assert.equal(
+      postValidationContext.contextBundle.validation.recent.commandLabel,
+      "VS Code adapter smoke",
+    );
+    assert.ok(
+      postValidationContext.contextBundle.validation.recent.stdoutSummary.lines.length <= 20,
+    );
+    assert.equal(
+      postValidationContext.contextBundle.validation.recent.safety.allowlisted,
+      true,
+    );
+  } finally {
+    await updatePrototypeConfig("validationRunner.enabled", false);
+    await updatePrototypeConfig("validationRunner.mode", "disabled");
+    await updatePrototypeConfig("validationRunner.maxOutputLines", 120);
+  }
 
   const pccxLabStatus = await vscode.commands.executeCommand(
     "pccxSystemVerilog.showPccxLabBackendStatus",
