@@ -32,6 +32,8 @@ async function run() {
   assert.deepEqual(expectedCommandIds, [
     "pccxSystemVerilog.publishCheckedExampleDiagnostics",
     "pccxSystemVerilog.showCheckedExampleNavigation",
+    "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
+    "pccxSystemVerilog.showLiveWorkspaceNavigation",
     "pccxSystemVerilog.showDiagnosticsExample",
     "pccxSystemVerilog.showNavigationExample",
     "pccxSystemVerilog.runDiagnosticsLive",
@@ -64,6 +66,12 @@ async function run() {
   for (const commandId of expectedCommandIds) {
     assert.ok(commands.includes(commandId), `${commandId} is not registered`);
   }
+
+  const disabledLiveWorkspaceResult = await vscode.commands.executeCommand(
+    "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
+  );
+  assert.equal(disabledLiveWorkspaceResult.ok, false);
+  assert.match(disabledLiveWorkspaceResult.error, /live workspace commands require/);
 
   const result = await vscode.commands.executeCommand(
     "pccxSystemVerilog.publishCheckedExampleDiagnostics",

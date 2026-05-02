@@ -15,6 +15,8 @@
   "activationEvents": [
     "onCommand:pccxSystemVerilog.publishCheckedExampleDiagnostics",
     "onCommand:pccxSystemVerilog.showCheckedExampleNavigation",
+    "onCommand:pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
+    "onCommand:pccxSystemVerilog.showLiveWorkspaceNavigation",
     "onCommand:pccxSystemVerilog.showDiagnosticsExample",
     "onCommand:pccxSystemVerilog.showNavigationExample",
     "onCommand:pccxSystemVerilog.runDiagnosticsLive",
@@ -31,6 +33,14 @@
         "title": "PCCX SystemVerilog: Show Checked Example Navigation (Experimental)"
       },
       {
+        "command": "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
+        "title": "PCCX SystemVerilog: Publish Live Workspace Diagnostics (Experimental, Opt-In)"
+      },
+      {
+        "command": "pccxSystemVerilog.showLiveWorkspaceNavigation",
+        "title": "PCCX SystemVerilog: Show Live Workspace Navigation (Experimental, Opt-In)"
+      },
+      {
         "command": "pccxSystemVerilog.showDiagnosticsExample",
         "title": "PCCX SystemVerilog: Show Diagnostics Example"
       },
@@ -40,11 +50,11 @@
       },
       {
         "command": "pccxSystemVerilog.runDiagnosticsLive",
-        "title": "PCCX SystemVerilog: Run Diagnostics Live"
+        "title": "PCCX SystemVerilog: Run Diagnostics Live (Experimental, Opt-In Alias)"
       },
       {
         "command": "pccxSystemVerilog.runNavigationLive",
-        "title": "PCCX SystemVerilog: Run Navigation Live"
+        "title": "PCCX SystemVerilog: Run Navigation Live (Experimental, Opt-In Alias)"
       }
     ],
     "configuration": {
@@ -53,11 +63,36 @@
         "pccxSystemVerilog.mode": {
           "type": "string",
           "enum": [
-            "example",
-            "live"
+            "checkedExample",
+            "liveWorkspace"
           ],
-          "default": "example",
-          "description": "Experimental local prototype setting selecting checked-example mode or live CLI mode for prototype commands; not a stable API."
+          "default": "checkedExample",
+          "description": "Experimental local prototype setting selecting checked-example mode or explicit live workspace mode for prototype commands; not a stable API."
+        },
+        "pccxSystemVerilog.liveWorkspace.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Experimental local prototype opt-in gate for live workspace commands; checked-example mode remains the default and this is not a stable API."
+        },
+        "pccxSystemVerilog.pccxLab.command": {
+          "type": "string",
+          "default": "pccx_ide_cli",
+          "description": "Experimental local prototype command-boundary name for the pccx-lab CLI-first backend; no arguments, no direct internals, and not a stable API."
+        },
+        "pccxSystemVerilog.aiAssistant.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Experimental local prototype opt-in flag reserved for future AI-assisted SystemVerilog development workflow boundaries; no provider calls and not a stable API."
+        },
+        "pccxSystemVerilog.aiAssistant.backend": {
+          "type": "string",
+          "enum": [
+            "none",
+            "pccx-llm-launcher",
+            "mcp"
+          ],
+          "default": "none",
+          "description": "Experimental local prototype AI assistant backend selector for future controlled tool boundaries; no runtime calls in this scaffold and not a stable API."
         },
         "pccxSystemVerilog.pythonPath": {
           "type": "string",

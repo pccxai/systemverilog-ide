@@ -33,11 +33,26 @@ If a feature would need a side channel that bypasses the CLI / core
 contract, that is a signal the contract needs to grow first — not a
 signal to add a back door from the GUI.
 
+## Architecture roles
+
+- `systemverilog-ide` is the editor cockpit: VS Code commands,
+  presentation boundaries, opt-in live workspace command shape, and
+  future context bundle construction.
+- `pccx-lab` is the CLI-first verification/tooling backend. Reusable
+  analysis and validation behavior should flow through the facade and
+  CLI/core contract instead of being duplicated here.
+- `pccx-llm-launcher` is a future local LLM/chat backend candidate for
+  local coding-assistant mode. This repository currently contains only
+  boundary/stub work for AI-assisted SystemVerilog development workflow
+  experiments: no AI provider calls, no pccx-llm-launcher runtime calls
+  yet, and no MCP server implementation.
+
 ## Initial track (near-term)
 
-- SystemVerilog navigation backed by `pccx-lab` analysis.
+- SystemVerilog navigation through the CLI/editor bridge boundary.
 - Diagnostics surfaced from the same place the lab CLI surfaces them.
-- xsim run launching and log handoff via the CLI / core boundary.
+- Existing xsim log handoff through the CLI / core boundary; xsim run
+  launching remains a planned integration path.
 - Project-aware view of `pccx-lab` artifacts (traces, run reports,
   verification status).
 
@@ -156,11 +171,18 @@ The envelope shape is fixed in [`schema/diagnostics-v0.json`](./schema/diagnosti
 Handoff notes for the eventual `pccx-lab` and xsim integration paths
 live in [`docs/HANDOFF.md`](./docs/HANDOFF.md).
 
+The experimental VS Code prototype under
+[`editors/vscode-prototype`](./editors/vscode-prototype) keeps
+checked-example mode as the safe default. Live workspace commands are
+opt-in and require an explicit configuration gate; the current AI
+assistant work is only a proposal boundary and token-saving context
+bundle stub.
+
 ## Later track (deferred)
 
-- AI workers can interact with `pccx-lab` through a controlled MCP
-  interface; the IDE surfaces those flows but does not own the
-  contract.
+- Local coding-assistant mode can propose interactions with `pccx-lab`
+  through a controlled tool boundary; the IDE surfaces those flows but
+  does not own the reusable analysis contract.
 - Evolutionary generate / simulate / evaluate / refine loop, again
   driven through the lab boundary.
 - VS Code extension distribution.

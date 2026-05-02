@@ -12,9 +12,10 @@ Two handoff paths are tracked:
 
 ## pccx-lab diagnostics handoff (active)
 
-`pccx-lab` now exposes `analyze <path> [--format json]` which emits an
-early diagnostics envelope.  The `pccx-ide check --backend pccx-lab`
-flag wires this path.
+This repository expects the pccx-lab CLI/core boundary to expose
+`analyze <path> [--format json]` with an early diagnostics envelope.  The
+`pccx-ide check --backend pccx-lab` flag wires this path when the
+pccx-lab binary is configured.
 
 ### Usage
 
@@ -332,6 +333,12 @@ python -m pccx_ide_cli problems from-xsim-log fixtures/xsim/mixed.log --format t
   the diagnostics envelope.
 - Whether the `additionalProperties: false` constraint on diagnostics
   should relax at v1 to allow forward-compatible extension fields.
+- How a future local coding-assistant mode should pass token-saving
+  context bundles to pccx-llm-launcher or an MCP-style controlled tool
+  boundary.  The current VS Code prototype only has boundary/stub types
+  and tests: no AI provider calls, no local chat backend runtime calls,
+  no MCP server implementation, and no direct execution of command or
+  validation proposals.
 
 These are intentionally unresolved while both sides mature.
 
@@ -340,4 +347,4 @@ These are intentionally unresolved while both sides mature.
 *See also*:
 [AI-assisted engineering discipline](https://github.com/pccxai/pccxai/blob/main/docs/AI_ASSISTED_ENGINEERING.md) —
 org-level rules covering interface-first work and gray-box delegation that govern
-how AI workers interact with the pccx-lab boundary from this IDE layer.
+how AI-assisted work interacts with the pccx-lab boundary from this IDE layer.

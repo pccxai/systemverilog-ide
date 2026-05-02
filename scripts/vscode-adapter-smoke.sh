@@ -14,6 +14,9 @@ node editors/vscode-prototype/test/cli-runner.test.mjs
 node editors/vscode-prototype/test/facade.test.mjs
 node editors/vscode-prototype/test/extension-manifest.test.mjs
 node editors/vscode-prototype/test/extension-config.test.mjs
+node editors/vscode-prototype/test/context-bundle.test.mjs
+node editors/vscode-prototype/test/ai-assistant-boundary.test.mjs
+node editors/vscode-prototype/test/static-boundary.test.mjs
 node editors/vscode-prototype/test/extension-entrypoint.test.mjs
 node editors/vscode-prototype/test/command-handlers.test.mjs
 node editors/vscode-prototype/test/presenter.test.mjs

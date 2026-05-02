@@ -78,6 +78,22 @@ navigation records.  Its local command facade requires explicit
 checked-example or live mode selection and emits VS Code-style JSON for
 known flows only.
 
+The VS Code prototype is the editor cockpit over this contract.  It owns
+command registration, presentation mapping, and the opt-in live workspace
+command boundary.  It is not a second analysis backend, does not
+duplicate pccx-lab internals, and does not implement LSP.  pccx-lab
+remains the CLI-first verification/tooling backend for reusable analysis
+and validation behavior.
+
+Checked-example remains the default.  Live workspace mode is explicit
+opt-in and requires both `pccxSystemVerilog.mode=liveWorkspace` and
+`pccxSystemVerilog.liveWorkspace.enabled=true`; disabled live workspace
+commands fail clearly instead of falling back to examples.  The current
+AI-assisted SystemVerilog development workflow work is boundary/stub
+only: a context bundle JSON contract and proposal model, with no AI
+provider calls, no pccx-llm-launcher runtime calls yet, and no MCP server
+implementation.
+
 The same directory now includes an experimental local VS Code extension
 scaffold.  Its command handlers are thin wrappers around the local facade:
 VS Code command -> prototype settings -> extension wrapper -> facade ->
@@ -118,6 +134,14 @@ VS Code command
   -> diagnostics/navigation records
 ```
 
+Future local coding-assistant mode should use the same controlled data
+path.  Context bundle records should carry selected file/range,
+diagnostics, declaration references, validation summaries, and bounded
+snippets by path/range instead of whole workspaces.  Any command proposal
+or validation proposal must route through the facade or pccx-lab
+CLI/core boundary and remain a proposal until an editor/user-controlled
+executor accepts it.
+
 `problems` converts local diagnostics and log records into editor-friendly
 problem records.  `index` provides scanner-based module/package/interface
 declaration records.  `declarations` exports those records directly, and
@@ -132,3 +156,8 @@ declaration records.  `declarations` exports those records directly, and
 - No stable schema yet.
 - No real xsim or Vivado execution.
 - No hardware access or hardware correctness claim.
+- No AI provider calls or local chat backend integration in this repo
+  today.
+- No MCP server implementation in this repo today.
+- No pccx-llm-launcher runtime call yet; future integration requires an
+  explicit reviewed contract.

@@ -12,6 +12,15 @@ import {
   deactivate,
 } from "../src/extension.mjs";
 
+const LIVE_WORKSPACE_CONFIG = {
+  mode: "liveWorkspace",
+  liveWorkspace: { enabled: true },
+};
+
+function configForCommand(commandId) {
+  return commandId.includes("Live") ? LIVE_WORKSPACE_CONFIG : {};
+}
+
 function mockDeps(payloadOrResult) {
   const calls = {
     runFacade: [],
@@ -49,7 +58,7 @@ function mockDeps(payloadOrResult) {
 
 function testPlansForKnownCommands() {
   for (const commandId of COMMAND_IDS) {
-    const plan = createCommandExecutionPlan(commandId);
+    const plan = createCommandExecutionPlan(commandId, configForCommand(commandId));
     assert.equal(plan.commandId, commandId);
     assert.ok(Array.isArray(plan.facadeArgs));
     assert.ok(plan.facadeArgs.every((arg) => typeof arg === "string"));
@@ -102,7 +111,12 @@ async function testPublishCheckedExampleDiagnosticsAction() {
 
   const result = await runPrototypeCommand(
     "pccxSystemVerilog.publishCheckedExampleDiagnostics",
-    { mode: "live", defaultSource: "live.sv", pythonPath: "python-custom" },
+    {
+      mode: "liveWorkspace",
+      liveWorkspace: { enabled: true },
+      defaultSource: "live.sv",
+      pythonPath: "python-custom",
+    },
     deps,
   );
 
@@ -119,15 +133,17 @@ async function testPublishCheckedExampleDiagnosticsAction() {
   assert.equal(result.action.diagnostics.length, 1);
 }
 
-async function testDiagnosticsLiveAction() {
+async function testPublishLiveWorkspaceDiagnosticsAction() {
   const { calls, deps } = mockDeps({
     kind: "vscode-diagnostics",
     diagnostics: [],
   });
 
   const result = await runPrototypeCommand(
-    "pccxSystemVerilog.runDiagnosticsLive",
+    "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
     {
+      mode: "liveWorkspace",
+      liveWorkspace: { enabled: true },
       defaultSource: "rtl/top.sv",
       pythonPath: "python-custom",
     },
@@ -185,7 +201,11 @@ async function testCheckedExampleNavigationAction() {
 
   const result = await runPrototypeCommand(
     "pccxSystemVerilog.showCheckedExampleNavigation",
-    { mode: "live", pythonPath: "python-custom" },
+    {
+      mode: "liveWorkspace",
+      liveWorkspace: { enabled: true },
+      pythonPath: "python-custom",
+    },
     deps,
   );
 
@@ -202,15 +222,17 @@ async function testCheckedExampleNavigationAction() {
   assert.deepEqual(result.action.items, [item]);
 }
 
-async function testNavigationLiveAction() {
+async function testShowLiveWorkspaceNavigationAction() {
   const { calls, deps } = mockDeps({
     kind: "vscode-navigation",
     items: [],
   });
 
   const result = await runPrototypeCommand(
-    "pccxSystemVerilog.runNavigationLive",
+    "pccxSystemVerilog.showLiveWorkspaceNavigation",
     {
+      mode: "liveWorkspace",
+      liveWorkspace: { enabled: true },
       defaultModule: "pkg_defs",
       defaultDeclarationKind: "package",
       pythonPath: "python-custom",
@@ -231,6 +253,24 @@ async function testNavigationLiveAction() {
     "package",
   ]);
   assert.deepEqual(calls.runFacade[0].env, { PCCX_IDE_PYTHON: "python-custom" });
+}
+
+async function testLiveWorkspaceDisabledControlledFailure() {
+  const { calls, deps } = mockDeps({
+    kind: "vscode-diagnostics",
+    diagnostics: [],
+  });
+
+  const result = await runPrototypeCommand(
+    "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
+    {},
+    deps,
+  );
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /live workspace commands require/);
+  assert.equal(calls.runFacade.length, 0);
+  assert.match(calls.warning[0].message, /live workspace commands require/);
 }
 
 async function testRunFacadeUsesArgumentArray() {
@@ -346,11 +386,12 @@ testPlansForKnownCommands();
 testUnknownCommandRejected();
 await testDiagnosticsExampleAction();
 await testPublishCheckedExampleDiagnosticsAction();
-await testDiagnosticsLiveAction();
+await testPublishLiveWorkspaceDiagnosticsAction();
 await testNavigationExampleAction();
 await testCheckedExampleNavigationAction();
-await testNavigationLiveAction();
+await testShowLiveWorkspaceNavigationAction();
 await testRunFacadeUsesArgumentArray();
+await testLiveWorkspaceDisabledControlledFailure();
 await testInvalidConfigControlledFailure();
 await testFacadeFailureControlledFailure();
 await testInvalidFacadeKindControlledFailure();
