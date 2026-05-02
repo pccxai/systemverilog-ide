@@ -182,3 +182,5 @@ jobs:
               fixtures/xsim/mixed.log --format text \
               | grep -q "5 problems"
           echo "problems from-xsim-log text smoke ok"
+      - name: editor bridge smoke script
+        run: bash scripts/editor-bridge-smoke.sh

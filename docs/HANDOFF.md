@@ -233,6 +233,8 @@ python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format text
 `pccx-ide problems` exports editor-friendly problem records from
 existing local diagnostics and xsim-log parsing.  It is a bridge surface
 for future editor integration, not an editor integration by itself.
+The external editor bridge contract is tracked in
+[`EDITOR_BRIDGE_CONTRACT.md`](./EDITOR_BRIDGE_CONTRACT.md).
 
 ### Usage
 

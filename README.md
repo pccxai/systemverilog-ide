@@ -127,10 +127,15 @@ xsim-log parsing. It does not implement LSP, a VS Code extension,
 a JetBrains plugin, or any GUI. It does not run xsim or Vivado. The
 output shape is pre-stable; future editor bridges may consume it.
 
+The external editor bridge CLI contract is documented in
+[`docs/EDITOR_BRIDGE_CONTRACT.md`](./docs/EDITOR_BRIDGE_CONTRACT.md).
+It is a pre-stable CLI contract, not an editor extension implementation.
+
 Tests are run with:
 
 ```bash
 python -m pytest -q
+bash scripts/editor-bridge-smoke.sh
 ```
 
 The envelope shape is fixed in [`schema/diagnostics-v0.json`](./schema/diagnostics-v0.json).
