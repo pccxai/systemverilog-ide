@@ -11,11 +11,18 @@ fi
 
 node editors/vscode-prototype/test/adapter.test.mjs
 node editors/vscode-prototype/test/cli-runner.test.mjs
+node editors/vscode-prototype/test/facade.test.mjs
 node editors/vscode-prototype/src/adapter.mjs diagnostics \
   docs/examples/editor-bridge/problems-xsim-mixed.example.json \
   | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const d=JSON.parse(s);if(!Array.isArray(d)||d.length===0)process.exit(1);})"
 node editors/vscode-prototype/src/adapter.mjs navigation \
   docs/examples/editor-bridge/declarations.example.json \
   | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const d=JSON.parse(s);if(!Array.isArray(d)||!d.some(x=>x.kind==='package'))process.exit(1);})"
+node editors/vscode-prototype/bin/pccx-vscode-prototype.mjs diagnostics \
+  --mode example --source check-missing-endmodule \
+  | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const d=JSON.parse(s);if(d.kind!=='vscode-diagnostics'||d.mode!=='example'||d.diagnostics.length===0)process.exit(1);})"
+node editors/vscode-prototype/bin/pccx-vscode-prototype.mjs navigation \
+  --mode example --source declarations \
+  | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const d=JSON.parse(s);if(d.kind!=='vscode-navigation'||!d.items.some(x=>x.kind==='interface'))process.exit(1);})"
 
 echo "vscode adapter prototype smoke ok"

@@ -41,11 +41,38 @@ JSON payloads through the same adapter functions used by the checked
 example path.  Failures return structured `ok`, `exitCode`, `stdout`,
 `stderr`, and `error` fields for callers to surface.
 
+## Command Facade
+
+`bin/pccx-vscode-prototype.mjs` is a local command facade for the same
+prototype translation layer.  It emits JSON only and requires callers to
+choose an explicit mode:
+
+```bash
+node editors/vscode-prototype/bin/pccx-vscode-prototype.mjs diagnostics \
+  --mode example --source check-missing-endmodule
+
+node editors/vscode-prototype/bin/pccx-vscode-prototype.mjs diagnostics \
+  --mode live --from-check fixtures/missing_endmodule.sv
+
+node editors/vscode-prototype/bin/pccx-vscode-prototype.mjs navigation \
+  --mode example --source declarations
+
+node editors/vscode-prototype/bin/pccx-vscode-prototype.mjs navigation \
+  --mode live --locate fixtures/modules pkg_defs --kind package
+```
+
+The facade supports checked-example mode and live CLI mode for known
+flows only.  It does not silently fall back between modes, does not use
+shell interpolation, and does not accept arbitrary command strings.
+This is still not a VS Code extension package, not LSP, not a stable
+ABI/API, and not a marketplace publishing path.
+
 ## Local Smoke
 
 ```bash
 node editors/vscode-prototype/test/adapter.test.mjs
 node editors/vscode-prototype/test/cli-runner.test.mjs
+node editors/vscode-prototype/test/facade.test.mjs
 bash scripts/vscode-adapter-smoke.sh
 ```
 
