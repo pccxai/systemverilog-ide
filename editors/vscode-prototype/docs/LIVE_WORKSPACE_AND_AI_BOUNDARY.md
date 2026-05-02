@@ -197,6 +197,12 @@ not apply changes.  The preview command shows checked proposal IDs only
 through VS Code-native output and the clear command removes only the
 in-memory preview result.
 
+Validation-to-patch handoff is also contract-only.  Failed or blocked
+validation summaries can produce a bounded context seed with related
+diagnostics, candidate files, and an approved validation plan.  Passing
+validation summaries produce no seed, and the helper does not generate or
+apply patches.
+
 ## Prototype Daily-Driver Loop
 
 1. Inspect diagnostics and navigation.
@@ -218,6 +224,7 @@ Now:
 - selected-symbol context
 - validation command proposal
 - patch proposal contract
+- validation-to-patch handoff contract
 - approved validation runner boundary
 - validation summary in the context bundle
 - validation cache status command

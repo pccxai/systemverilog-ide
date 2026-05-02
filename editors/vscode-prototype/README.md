@@ -310,6 +310,15 @@ proposals through VS Code-native output without applying changes, and
 `pccxSystemVerilog.clearPatchProposalPreview` clears only the in-memory
 preview state.
 
+`src/validation-patch-handoff.mjs` maps failed or blocked validation
+summaries into bounded patch proposal context seeds.  Passing validation
+summaries produce no seed.  The helper carries proposal ID, status,
+bounded failure summary, related diagnostics, candidate file paths, and a
+suggested approved validation plan without full logs, private paths,
+generated artifacts, shell commands, patch generation, or patch
+application.  The handoff notes are tracked in
+[`docs/validation-patch-handoff.md`](./docs/validation-patch-handoff.md).
+
 `pccxSystemVerilog.proposeValidationCommand` returns allowlisted
 validation command proposals as JSON data.  The proposal includes
 allowlisted proposal IDs, argument-array templates, reasons, risk levels, and
@@ -418,6 +427,7 @@ node editors/vscode-prototype/test/ai-assistant-boundary.test.mjs
 node editors/vscode-prototype/test/validation-proposals.test.mjs
 node editors/vscode-prototype/test/patch-proposal-contract.test.mjs
 node editors/vscode-prototype/test/patch-proposal-preview.test.mjs
+node editors/vscode-prototype/test/validation-patch-handoff.test.mjs
 node editors/vscode-prototype/test/validation-result-summary.test.mjs
 node editors/vscode-prototype/test/validation-result-cache.test.mjs
 node editors/vscode-prototype/test/approved-validation-runner.test.mjs
