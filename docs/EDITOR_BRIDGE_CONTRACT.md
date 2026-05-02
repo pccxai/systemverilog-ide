@@ -83,6 +83,9 @@ scaffold.  Its command handlers are thin wrappers around the local facade:
 VS Code command -> prototype settings -> extension wrapper -> facade ->
 JSON -> diagnostics/navigation records.  The prototype settings are
 validated before command wiring and route only into known facade flows.
+The command-handler scaffold converts facade JSON into testable UI action
+models for diagnostics and navigation behind injected VS Code-like
+dependencies.
 The scaffold is not published, is not marketplace-ready, has no LSP, and
 is not a stable ABI/API.  Current coverage is static/smoke tests, not VS
 Code GUI integration tests.
@@ -104,6 +107,7 @@ VS Code command
   -> experimental extension wrapper
   -> local pccx-vscode-prototype facade
   -> JSON output
+  -> testable diagnostics/navigation UI action
   -> diagnostics/navigation records
 ```
 

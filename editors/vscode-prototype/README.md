@@ -105,6 +105,16 @@ strings, and do not accept arbitrary command execution.  Live mode calls
 only known facade flows.  Live paths are still prototype-only and are
 passed to known facade flows as argument-array entries.
 
+`src/command-handlers.mjs` is the experimental local command-handler
+scaffold.  It maps command ID -> normalized prototype settings -> known
+facade argument array -> facade JSON result -> testable UI action model.
+Diagnostics facade payloads become `{ kind: "diagnostics", diagnostics,
+summary }` actions, and navigation facade payloads become
+`{ kind: "navigation", items, summary }` actions.  Tests use injected and
+mocked VS Code-like dependencies such as `runFacade`, `updateDiagnostics`,
+and `showNavigationItems`; they do not use a real `DiagnosticCollection`,
+quick pick, or VS Code GUI integration test.
+
 This scaffold is not LSP, not a full IDE replacement, not a stable
 ABI/API, and not a marketplace-ready or published extension.
 There are no VS Code GUI/integration tests yet.
@@ -118,6 +128,7 @@ node editors/vscode-prototype/test/facade.test.mjs
 node editors/vscode-prototype/test/extension-manifest.test.mjs
 node editors/vscode-prototype/test/extension-config.test.mjs
 node editors/vscode-prototype/test/extension-entrypoint.test.mjs
+node editors/vscode-prototype/test/command-handlers.test.mjs
 bash scripts/vscode-adapter-smoke.sh
 ```
 
