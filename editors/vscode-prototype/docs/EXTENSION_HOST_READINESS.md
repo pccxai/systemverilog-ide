@@ -137,7 +137,8 @@ boundary, not a model integration.  pccx-llm-launcher is a future local LLM/chat
 contract.  The current extension code makes no AI provider calls, no
 pccx-llm-launcher runtime calls, and implements no MCP server.  AI
 actions are modeled as proposals, including command proposal and
-validation proposal shapes, rather than direct execution.  User approval
+validation proposal shapes, plus a checked patch proposal contract for
+future user-reviewed edits, rather than direct execution.  User approval
 is still required before applying patches, running validation commands,
 or committing changes.
 
