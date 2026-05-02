@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const EXTENSION_ROOT = resolve(ROOT, "editors/vscode-prototype");
@@ -129,6 +129,50 @@ async function testNoDirectShellInterpolation() {
   assert.doesNotMatch(source, /shell\s*=\s*True/);
 }
 
+async function testProposalAndStatusModulesAreDataOnly() {
+  const proposalAndStatusSource = await readCombined([
+    resolve(EXTENSION_ROOT, "src/validation-proposals.mjs"),
+    resolve(EXTENSION_ROOT, "src/pccx-lab-status.mjs"),
+  ]);
+
+  assert.doesNotMatch(
+    proposalAndStatusSource,
+    /node:child_process|\bexecFile\b|\bspawn\s*\(|\bexec\s*\(/,
+  );
+  assert.doesNotMatch(
+    proposalAndStatusSource,
+    /\bwriteFile\s*\(|\bappendFile\s*\(|\brm\s*\(|\bunlink\s*\(|\brename\s*\(/,
+  );
+  assert.doesNotMatch(proposalAndStatusSource, /\b(?:git|gh)\s+(?:push|commit|merge|release|tag)\b/i);
+  assert.doesNotMatch(proposalAndStatusSource, /\bgh\s+(?:secret|ruleset)\b/i);
+  assert.match(proposalAndStatusSource, /proposalOnly/);
+  assert.match(proposalAndStatusSource, /executes: false/);
+  assert.match(proposalAndStatusSource, /backendCommandExecuted: false/);
+}
+
+async function testContextBundleDoesNotSerializePrivateInstructionNames() {
+  const contextBundleModule = await import(pathToFileURL(resolve(
+    EXTENSION_ROOT,
+    "src/context-bundle.mjs",
+  )).href);
+  const bundle = contextBundleModule.buildContextBundle(
+    {
+      workspaceRoot: "/repo",
+      files: [
+        { path: "/repo/AGENTS.md", text: "private worker instruction" },
+        { path: "/repo/package-lock.json", text: "{\"packages\":{}}" },
+        { path: "/repo/rtl/top.sv", text: "module top;\nendmodule\n" },
+      ],
+    },
+    { workspaceRoot: "/repo" },
+  );
+  const serialized = JSON.stringify(bundle);
+
+  assert.deepEqual(bundle.snippets.map((snippet) => snippet.path), ["rtl/top.sv"]);
+  assert.doesNotMatch(serialized, /AGENTS\.md/);
+  assert.doesNotMatch(serialized, /package-lock\.json/);
+}
+
 async function testNoPositiveReadinessClaims() {
   const files = [
     ...await listFiles(ROOT, {
@@ -167,6 +211,8 @@ await testNoLauncherOrMcpRuntimeImplementation();
 await testNoDirectCliCallsFromUiOrProviderLayers();
 await testNoPackagingPublisherOrLspDependencies();
 await testNoDirectShellInterpolation();
+await testProposalAndStatusModulesAreDataOnly();
+await testContextBundleDoesNotSerializePrivateInstructionNames();
 await testNoPositiveReadinessClaims();
 
 console.log("vscode static boundary tests ok");

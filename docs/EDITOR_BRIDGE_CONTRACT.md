@@ -91,7 +91,8 @@ opt-in and requires both `pccxSystemVerilog.mode=liveWorkspace` and
 commands fail clearly instead of falling back to examples.  The current
 AI-assisted SystemVerilog development workflow work is boundary-only:
 AI assistant status and context bundle commands expose local status,
-bounded context, and proposal actions, with no AI provider calls, no
+bounded context, selected-symbol context, validation command proposal
+data, and proposal actions, with no AI provider calls, no
 pccx-llm-launcher runtime calls yet, and no MCP server implementation.
 
 The same directory now includes an experimental local VS Code extension
@@ -108,7 +109,9 @@ VS Code GUI tests.  A limited opt-in Extension Host runtime smoke exists,
 but it is disabled by default, remains local-only, and is not a product
 claim.  When explicitly enabled, it opens the controlled
 `editors/vscode-prototype/test/fixtures/live-workspace` fixture and runs
-live diagnostics only against that tiny fixture path.
+live diagnostics and live navigation only against that tiny fixture path.
+Live navigation verifies `live_top` through the explicit live workspace
+opt-in command path without falling back to checked examples.
 The scaffold is not published, has no marketplace packaging, has no LSP,
 and is not a stable ABI/API.  Current coverage is mostly static/mock
 tests and smoke tests; CI does not run the real Extension Host runtime
@@ -138,11 +141,12 @@ VS Code command
 
 Future local coding-assistant mode should use the same controlled data
 path.  Context bundle records should carry selected file/range,
-diagnostics, declaration references, recent command status, current mode,
-validation summaries, and bounded snippets by path/range instead of whole
-workspaces.  Any command proposal or validation proposal must route
-through the facade or pccx-lab CLI/core boundary and remain a proposal
-until an editor/user-controlled executor accepts it.
+bounded lexical selected-symbol context, diagnostics, declaration
+references, recent command status, current mode, validation summaries, and
+bounded snippets by path/range instead of whole workspaces.  Any command
+proposal or validation proposal must route through the facade or pccx-lab
+CLI/core boundary and remain a proposal until an editor/user-controlled
+executor accepts it.
 
 `problems` converts local diagnostics and log records into editor-friendly
 problem records.  `index` provides scanner-based module/package/interface

@@ -42,6 +42,50 @@ function fixtureInput() {
         end: { line: 10, character: 3 },
       },
     },
+    selectedSymbolContext: {
+      version: "pccx.selectedSymbolContext.v0",
+      path: "/repo/rtl/top.sv",
+      language: "systemverilog",
+      symbolText: "top",
+      lexicalKind: "module",
+      range: {
+        start: { line: 10, character: 0 },
+        end: { line: 10, character: 3 },
+      },
+      cursor: { line: 10, character: 1 },
+      currentLine: {
+        number: 11,
+        text: "module top;",
+        truncated: false,
+      },
+      selectionSummary: {
+        lineCount: 1,
+        characterCount: 3,
+        previewLines: ["top"],
+        truncated: false,
+      },
+      enclosingDeclaration: {
+        name: "top",
+        kind: "module",
+        path: "/repo/rtl/top.sv",
+        line: 11,
+        column: 1,
+        range: {
+          start: { line: 10, character: 0 },
+          end: { line: 10, character: 3 },
+        },
+      },
+      relatedNavigation: [
+        { name: "top", kind: "module", file: "/repo/rtl/top.sv", line: 11, column: 1 },
+      ],
+      nearbyDiagnostics: [
+        { file: "/repo/rtl/top.sv", message: "near selected symbol" },
+      ],
+      analysis: {
+        kind: "lexical",
+        semanticResolution: false,
+      },
+    },
     activeDiagnostics: [
       {
         file: "/repo/rtl/z.sv",
@@ -149,6 +193,15 @@ function testStableBoundedShape() {
   assert.equal(bundle.configuration.mode, "checkedExample");
   assert.equal(bundle.configuration.aiAssistant.backend, "none");
   assert.deepEqual(bundle.selectedFile, { path: "rtl/top.sv" });
+  assert.deepEqual(Object.keys(bundle.symbols.selected), ["name", "kind", "path", "range"]);
+  assert.equal(bundle.symbols.selected.name, "top");
+  assert.equal(bundle.symbols.selected.kind, "module");
+  assert.equal(bundle.symbols.selected.path, "rtl/top.sv");
+  assert.equal(bundle.symbols.selectedContext.symbolText, "top");
+  assert.equal(bundle.symbols.selectedContext.lexicalKind, "module");
+  assert.equal(bundle.symbols.selectedContext.analysis.semanticResolution, false);
+  assert.equal(bundle.symbols.selectedContext.relatedNavigation.length, 1);
+  assert.equal(bundle.symbols.selectedContext.nearbyDiagnostics.length, 1);
   assert.equal(bundle.diagnostics.length, 1);
   assert.equal(bundle.diagnostics[0].path, "rtl/a.sv");
   assert.equal(bundle.snippets.length, 2);
@@ -159,11 +212,16 @@ function testStableBoundedShape() {
   assert.equal(bundle.recentCommand.facade.mode, "example");
   assert.equal(bundle.pccxLab.outputs.length, 1);
   assert.deepEqual(bundle.pccxLab.outputs[0].lines, ["[redacted]"]);
-  assert.ok(bundle.excludedPathPatterns.includes("AGENTS.md"));
+  assert.ok(bundle.excludedPathPatterns.includes("agent-instruction-files"));
   assert.equal(bundle.redaction.assignmentPolicy, "secret-like-lines-redacted");
   assert.deepEqual(summarizeContextBundle(bundle), {
     version: CONTEXT_BUNDLE_VERSION,
     selectedFile: { path: "rtl/top.sv" },
+    selectedSymbol: {
+      name: "top",
+      kind: "module",
+      path: "rtl/top.sv",
+    },
     diagnosticCount: 1,
     snippetCount: 2,
     declarationCount: 2,
@@ -319,6 +377,8 @@ function testNoSecretValuesOrSecretLikeKeys() {
   assert.doesNotMatch(serialized, /abc123/);
   assert.doesNotMatch(serialized, /API_KEY=/);
   assert.doesNotMatch(serialized, /token=hidden/);
+  assert.doesNotMatch(serialized, /AGENTS\.md/);
+  assert.doesNotMatch(serialized, /package-lock\.json/);
 }
 
 function testNoAbsoluteHomePathLeakage() {

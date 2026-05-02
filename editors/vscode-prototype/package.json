@@ -22,7 +22,9 @@
     "onCommand:pccxSystemVerilog.runDiagnosticsLive",
     "onCommand:pccxSystemVerilog.runNavigationLive",
     "onCommand:pccxSystemVerilog.showAIAssistantStatus",
-    "onCommand:pccxSystemVerilog.buildAIContextBundle"
+    "onCommand:pccxSystemVerilog.buildAIContextBundle",
+    "onCommand:pccxSystemVerilog.proposeValidationCommand",
+    "onCommand:pccxSystemVerilog.showPccxLabBackendStatus"
   ],
   "contributes": {
     "commands": [
@@ -65,6 +67,14 @@
       {
         "command": "pccxSystemVerilog.buildAIContextBundle",
         "title": "PCCX SystemVerilog: Build AI Context Bundle (Experimental)"
+      },
+      {
+        "command": "pccxSystemVerilog.proposeValidationCommand",
+        "title": "PCCX SystemVerilog: Propose Validation Command (Experimental)"
+      },
+      {
+        "command": "pccxSystemVerilog.showPccxLabBackendStatus",
+        "title": "PCCX SystemVerilog: Show pccx-lab Backend Status (Experimental)"
       }
     ],
     "configuration": {

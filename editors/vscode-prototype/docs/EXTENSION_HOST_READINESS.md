@@ -38,8 +38,16 @@ should earn CI promotion separately.
 - Live CLI runner for known local JSON flows.
 - Controlled live workspace fixture diagnostics in the opt-in Extension
   Host runtime smoke.
+- Fixture-backed live navigation in the opt-in Extension Host runtime
+  smoke, returning Location-style records without QuickPick/UI blocking.
 - AI assistant status and context bundle command smoke with provider and
   runtime calls reported as unimplemented.
+- Selected-symbol context smoke for the context bundle.  The selected
+  symbol context is lexical and bounded, not full semantic analysis.
+- Validation command proposal smoke.  The command returns data only and
+  does not execute validation commands.
+- pccx-lab backend status smoke.  The command reports the configured
+  boundary and does not execute pccx-lab.
 - Guard behavior for the local-only Extension Host runtime smoke.
 - Pinned Extension Host activation and command-registration smoke when
   explicitly enabled locally.
@@ -99,10 +107,17 @@ The enabled live path is limited to the controlled fixture.  The smoke
 explicitly sets `mode=liveWorkspace` and `liveWorkspace.enabled=true`,
 runs `pccxSystemVerilog.publishLiveWorkspaceDiagnostics` against
 `broken_missing_endmodule.sv`, and asserts the returned diagnostics came
-from that fixture rather than checked examples.  It also executes
-`pccxSystemVerilog.showAIAssistantStatus` and
-`pccxSystemVerilog.buildAIContextBundle`, verifying disabled/backend
-`none` status, proposal-only actions, bounded active-file context, and no
+from that fixture rather than checked examples.  It also runs
+`pccxSystemVerilog.showLiveWorkspaceNavigation` with the fixture as the
+navigation root and `live_top` as the requested module, verifies
+Location-style records, and checks that the result did not fall back to
+checked-example symbols.  It executes
+`pccxSystemVerilog.showAIAssistantStatus`,
+`pccxSystemVerilog.buildAIContextBundle`,
+`pccxSystemVerilog.proposeValidationCommand`, and
+`pccxSystemVerilog.showPccxLabBackendStatus`, verifying disabled/backend
+`none` status, proposal-only actions, bounded active-file and
+selected-symbol context, status-only pccx-lab boundary data, and no
 provider/runtime calls.  This is not LSP, and there is no LSP provider
 yet.
 
@@ -116,6 +131,18 @@ actions are modeled as proposals, including command proposal and
 validation proposal shapes, rather than direct execution.  User approval
 is still required before applying patches, running validation commands,
 or committing changes.
+
+`pccxSystemVerilog.proposeValidationCommand` currently proposes only
+allowlisted templates, including the VS Code adapter smoke, editor bridge
+smoke, example drift check, pytest baseline, and opt-in Extension Host
+smoke.  The command returns JSON data with reasons, risk levels, and a
+required user approval marker; it does not execute the command.
+
+`pccxSystemVerilog.showPccxLabBackendStatus` is preparation for future
+command palette integration.  It reports the configured
+`pccxSystemVerilog.pccxLab.command`, lists future controlled operations
+such as diagnostics, index, locate, declarations, xsim-log analysis, and
+validation summary, and does not execute pccx-lab.
 
 The guarded script is not run by CI today.
 

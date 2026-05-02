@@ -27,7 +27,8 @@ rather than being duplicated inside this extension scaffold.
 
 `pccx-llm-launcher` is a future local LLM/chat/model backend candidate.
 This prototype only adds AI assistant status and context bundle commands
-behind a controlled tool boundary.  There are no AI provider calls, no
+behind a controlled tool boundary, plus a validation command proposal
+surface that returns data only.  There are no AI provider calls, no
 pccx-llm-launcher runtime calls, and no MCP server implementation in this
 scaffold.
 
@@ -82,7 +83,10 @@ flow for the configured navigation root, module, and kind.  The older
 `runDiagnosticsLive` and `runNavigationLive` command IDs remain
 experimental opt-in aliases for now.  A controlled tiny fixture workspace
 lives at `test/fixtures/live-workspace`; the opt-in runtime smoke uses
-that fixture only and does not scan a user workspace.
+that fixture only and does not scan a user workspace.  The runtime smoke
+now covers live diagnostics and live navigation against that fixture; live
+navigation returns Location-style data and avoids QuickPick prompts in the
+smoke path.
 
 ## Command Facade
 
@@ -131,6 +135,8 @@ The contributed commands are:
 - `pccxSystemVerilog.runNavigationLive`
 - `pccxSystemVerilog.showAIAssistantStatus`
 - `pccxSystemVerilog.buildAIContextBundle`
+- `pccxSystemVerilog.proposeValidationCommand`
+- `pccxSystemVerilog.showPccxLabBackendStatus`
 
 The prototype-only settings are:
 
@@ -170,6 +176,13 @@ directly from the extension entry point, do not invoke raw shell command
 strings, and do not accept arbitrary command execution.  Live mode calls
 only known facade flows.  Live paths are still prototype-only and are
 passed to known facade flows as argument-array entries.
+
+`pccxSystemVerilog.showPccxLabBackendStatus` prepares a command palette
+status surface for future pccx-lab integration.  It returns the configured
+`pccxSystemVerilog.pccxLab.command` value, marks the integration as a
+placeholder/status-only boundary, lists future controlled operations such
+as diagnostics, index, locate, declarations, xsim-log analysis, and
+validation summary, and does not execute pccx-lab.
 
 `src/command-handlers.mjs` is the experimental local command-handler
 scaffold.  It maps command ID -> normalized prototype settings -> known
@@ -214,9 +227,12 @@ only runs when `PCCX_RUN_EXTENSION_HOST_SMOKE=1` is set.  The runtime
 smoke loads the local extension package, verifies activation/command
 registration, confirms live workspace commands fail clearly while
 disabled, runs live diagnostics against the controlled fixture only, and
-executes the checked-example diagnostics/navigation command paths plus
-the provider smoke.  It also checks the AI assistant status command and
-context bundle command without provider/runtime calls.  It does not
+executes live navigation against the same fixture without QuickPick
+blocking.  It also executes the checked-example diagnostics/navigation
+command paths plus the provider smoke.  It checks the AI assistant status
+command, selected-symbol context bundle command, validation command
+proposal, and pccx-lab backend status command without provider/runtime
+calls.  It does not
 package the extension, add an LSP provider, or install through a
 marketplace flow.  Extension Host gates are
 tracked in
@@ -238,17 +254,28 @@ validation command, or commit is executed outside this proposal boundary.
 future AI-assisted SystemVerilog development workflow experiments.
 `pccxSystemVerilog.buildAIContextBundle` returns a bounded JSON object
 for the active editor state without calling a provider.  It prefers the
-current file path, selected range, active diagnostics, recent navigation
+current file path, selected range, bounded lexical selected-symbol
+context, active diagnostics near the selection, recent navigation
 references, recent command status, current mode/configuration, and small
-bounded snippets only for explicit selections.  It references files by
-path/range instead of including whole workspaces, excludes `node_modules`,
-`.vscode-test`, `AGENTS.md`, `package-lock.json`, binary-like content,
-and private worker instruction paths, and redacts secret-like assignment
-lines.  This is a JSON contract only: no AI provider calls, no
+bounded snippets only for explicit selections.  The selected-symbol
+context extracts simple SystemVerilog-like lexical cues such as the symbol
+text, current line, and nearby module/package/interface/parameter/function
+or task declaration; it is not full semantic analysis.  The bundle
+references files by path/range instead of including whole workspaces,
+excludes dependency caches, generated test runtime directories, lockfiles,
+agent instruction files, binary-like content, and internal instruction
+paths, and redacts secret-like assignment lines.  This is a
+JSON contract only: no AI provider calls, no
 pccx-llm-launcher runtime calls yet, no MCP server implementation, no
 direct file modification, and no stable API claim.
 The boundary notes are tracked in
 [`docs/LIVE_WORKSPACE_AND_AI_BOUNDARY.md`](./docs/LIVE_WORKSPACE_AND_AI_BOUNDARY.md).
+
+`pccxSystemVerilog.proposeValidationCommand` returns allowlisted
+validation command proposals as JSON data.  The proposal includes
+argument-array templates, reasons, risk levels, and explicit user approval
+requirements.  It does not spawn a process, call pccx-lab, call an AI
+provider, write files, or run git operations.
 
 ## Theme-Neutral Presentation Boundary
 
@@ -274,13 +301,19 @@ Now:
 
 - checked-example diagnostics, navigation, and DefinitionProvider smoke
 - explicit live workspace boundary with controlled fixture diagnostics
+- fixture-backed live navigation smoke
 - AI assistant status command and bounded context bundle command
+- selected-symbol context
+- validation command proposal
+- pccx-lab backend status command
 
 Next:
 
-- fixture-backed live diagnostics/navigation coverage with richer status
-- selected symbol context and definition-aware bundle references
-- validation command proposal and pccx-lab command palette integration
+- pccx-lab command palette execution with allowlisted commands
+- selected-symbol to declaration context through live navigation
+- diagnostics-aware prompt builder
+- validation result cache
+- patch proposal format
 
 Later:
 
@@ -298,7 +331,9 @@ node editors/vscode-prototype/test/facade.test.mjs
 node editors/vscode-prototype/test/extension-manifest.test.mjs
 node editors/vscode-prototype/test/extension-config.test.mjs
 node editors/vscode-prototype/test/context-bundle.test.mjs
+node editors/vscode-prototype/test/selected-symbol-context.test.mjs
 node editors/vscode-prototype/test/ai-assistant-boundary.test.mjs
+node editors/vscode-prototype/test/validation-proposals.test.mjs
 node editors/vscode-prototype/test/static-boundary.test.mjs
 node editors/vscode-prototype/test/extension-entrypoint.test.mjs
 node editors/vscode-prototype/test/command-handlers.test.mjs
