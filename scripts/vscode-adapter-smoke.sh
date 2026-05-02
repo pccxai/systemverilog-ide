@@ -13,6 +13,7 @@ node editors/vscode-prototype/test/adapter.test.mjs
 node editors/vscode-prototype/test/cli-runner.test.mjs
 node editors/vscode-prototype/test/facade.test.mjs
 node editors/vscode-prototype/test/extension-manifest.test.mjs
+node editors/vscode-prototype/test/extension-config.test.mjs
 node editors/vscode-prototype/test/extension-entrypoint.test.mjs
 node editors/vscode-prototype/src/adapter.mjs diagnostics \
   docs/examples/editor-bridge/problems-xsim-mixed.example.json \

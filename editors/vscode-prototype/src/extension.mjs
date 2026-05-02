@@ -2,56 +2,26 @@ import { execFile } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  COMMAND_IDS,
+  CONFIG_KEYS,
+  CONFIG_SECTION,
+  buildFacadeArgsForCommand,
+  defaultConfig,
+  isLiveFacadeArgs,
+  normalizeConfig,
+} from "./config.mjs";
+
 const EXTENSION_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_FACADE_PATH = resolve(EXTENSION_ROOT, "bin/pccx-vscode-prototype.mjs");
 const OUTPUT_CHANNEL_NAME = "PCCX SystemVerilog IDE Prototype";
 
-export const COMMAND_IDS = Object.freeze([
-  "pccxSystemVerilog.showDiagnosticsExample",
-  "pccxSystemVerilog.showNavigationExample",
-  "pccxSystemVerilog.runDiagnosticsLive",
-  "pccxSystemVerilog.runNavigationLive",
-]);
-
-const COMMAND_CONFIGS = Object.freeze({
-  "pccxSystemVerilog.showDiagnosticsExample": Object.freeze({
-    facadeKind: "diagnostics",
-    mode: "example",
-    source: "check-missing-endmodule",
-  }),
-  "pccxSystemVerilog.showNavigationExample": Object.freeze({
-    facadeKind: "navigation",
-    mode: "example",
-    source: "declarations",
-  }),
-  "pccxSystemVerilog.runDiagnosticsLive": Object.freeze({
-    facadeKind: "diagnostics",
-    mode: "live",
-    pathOption: "--from-check",
-    requiredPathField: "targetFile",
-  }),
-  "pccxSystemVerilog.runNavigationLive": Object.freeze({
-    facadeKind: "navigation",
-    mode: "live",
-    pathOption: "--declarations",
-    requiredPathField: "targetPath",
-  }),
-});
-
-function commandConfig(commandId) {
-  const config = COMMAND_CONFIGS[commandId];
-  if (!config) {
-    throw new Error(`unknown PCCX SystemVerilog command: ${commandId}`);
-  }
-  return config;
-}
-
-function requiredString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`${label} is required`);
-  }
-  return value;
-}
+export {
+  COMMAND_IDS,
+  buildFacadeArgsForCommand,
+  defaultConfig,
+  normalizeConfig,
+};
 
 function pathFromCommandInput(input) {
   if (typeof input === "string") {
@@ -66,29 +36,33 @@ function pathFromCommandInput(input) {
   return null;
 }
 
-export function buildFacadeArgsForCommand(commandId, options = {}) {
-  const config = commandConfig(commandId);
-  const args = [config.facadeKind, "--mode", config.mode];
-
-  if (config.mode === "example") {
-    return [...args, "--source", config.source];
-  }
-
-  return [
-    ...args,
-    config.pathOption,
-    requiredString(options[config.requiredPathField], config.requiredPathField),
-  ];
-}
-
 export function buildFacadeInvocationForCommand(commandId, options = {}, runtime = {}) {
-  return {
+  const config = normalizeConfig(options);
+  const facadeArgs = buildFacadeArgsForCommand(commandId, config);
+  const invocation = {
     executable: runtime.nodeExecutable ?? process.execPath,
     args: [
       runtime.facadePath ?? DEFAULT_FACADE_PATH,
-      ...buildFacadeArgsForCommand(commandId, options),
+      ...facadeArgs,
     ],
     shell: false,
+  };
+
+  if (isLiveFacadeArgs(facadeArgs)) {
+    invocation.env = { PCCX_IDE_PYTHON: config.pythonPath };
+  }
+
+  return invocation;
+}
+
+function mergedEnv(invocation, runtime) {
+  if (!invocation.env && !runtime.env) {
+    return process.env;
+  }
+  return {
+    ...process.env,
+    ...(invocation.env ?? {}),
+    ...(runtime.env ?? {}),
   };
 }
 
@@ -101,6 +75,7 @@ function captureExecFile(executable, args, options = {}) {
       {
         cwd: options.cwd ?? EXTENSION_ROOT,
         encoding: "utf8",
+        env: options.env ?? process.env,
         maxBuffer: 1024 * 1024,
       },
       (error, stdout, stderr) => {
@@ -118,7 +93,10 @@ function captureExecFile(executable, args, options = {}) {
 }
 
 export async function runFacadeInvocation(invocation, runtime = {}) {
-  const result = await captureExecFile(invocation.executable, invocation.args, runtime);
+  const result = await captureExecFile(invocation.executable, invocation.args, {
+    ...runtime,
+    env: mergedEnv(invocation, runtime),
+  });
   if (result.ok && result.stdout.trim()) {
     try {
       result.json = JSON.parse(result.stdout);
@@ -130,23 +108,26 @@ export async function runFacadeInvocation(invocation, runtime = {}) {
   return result;
 }
 
-export function resolveCommandRequest(commandId, input, vscodeApi) {
-  commandConfig(commandId);
+export function readExtensionConfig(vscodeApi) {
+  const settings = vscodeApi?.workspace?.getConfiguration?.(CONFIG_SECTION);
+  if (!settings?.get) {
+    return defaultConfig();
+  }
+
+  return normalizeConfig(Object.fromEntries(
+    CONFIG_KEYS.map((key) => [key, settings.get(key)]),
+  ));
+}
+
+export function resolveCommandRequest(commandId, input, vscodeApi, rawConfig = readExtensionConfig(vscodeApi)) {
+  const config = normalizeConfig(rawConfig);
   const explicitPath = pathFromCommandInput(input);
+  const commandConfig = commandId === "pccxSystemVerilog.runDiagnosticsLive" && explicitPath
+    ? normalizeConfig({ ...config, defaultSource: explicitPath })
+    : config;
 
-  if (commandId === "pccxSystemVerilog.runDiagnosticsLive") {
-    return {
-      targetFile: explicitPath ?? vscodeApi?.window?.activeTextEditor?.document?.uri?.fsPath,
-    };
-  }
-
-  if (commandId === "pccxSystemVerilog.runNavigationLive") {
-    return {
-      targetPath: explicitPath ?? vscodeApi?.workspace?.workspaceFolders?.[0]?.uri?.fsPath,
-    };
-  }
-
-  return {};
+  buildFacadeArgsForCommand(commandId, commandConfig);
+  return commandConfig;
 }
 
 export async function runFacadeForCommand(commandId, options = {}, runtime = {}) {
@@ -187,7 +168,7 @@ function appendFacadeOutput(outputChannel, commandId, result) {
 }
 
 export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
-  commandConfig(commandId);
+  buildFacadeArgsForCommand(commandId, defaultConfig());
   return async (input) => {
     let result;
     try {

@@ -7,6 +7,7 @@ import {
   buildFacadeInvocationForCommand,
   createCommandHandler,
   deactivate,
+  readExtensionConfig,
   resolveCommandRequest,
 } from "../src/extension.mjs";
 
@@ -25,16 +26,16 @@ const EXPECTED_ARGS = new Map([
   ],
   [
     "pccxSystemVerilog.runNavigationLive",
-    ["navigation", "--mode", "live", "--declarations", "fixtures/modules"],
+    ["navigation", "--mode", "live", "--locate", "fixtures/modules", "simple_mod", "--kind", "module"],
   ],
 ]);
 
-function optionsFor(commandId) {
+function configFor(commandId) {
   if (commandId === "pccxSystemVerilog.runDiagnosticsLive") {
-    return { targetFile: "fixtures/missing_endmodule.sv" };
+    return { defaultSource: "fixtures/missing_endmodule.sv" };
   }
   if (commandId === "pccxSystemVerilog.runNavigationLive") {
-    return { targetPath: "fixtures/modules" };
+    return { defaultModule: "simple_mod", defaultDeclarationKind: "module" };
   }
   return {};
 }
@@ -42,7 +43,7 @@ function optionsFor(commandId) {
 function testKnownFacadeArgs() {
   for (const commandId of COMMAND_IDS) {
     assert.deepEqual(
-      buildFacadeArgsForCommand(commandId, optionsFor(commandId)),
+      buildFacadeArgsForCommand(commandId, configFor(commandId)),
       EXPECTED_ARGS.get(commandId),
     );
   }
@@ -55,54 +56,83 @@ function testUnknownCommandsRejected() {
   );
 }
 
-function testLiveCommandsRequireExplicitPaths() {
-  assert.throws(
-    () => buildFacadeArgsForCommand("pccxSystemVerilog.runDiagnosticsLive"),
-    /targetFile is required/,
-  );
-  assert.throws(
-    () => buildFacadeArgsForCommand("pccxSystemVerilog.runNavigationLive"),
-    /targetPath is required/,
-  );
-}
-
 function testFacadeInvocationIsArgumentArray() {
   const invocation = buildFacadeInvocationForCommand(
     "pccxSystemVerilog.runDiagnosticsLive",
-    { targetFile: "fixtures/missing_endmodule.sv" },
+    { defaultSource: "fixtures/missing_endmodule.sv", pythonPath: "python3" },
     { nodeExecutable: "node", facadePath: "editors/vscode-prototype/bin/pccx-vscode-prototype.mjs" },
   );
 
   assert.equal(invocation.executable, "node");
   assert.equal(invocation.shell, false);
+  assert.deepEqual(invocation.env, { PCCX_IDE_PYTHON: "python3" });
   assert.ok(Array.isArray(invocation.args));
   assert.deepEqual(invocation.args.slice(1), EXPECTED_ARGS.get("pccxSystemVerilog.runDiagnosticsLive"));
   assert.doesNotMatch(invocation.args.join("\n"), /(?:&&|\|\||;|`|\$\()/);
 }
 
-function testResolveCommandRequestUsesVsCodeState() {
+function testResolveCommandRequestUsesVsCodeSettings() {
+  const settings = new Map([
+    ["mode", "live"],
+    ["pythonPath", "python-custom"],
+    ["defaultSource", "configured.sv"],
+    ["defaultLog", "configured.log"],
+    ["defaultModule", "pkg_defs"],
+    ["defaultDeclarationKind", "package"],
+  ]);
   const vscodeApi = {
-    window: {
-      activeTextEditor: {
-        document: { uri: { fsPath: "active.sv" } },
-      },
-    },
     workspace: {
-      workspaceFolders: [{ uri: { fsPath: "workspace-root" } }],
+      getConfiguration(section) {
+        assert.equal(section, "pccxSystemVerilog");
+        return {
+          get(key) {
+            return settings.get(key);
+          },
+        };
+      },
     },
   };
 
+  assert.deepEqual(readExtensionConfig(vscodeApi), {
+    mode: "live",
+    pythonPath: "python-custom",
+    defaultSource: "configured.sv",
+    defaultLog: "configured.log",
+    defaultModule: "pkg_defs",
+    defaultDeclarationKind: "package",
+  });
   assert.deepEqual(
     resolveCommandRequest("pccxSystemVerilog.runDiagnosticsLive", undefined, vscodeApi),
-    { targetFile: "active.sv" },
+    {
+      mode: "live",
+      pythonPath: "python-custom",
+      defaultSource: "configured.sv",
+      defaultLog: "configured.log",
+      defaultModule: "pkg_defs",
+      defaultDeclarationKind: "package",
+    },
   );
   assert.deepEqual(
     resolveCommandRequest("pccxSystemVerilog.runNavigationLive", undefined, vscodeApi),
-    { targetPath: "workspace-root" },
+    {
+      mode: "live",
+      pythonPath: "python-custom",
+      defaultSource: "configured.sv",
+      defaultLog: "configured.log",
+      defaultModule: "pkg_defs",
+      defaultDeclarationKind: "package",
+    },
   );
   assert.deepEqual(
     resolveCommandRequest("pccxSystemVerilog.runDiagnosticsLive", { fsPath: "explicit.sv" }, vscodeApi),
-    { targetFile: "explicit.sv" },
+    {
+      mode: "live",
+      pythonPath: "python-custom",
+      defaultSource: "explicit.sv",
+      defaultLog: "configured.log",
+      defaultModule: "pkg_defs",
+      defaultDeclarationKind: "package",
+    },
   );
 }
 
@@ -190,9 +220,8 @@ async function testCommandHandlerCanBeUsedWithoutRealVsCode() {
 
 testKnownFacadeArgs();
 testUnknownCommandsRejected();
-testLiveCommandsRequireExplicitPaths();
 testFacadeInvocationIsArgumentArray();
-testResolveCommandRequestUsesVsCodeState();
+testResolveCommandRequestUsesVsCodeSettings();
 await testEntrypointExportsAndActivation();
 await testNoVsCodeRuntimeIsANoop();
 await testCommandHandlerCanBeUsedWithoutRealVsCode();
