@@ -53,6 +53,21 @@ python -m pccx_ide_cli check <sv-file> --backend pccx-lab --format json
 - Treat all output shapes as pre-stable.  Bridge code should keep its
   adapter layer small and easy to update.
 
+## Checked Examples
+
+The pre-stable contract examples are checked in under
+`docs/examples/editor-bridge`.  They are generated from synthetic
+fixtures and are intended as adapter guidance, not a stable ABI/API.
+The example drift check is:
+
+```bash
+bash scripts/check-editor-bridge-examples.sh
+```
+
+The module locate example uses the single-file fixture so the sample is
+unambiguous; the full fixture directory intentionally contains duplicate
+module names for ambiguity tests.
+
 ## Data Movement
 
 The intended data path is explicit:

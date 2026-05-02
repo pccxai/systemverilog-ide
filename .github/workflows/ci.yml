@@ -190,3 +190,5 @@ jobs:
           echo "problems from-xsim-log text smoke ok"
       - name: editor bridge smoke script
         run: bash scripts/editor-bridge-smoke.sh
+      - name: editor bridge example drift check
+        run: bash scripts/check-editor-bridge-examples.sh

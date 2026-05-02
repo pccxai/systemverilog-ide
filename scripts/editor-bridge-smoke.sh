@@ -29,4 +29,6 @@ run_json module-index index fixtures/modules --format json
 run_json declarations declarations fixtures/modules --format json
 run_json locate locate fixtures/modules/simple_module.sv simple_mod --format json
 
+bash scripts/check-editor-bridge-examples.sh
+
 echo "editor bridge smoke ok"
