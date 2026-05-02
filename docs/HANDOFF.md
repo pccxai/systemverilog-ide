@@ -228,6 +228,54 @@ python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format text
 
 ---
 
+## editor problem export scaffold (active, pre-stable)
+
+`pccx-ide problems` exports editor-friendly problem records from
+existing local diagnostics and xsim-log parsing.  It is a bridge surface
+for future editor integration, not an editor integration by itself.
+
+### Usage
+
+```bash
+python -m pccx_ide_cli problems from-check fixtures/missing_endmodule.sv --format json
+python -m pccx_ide_cli problems from-xsim-log fixtures/xsim/mixed.log --format text
+```
+
+### Output shape (JSON)
+
+```json
+{
+  "tool": "pccx-ide-cli",
+  "kind": "editor-problems",
+  "source_kind": "check",
+  "source": "<path passed on CLI>",
+  "problems": [
+    {
+      "source_kind": "check",
+      "severity": "error",
+      "code": "PCCX-SCAFFOLD-003",
+      "message": "`module` declared but no matching `endmodule` found",
+      "file": "<source file>",
+      "line": 1,
+      "column": 1
+    }
+  ]
+}
+```
+
+### Scope
+
+- `from-check` uses the built-in scaffold diagnostics path only.
+- `from-xsim-log` uses the local xsim-log parser.
+- Valid inputs exit 0 even when problems are exported; path and format
+  errors fail clearly.
+- Does not implement LSP, a VS Code extension, a JetBrains plugin, or a
+  GUI.
+- Does not run xsim or Vivado.
+- Output is pre-stable.  Future editor bridges may consume this shape.
+
+---
+
 ## Open questions
 
 - Whether the envelope grows a `metadata` object at v1, and what

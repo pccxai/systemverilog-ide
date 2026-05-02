@@ -79,6 +79,10 @@ python -m pccx_ide_cli locate fixtures/modules/ simple_mod --format text
 python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format json
 python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format text
 
+# Editor problem export scaffold (pre-stable)
+python -m pccx_ide_cli problems from-check fixtures/missing_endmodule.sv --format json
+python -m pccx_ide_cli problems from-xsim-log fixtures/xsim/mixed.log --format text
+
 # Print the diagnostics schema
 python -m pccx_ide_cli schema
 ```
@@ -116,6 +120,12 @@ xsim-style log files into diagnostics-like JSON or text output. It does
 not run xsim or Vivado, does not prove hardware correctness, and does
 not claim full Vivado/xsim coverage. The output shape is pre-stable; a
 future `pccx-lab` integration may provide richer log and report handoff.
+
+`problems` is an early editor bridge scaffold. It exports
+editor-friendly problem records from existing local diagnostics and
+xsim-log parsing. It does not implement LSP, a VS Code extension,
+a JetBrains plugin, or any GUI. It does not run xsim or Vivado. The
+output shape is pre-stable; future editor bridges may consume it.
 
 Tests are run with:
 
