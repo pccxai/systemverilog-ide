@@ -28,11 +28,17 @@ export const FACADE_COMMAND_IDS = Object.freeze([
 export const AI_COMMAND_IDS = Object.freeze([
   "pccxSystemVerilog.showAIAssistantStatus",
   "pccxSystemVerilog.buildAIContextBundle",
+  "pccxSystemVerilog.proposeValidationCommand",
+]);
+
+export const PCCX_LAB_COMMAND_IDS = Object.freeze([
+  "pccxSystemVerilog.showPccxLabBackendStatus",
 ]);
 
 export const COMMAND_IDS = Object.freeze([
   ...FACADE_COMMAND_IDS,
   ...AI_COMMAND_IDS,
+  ...PCCX_LAB_COMMAND_IDS,
 ]);
 
 export const MODES = Object.freeze(["checkedExample", "liveWorkspace"]);

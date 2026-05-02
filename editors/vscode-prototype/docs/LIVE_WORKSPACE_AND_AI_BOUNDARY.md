@@ -5,7 +5,7 @@
 This is experimental boundary documentation for the local VS Code
 prototype.  It is not a production promise, not a stable API/ABI, not
 LSP, has no marketplace packaging, and the AI surface is status/context
-only.
+and proposal data only.
 
 Checked-example remains the default.  Live workspace mode is opt-in and
 requires both:
@@ -66,17 +66,23 @@ The controlled fixture workspace is
 `editors/vscode-prototype/test/fixtures/live-workspace`.  The opt-in
 Extension Host runtime smoke opens that fixture, explicitly enables live
 workspace mode, runs live diagnostics against the tiny broken fixture
-file, and asserts the result did not come from checked examples.  This
-does not make live mode a production promise.
+file, runs live navigation for `live_top`, and asserts the results did
+not come from checked examples.  Live navigation returns structured
+Location-style records in the smoke path and avoids QuickPick/UI prompts.
+This does not make live mode a production promise.
 
 ## AI Assistant Proposal Boundary
 
 The current AI assistant boundary is a proposal model only.
 `pccxSystemVerilog.showAIAssistantStatus` returns local status and
 proposal boundaries.  `pccxSystemVerilog.buildAIContextBundle` returns a
-bounded context bundle for the active editor state.  There are no AI
-provider calls, no external API keys, no pccx-llm-launcher runtime calls
-yet, and no MCP server implementation.
+bounded context bundle for the active editor state.
+`pccxSystemVerilog.proposeValidationCommand` returns allowlisted
+validation command proposals as data and does not execute them.
+`pccxSystemVerilog.showPccxLabBackendStatus` reports the configured
+pccx-lab command boundary and future controlled operations without
+running pccx-lab.  There are no AI provider calls, no external API keys,
+no pccx-llm-launcher runtime calls yet, and no MCP server implementation.
 
 Allowed proposal kinds:
 
@@ -107,7 +113,7 @@ require explicit user approval.
 The context bundle is a token-saving JSON contract.  It prefers:
 
 - selected file path and selected range
-- selected symbol and recent declaration references
+- selected-symbol context and recent declaration references
 - active diagnostics around the selected range
 - current mode/configuration
 - recent command status
@@ -126,10 +132,24 @@ Limits are enforced by `src/context-bundle.mjs`:
 - max text characters
 
 The builder excludes binary-like content, `node_modules`, `.vscode-test`,
-`.git`, `AGENTS.md`, `package-lock.json`, secret-like path names, and
-private worker instruction paths.  It redacts secret-like assignment
+`.git`, lockfiles, agent instruction files, secret-like path names, and
+internal instruction paths.  It redacts secret-like assignment
 lines, emits redaction/exclusion metadata, keeps deterministic ordering,
 and avoids absolute home-path leakage when a workspace root is known.
+
+Selected-symbol context is lexical and bounded.  It may include the symbol
+text under the cursor or selected text, current line, a nearby simple
+declaration such as `module`, `package`, `interface`, `typedef`,
+`parameter`, `localparam`, `function`, or `task`, diagnostics near the
+selection, and recent navigation references.  It is not full semantic
+SystemVerilog resolution.
+
+Validation command proposals use allowlisted templates such as the VS Code
+adapter smoke, editor bridge smoke, example drift check, pytest baseline,
+and the opt-in Extension Host smoke.  They include reasons, risk levels,
+and a required user approval marker.  The command returns JSON data only:
+it does not spawn a process, call pccx-lab, call an AI provider, write
+files, or run git commands.
 
 ## Daily-Driver Roadmap
 
@@ -137,14 +157,19 @@ Now:
 
 - checked-example diagnostics/navigation/definition
 - explicit live workspace boundary
+- live fixture diagnostics/navigation smoke
 - context bundle command
+- selected-symbol context
+- validation command proposal
+- pccx-lab backend status
 
 Next:
 
-- fixture-backed live diagnostics/navigation coverage
-- selected symbol context
-- validation command proposal
-- pccx-lab command palette integration
+- pccx-lab command palette execution with allowlisted commands
+- selected-symbol to declaration context through live navigation
+- diagnostics-aware prompt builder
+- validation result cache
+- patch proposal format
 
 Later:
 

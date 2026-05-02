@@ -27,8 +27,8 @@ const EXCLUDED_PATH_PATTERNS = Object.freeze([
   ".git/**",
   ".vscode-test/**",
   "node_modules/**",
-  "AGENTS.md",
-  "package-lock.json",
+  "agent-instruction-files",
+  "lockfiles",
   ".codex/**",
   "private-worker/**",
   "worker-instruction/**",
@@ -319,6 +319,82 @@ function normalizeSelectedSymbol(symbol, workspaceRoot) {
   };
 }
 
+function normalizeCurrentLine(currentLine, limits) {
+  if (!currentLine || typeof currentLine !== "object") {
+    return null;
+  }
+  return {
+    number: Math.max(1, Math.floor(clampNumber(currentLine.number, 1))),
+    text: scrubText(currentLine.text ?? "", limits.maxTextCharacters),
+    truncated: currentLine.truncated === true,
+  };
+}
+
+function normalizeSelectionSummary(summary, limits) {
+  if (!summary || typeof summary !== "object") {
+    return null;
+  }
+  const previewLines = Array.isArray(summary.previewLines)
+    ? summary.previewLines
+      .map((line) => scrubText(line, limits.maxTextCharacters))
+      .slice(0, limits.maxSnippetLines)
+    : [];
+  return {
+    lineCount: Math.max(0, Math.floor(clampNumber(summary.lineCount))),
+    characterCount: Math.max(0, Math.floor(clampNumber(summary.characterCount))),
+    previewLines,
+    truncated: summary.truncated === true,
+  };
+}
+
+function normalizeCursor(cursor) {
+  if (!cursor || typeof cursor !== "object") {
+    return null;
+  }
+  return {
+    line: Math.max(0, Math.floor(clampNumber(cursor.line))),
+    character: Math.max(0, Math.floor(clampNumber(cursor.character))),
+  };
+}
+
+function normalizeSelectedSymbolContext(context, workspaceRoot, limits) {
+  if (!context || typeof context !== "object") {
+    return null;
+  }
+  const path = normalizePathRef(context.path ?? context.file, workspaceRoot);
+  if (!path) {
+    return null;
+  }
+  return {
+    version: scrubText(context.version ?? "", 80),
+    path,
+    language: scrubText(context.language ?? "systemverilog", 80),
+    symbolText: scrubText(context.symbolText ?? context.name ?? "", 160),
+    lexicalKind: scrubText(context.lexicalKind ?? context.kind ?? "identifier", 80),
+    range: normalizeRange(context.range),
+    cursor: normalizeCursor(context.cursor),
+    currentLine: normalizeCurrentLine(context.currentLine, limits),
+    selectionSummary: normalizeSelectionSummary(context.selectionSummary, limits),
+    enclosingDeclaration: normalizeDeclaration(context.enclosingDeclaration, workspaceRoot, limits),
+    relatedNavigation: Array.isArray(context.relatedNavigation)
+      ? sortedByPathAndName(context.relatedNavigation
+        .map((item) => normalizeDeclaration(item, workspaceRoot, limits))
+        .filter(Boolean))
+        .slice(0, limits.maxDeclarations)
+      : [],
+    nearbyDiagnostics: Array.isArray(context.nearbyDiagnostics)
+      ? sortedDiagnostics(context.nearbyDiagnostics
+        .map((diagnostic) => normalizeDiagnostic(diagnostic, workspaceRoot, limits))
+        .filter(Boolean), path, normalizeRange(context.range))
+        .slice(0, limits.maxDiagnostics)
+      : [],
+    analysis: {
+      kind: scrubText(context.analysis?.kind ?? "lexical", 80),
+      semanticResolution: context.analysis?.semanticResolution === true,
+    },
+  };
+}
+
 function normalizeRecentCommandStatus(status, limits) {
   if (!status || typeof status !== "object") {
     return null;
@@ -376,6 +452,7 @@ export function buildContextBundle(input = {}, options = {}) {
     ).slice(0, limits.maxDiagnostics),
     symbols: {
       selected: normalizeSelectedSymbol(input.selectedSymbol, workspaceRoot),
+      selectedContext: normalizeSelectedSymbolContext(input.selectedSymbolContext, workspaceRoot, limits),
       declarations: sortedByPathAndName(
         declarations
           .map((declaration) => normalizeDeclaration(declaration, workspaceRoot, limits))
@@ -415,6 +492,13 @@ export function summarizeContextBundle(bundle) {
   return {
     version: bundle?.version ?? CONTEXT_BUNDLE_VERSION,
     selectedFile: bundle?.selectedFile ?? null,
+    selectedSymbol: bundle?.symbols?.selected
+      ? {
+          name: bundle.symbols.selected.name,
+          kind: bundle.symbols.selected.kind,
+          path: bundle.symbols.selected.path,
+        }
+      : null,
     diagnosticCount: Array.isArray(bundle?.diagnostics) ? bundle.diagnostics.length : 0,
     snippetCount: Array.isArray(bundle?.snippets) ? bundle.snippets.length : 0,
     declarationCount: Array.isArray(bundle?.symbols?.declarations)

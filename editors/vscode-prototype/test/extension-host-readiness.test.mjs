@@ -102,7 +102,12 @@ async function testReadinessDocsAndCiPolicy() {
   assert.match(`${readme}\n${readiness}`, /controlled fixture/i);
   assert.match(`${readme}\n${readiness}`, /showAIAssistantStatus/);
   assert.match(`${readme}\n${readiness}`, /buildAIContextBundle/);
+  assert.match(`${readme}\n${readiness}`, /selected-symbol context/i);
+  assert.match(`${readme}\n${readiness}`, /proposeValidationCommand/);
+  assert.match(`${readme}\n${readiness}`, /showPccxLabBackendStatus/);
   assert.match(`${readme}\n${readiness}`, /context bundle command/i);
+  assert.match(`${readme}\n${readiness}`, /validation command proposal/i);
+  assert.match(`${readme}\n${readiness}`, /pccx-lab backend status/i);
   assert.match(`${readme}\n${readiness}`, /AI assistant .*boundary/i);
   assert.match(`${readme}\n${readiness}`, /pccx-llm-launcher .*future local LLM\/chat backend/i);
   assert.match(`${readme}\n${readiness}`, /no LSP provider/i);
@@ -143,10 +148,15 @@ async function testRuntimeRunnerIsPinnedAndBounded() {
   assert.match(suite, /showCheckedExampleNavigation/);
   assert.match(suite, /publishLiveWorkspaceDiagnostics/);
   assert.match(suite, /showLiveWorkspaceNavigation/);
+  assert.match(suite, /liveNavigationResult/);
+  assert.match(suite, /live_top/);
   assert.match(suite, /live workspace commands require/);
   assert.match(suite, /broken_missing_endmodule\.sv/);
   assert.match(suite, /showAIAssistantStatus/);
   assert.match(suite, /buildAIContextBundle/);
+  assert.match(suite, /selectedContext/);
+  assert.match(suite, /proposeValidationCommand/);
+  assert.match(suite, /showPccxLabBackendStatus/);
   assert.match(suite, /providerCallsImplemented/);
   assert.match(suite, /getDiagnostics/);
   assert.match(suite, /DiagnosticSeverity\.Error/);

@@ -61,6 +61,8 @@ async function run() {
     "pccxSystemVerilog.runNavigationLive",
     "pccxSystemVerilog.showAIAssistantStatus",
     "pccxSystemVerilog.buildAIContextBundle",
+    "pccxSystemVerilog.proposeValidationCommand",
+    "pccxSystemVerilog.showPccxLabBackendStatus",
   ]);
 
   const manifest = readManifest();
@@ -241,6 +243,53 @@ async function run() {
   const liveDiagnostics = vscode.languages.getDiagnostics(vscode.Uri.file(liveBrokenPath));
   assert.ok(liveDiagnostics.length > 0, "live fixture diagnostics were not published");
 
+  const liveNavigationResult = await vscode.commands.executeCommand(
+    "pccxSystemVerilog.showLiveWorkspaceNavigation",
+  );
+  assert.equal(liveNavigationResult.ok, true);
+  assert.equal(liveNavigationResult.commandId, "pccxSystemVerilog.showLiveWorkspaceNavigation");
+  assert.equal(liveNavigationResult.action.kind, "navigation");
+  assert.equal(liveNavigationResult.plan.config.mode, "liveWorkspace");
+  assert.equal(liveNavigationResult.plan.config.liveWorkspace.enabled, true);
+  assert.deepEqual(liveNavigationResult.plan.facadeArgs, [
+    "navigation",
+    "--mode",
+    "live",
+    "--locate",
+    workspaceRoot,
+    "live_top",
+    "--kind",
+    "module",
+  ]);
+  assert.ok(Array.isArray(liveNavigationResult.action.items));
+  assert.equal(liveNavigationResult.action.items.length, 1);
+  assert.equal(liveNavigationResult.action.items[0].name, "live_top");
+  assert.equal(liveNavigationResult.action.items[0].kind, "module");
+  assert.equal(
+    path.resolve(liveNavigationResult.action.items[0].file),
+    path.resolve(workspaceRoot, "top.sv"),
+  );
+  assert.ok(Array.isArray(liveNavigationResult.locations));
+  assert.equal(liveNavigationResult.locations.length, 1);
+  assert.ok(liveNavigationResult.locations[0].uri instanceof vscode.Uri);
+  assert.ok(liveNavigationResult.locations[0].range instanceof vscode.Range);
+  assert.ok(liveNavigationResult.locations[0].location instanceof vscode.Location);
+  assert.equal(liveNavigationResult.locations[0].symbol, "live_top");
+  assert.equal(liveNavigationResult.locations[0].targetKind, "module");
+  assert.equal(liveNavigationResult.locations[0].source, "pccx-vscode-prototype");
+  assert.equal(
+    path.resolve(liveNavigationResult.locations[0].uri.fsPath),
+    path.resolve(workspaceRoot, "top.sv"),
+  );
+  assert.ok(
+    liveNavigationResult.action.items.every((item) => (
+      !item.file.includes("fixtures/modules") &&
+      item.name !== "simple_mod" &&
+      item.name !== "pkg_defs"
+    )),
+    "live navigation unexpectedly fell back to checked-example navigation",
+  );
+
   const aiStatus = await vscode.commands.executeCommand(
     "pccxSystemVerilog.showAIAssistantStatus",
   );
@@ -256,9 +305,11 @@ async function run() {
   assert.ok(aiStatus.status.disallowedActions.includes("writeFile"));
   assert.ok(aiStatus.status.disallowedActions.includes("release"));
 
-  const liveDocument = await vscode.workspace.openTextDocument(vscode.Uri.file(liveBrokenPath));
+  const liveDocument = await vscode.workspace.openTextDocument(vscode.Uri.file(
+    path.join(workspaceRoot, "top.sv"),
+  ));
   const liveEditor = await vscode.window.showTextDocument(liveDocument, { preview: false });
-  liveEditor.selection = new vscode.Selection(0, 0, 0, 12);
+  liveEditor.selection = new vscode.Selection(0, 7, 0, 15);
   const contextResult = await vscode.commands.executeCommand(
     "pccxSystemVerilog.buildAIContextBundle",
   );
@@ -269,22 +320,57 @@ async function run() {
   assert.equal(contextResult.providerCalls, false);
   assert.equal(contextResult.runtimeCalls, false);
   assert.deepEqual(contextResult.contextBundle.selectedFile, {
-    path: "broken_missing_endmodule.sv",
+    path: "top.sv",
   });
   assert.equal(contextResult.contextBundle.configuration.mode, "liveWorkspace");
   assert.equal(contextResult.contextBundle.configuration.aiAssistant.enabled, false);
   assert.equal(contextResult.contextBundle.configuration.aiAssistant.backend, "none");
-  assert.ok(contextResult.contextBundle.diagnostics.length > 0);
-  assert.equal(contextResult.contextBundle.diagnostics[0].path, "broken_missing_endmodule.sv");
+  assert.equal(contextResult.contextBundle.symbols.selected.name, "live_top");
+  assert.equal(contextResult.contextBundle.symbols.selected.kind, "module");
+  assert.equal(contextResult.contextBundle.symbols.selectedContext.symbolText, "live_top");
+  assert.equal(contextResult.contextBundle.symbols.selectedContext.lexicalKind, "module");
+  assert.equal(
+    contextResult.contextBundle.symbols.selectedContext.enclosingDeclaration.kind,
+    "module",
+  );
+  assert.equal(contextResult.contextBundle.symbols.selectedContext.relatedNavigation.length, 1);
   assert.equal(contextResult.contextBundle.snippets.length, 1);
-  assert.equal(contextResult.contextBundle.snippets[0].path, "broken_missing_endmodule.sv");
+  assert.equal(contextResult.contextBundle.snippets[0].path, "top.sv");
   assert.equal(
     contextResult.contextBundle.recentCommand.commandId,
-    "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
+    "pccxSystemVerilog.showLiveWorkspaceNavigation",
   );
   assert.doesNotMatch(JSON.stringify(contextResult.contextBundle), /\/home\//);
   assert.ok(contextResult.contextBundle.excludedPathPatterns.includes("node_modules/**"));
+  assert.doesNotMatch(JSON.stringify(contextResult.contextBundle), /AGENTS\.md/);
+  assert.doesNotMatch(JSON.stringify(contextResult.contextBundle), /package-lock\.json/);
   assert.equal(contextResult.contextBundle.redaction.assignmentPolicy, "secret-like-lines-redacted");
+
+  const validationProposal = await vscode.commands.executeCommand(
+    "pccxSystemVerilog.proposeValidationCommand",
+  );
+  assert.equal(validationProposal.ok, true);
+  assert.equal(validationProposal.kind, "validation-command-proposal");
+  assert.equal(validationProposal.execution, "proposalOnly");
+  assert.equal(validationProposal.executes, false);
+  assert.equal(validationProposal.providerCalls, false);
+  assert.equal(validationProposal.runtimeCalls, false);
+  assert.ok(validationProposal.proposals.some((proposal) => (
+    proposal.command?.argv?.join(" ") === "bash scripts/vscode-adapter-smoke.sh"
+  )));
+  assert.ok(validationProposal.proposals.some((proposal) => (
+    proposal.command?.env?.PCCX_RUN_EXTENSION_HOST_SMOKE === "1"
+  )));
+
+  const pccxLabStatus = await vscode.commands.executeCommand(
+    "pccxSystemVerilog.showPccxLabBackendStatus",
+  );
+  assert.equal(pccxLabStatus.ok, true);
+  assert.equal(pccxLabStatus.status.kind, "pccx-lab-backend-status");
+  assert.equal(pccxLabStatus.status.configuredCommand, "pccx_ide_cli");
+  assert.equal(pccxLabStatus.status.executes, false);
+  assert.equal(pccxLabStatus.status.backendCommandExecuted, false);
+  assert.ok(pccxLabStatus.status.futureControlledOperations.includes("diagnostics"));
 
   const extensionModule = await importExtensionEntrypoint();
   assert.equal(typeof extensionModule.deactivate, "function");

@@ -6,6 +6,9 @@ import {
   COMMAND_IDS,
   CHECKED_EXAMPLE_NAVIGATION_COMMAND,
   FACADE_COMMAND_IDS,
+  LIVE_WORKSPACE_NAVIGATION_COMMAND,
+  PCCX_LAB_BACKEND_STATUS_COMMAND,
+  VALIDATION_PROPOSAL_COMMAND,
   activate,
   buildFacadeArgsForCommand,
   buildFacadeInvocationForCommand,
@@ -456,6 +459,120 @@ async function testCheckedExampleNavigationCommandReturnsLocations() {
   assert.equal(quickPickCalls.length, 0);
 }
 
+async function testLiveWorkspaceNavigationCommandReturnsLocationsWithoutQuickPick() {
+  const registered = new Map();
+  const quickPickCalls = [];
+  const settings = new Map([
+    ["mode", "liveWorkspace"],
+    ["liveWorkspace.enabled", true],
+    ["pccxLab.command", "pccx_ide_cli"],
+    ["aiAssistant.enabled", false],
+    ["aiAssistant.backend", "none"],
+    ["pythonPath", "python3"],
+    ["defaultSource", "ignored.sv"],
+    ["defaultLog", "ignored.log"],
+    ["defaultNavigationRoot", "/repo/live-fixture"],
+    ["defaultModule", "live_top"],
+    ["defaultDeclarationKind", "module"],
+  ]);
+  const vscodeApi = {
+    Uri: {
+      file(file) {
+        return { fsPath: file };
+      },
+    },
+    Range: class Range {
+      constructor(startLine, startCharacter, endLine, endCharacter) {
+        this.start = { line: startLine, character: startCharacter };
+        this.end = { line: endLine, character: endCharacter };
+      }
+    },
+    Location: class Location {
+      constructor(uri, range) {
+        this.uri = uri;
+        this.range = range;
+      }
+    },
+    commands: {
+      registerCommand(commandId, handler) {
+        registered.set(commandId, handler);
+        return { dispose() {} };
+      },
+    },
+    workspace: {
+      getConfiguration(section) {
+        assert.equal(section, "pccxSystemVerilog");
+        return {
+          get(key) {
+            return settings.get(key);
+          },
+        };
+      },
+    },
+    window: {
+      createOutputChannel() {
+        return { appendLine() {}, show() {}, dispose() {} };
+      },
+      showInformationMessage() {},
+      showErrorMessage() {},
+      showQuickPick(...args) {
+        quickPickCalls.push(args);
+        throw new Error("live navigation smoke must not prompt QuickPick");
+      },
+    },
+  };
+  const facadeCalls = [];
+
+  await activate(
+    { subscriptions: [] },
+    vscodeApi,
+    {
+      async runFacade(args, env) {
+        facadeCalls.push({ args, env });
+        return {
+          ok: true,
+          json: {
+            kind: "vscode-navigation",
+            items: [
+              {
+                name: "live_top",
+                kind: "module",
+                file: "/repo/live-fixture/top.sv",
+                line: 1,
+                column: 8,
+                zero_based_line: 0,
+                zero_based_column: 7,
+              },
+            ],
+          },
+        };
+      },
+    },
+  );
+
+  const result = await registered.get(LIVE_WORKSPACE_NAVIGATION_COMMAND)();
+
+  assert.equal(result.ok, true);
+  assert.equal(result.commandId, LIVE_WORKSPACE_NAVIGATION_COMMAND);
+  assert.deepEqual(facadeCalls[0].args, [
+    "navigation",
+    "--mode",
+    "live",
+    "--locate",
+    "/repo/live-fixture",
+    "live_top",
+    "--kind",
+    "module",
+  ]);
+  assert.deepEqual(facadeCalls[0].env, { PCCX_IDE_PYTHON: "python3" });
+  assert.equal(result.locations.length, 1);
+  assert.equal(result.locations[0].symbol, "live_top");
+  assert.equal(result.locations[0].targetKind, "module");
+  assert.equal(result.locations[0].uri.fsPath, "/repo/live-fixture/top.sv");
+  assert.equal(result.locations[0].range.start.character, 7);
+  assert.equal(quickPickCalls.length, 0);
+}
+
 async function testCheckedExampleDefinitionProviderReturnsLocations() {
   const location = { uri: { fsPath: "/repo/root/pkg.sv" }, range: { start: { line: 0 } } };
   const provider = checkedExampleDefinitionProvider({
@@ -650,14 +767,23 @@ async function testAIContextBundleCommandUsesActiveEditorSelectionAndDiagnostics
   const document = {
     uri: { fsPath: "/repo/rtl/top.sv" },
     languageId: "systemverilog",
+    lineCount: 2,
+    lineAt(line) {
+      return {
+        text: [
+          "module top;",
+          "endmodule",
+        ][line],
+      };
+    },
     getText(range) {
       assert.equal(range.start.line, 0);
-      return "module top;\nendmodule\n";
+      return "top";
     },
   };
   const selection = {
-    start: { line: 0, character: 0 },
-    end: { line: 1, character: 9 },
+    start: { line: 0, character: 7 },
+    end: { line: 0, character: 10 },
   };
   const vscodeApi = {
     DiagnosticSeverity: {
@@ -735,10 +861,75 @@ async function testAIContextBundleCommandUsesActiveEditorSelectionAndDiagnostics
   assert.equal(result.contextBundle.diagnostics[0].path, "rtl/top.sv");
   assert.equal(result.contextBundle.snippets.length, 1);
   assert.equal(result.contextBundle.snippets[0].path, "rtl/top.sv");
+  assert.equal(result.contextBundle.symbols.selected.name, "top");
+  assert.equal(result.contextBundle.symbols.selected.kind, "module");
+  assert.equal(result.contextBundle.symbols.selected.path, "rtl/top.sv");
+  assert.equal(result.contextBundle.symbols.selectedContext.symbolText, "top");
+  assert.equal(result.contextBundle.symbols.selectedContext.lexicalKind, "module");
+  assert.equal(result.contextBundle.symbols.selectedContext.currentLine.text, "module top;");
   assert.equal(result.contextBundle.symbols.declarations.length, 1);
   assert.equal(result.contextBundle.symbols.declarations[0].path, "rtl/top.sv");
   assert.equal(result.contextBundle.recentCommand.commandId, "pccxSystemVerilog.publishCheckedExampleDiagnostics");
   assert.doesNotMatch(JSON.stringify(result.contextBundle), /\/repo/);
+}
+
+async function testValidationProposalCommandReturnsDataOnly() {
+  const handler = createCommandHandler(VALIDATION_PROPOSAL_COMMAND, null, {});
+
+  const result = await handler({ command: "git push origin main" });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.commandId, VALIDATION_PROPOSAL_COMMAND);
+  assert.equal(result.kind, "validation-command-proposal");
+  assert.equal(result.execution, "proposalOnly");
+  assert.equal(result.executes, false);
+  assert.equal(result.providerCalls, false);
+  assert.equal(result.runtimeCalls, false);
+  assert.ok(result.proposals.some((proposal) => (
+    proposal.command?.argv?.join(" ") === "bash scripts/vscode-adapter-smoke.sh"
+  )));
+  assert.doesNotMatch(JSON.stringify(result), /git push/);
+}
+
+async function testPccxLabBackendStatusCommandReturnsStatusOnly() {
+  const settings = new Map([
+    ["mode", "checkedExample"],
+    ["liveWorkspace.enabled", false],
+    ["pccxLab.command", "custom-lab"],
+    ["aiAssistant.enabled", false],
+    ["aiAssistant.backend", "none"],
+    ["pythonPath", "python3"],
+    ["defaultSource", "fixtures/missing_endmodule.sv"],
+    ["defaultLog", "fixtures/xsim/mixed.log"],
+    ["defaultNavigationRoot", "fixtures/modules"],
+    ["defaultModule", "simple_mod"],
+    ["defaultDeclarationKind", "module"],
+  ]);
+  const handler = createCommandHandler(
+    PCCX_LAB_BACKEND_STATUS_COMMAND,
+    {
+      workspace: {
+        getConfiguration() {
+          return {
+            get(key) {
+              return settings.get(key);
+            },
+          };
+        },
+      },
+    },
+    {},
+  );
+
+  const result = await handler();
+
+  assert.equal(result.ok, true);
+  assert.equal(result.commandId, PCCX_LAB_BACKEND_STATUS_COMMAND);
+  assert.equal(result.status.kind, "pccx-lab-backend-status");
+  assert.equal(result.status.configuredCommand, "custom-lab");
+  assert.equal(result.status.executes, false);
+  assert.equal(result.status.backendCommandExecuted, false);
+  assert.ok(result.status.futureControlledOperations.includes("declarations"));
 }
 
 testKnownFacadeArgs();
@@ -751,11 +942,14 @@ testNavigationLocationMapping();
 testResolveCommandRequestUsesVsCodeSettings();
 await testEntrypointExportsAndActivation();
 await testCheckedExampleNavigationCommandReturnsLocations();
+await testLiveWorkspaceNavigationCommandReturnsLocationsWithoutQuickPick();
 await testCheckedExampleDefinitionProviderReturnsLocations();
 await testActivationRegistersCheckedExampleDefinitionProvider();
 await testNoVsCodeRuntimeIsANoop();
 await testCommandHandlerCanBeUsedWithoutRealVsCode();
 await testAIStatusCommandReturnsDisabledBackendNone();
 await testAIContextBundleCommandUsesActiveEditorSelectionAndDiagnostics();
+await testValidationProposalCommandReturnsDataOnly();
+await testPccxLabBackendStatusCommandReturnsStatusOnly();
 
 console.log("vscode extension entrypoint tests ok");
