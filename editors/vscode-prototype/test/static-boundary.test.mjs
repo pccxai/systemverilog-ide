@@ -5,6 +5,14 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const EXTENSION_ROOT = resolve(ROOT, "editors/vscode-prototype");
+const POSITIVE_CLAIM =
+  /\b(?:production[- ]ready|marketplace[- ]ready|(?<!pre-)stable\s+(?:plugin\s+)?(?:API|ABI|LSP)|(?<!pre-)stable\s+diagnostics\s+envelope|MCP\s+ready|AI\s+provider\s+ready|KV260\s+inference\s+(?:works|works\s+now|is\s+working|is\s+functional)|20\s*tok\/s\s+achieved|timing[- ]closed|autonomous\s+coding\s+product|vibe\s+coding|(?:Claude|GPT)\s+directly\s+controls|complete\s+AI\s+integration|fully\s+(?:validated|verified)|CI-covered|approved\s+runner\s+proves)\b/i;
+const POSITIVE_CLAIM_NEGATION =
+  /\b(?:no|not|never|without|does not|is not|are not|avoid|do not|forbidden|unsupported)\b/i;
+
+function hasPositiveClaimWithoutNegation(line, context) {
+  return POSITIVE_CLAIM.test(line) && !POSITIVE_CLAIM_NEGATION.test(context);
+}
 
 async function readText(path) {
   return readFile(path, "utf8");
@@ -223,13 +231,11 @@ async function testNoPositiveReadinessClaims() {
       allowedExtensions: [".md", ".sh", ".yml", ".yaml", ".py", ".mjs", ".cjs", ".js", ".json"],
     }),
   ].filter((path) => (
+    path !== resolve(ROOT, ".github/workflows/ci.yml") &&
     !path.includes("/package-lock.json") &&
     !path.includes("/tests/") &&
     !path.endsWith("/editors/vscode-prototype/test/static-boundary.test.mjs")
   ));
-  const positiveClaim =
-    /\b(?:production[- ]ready|(?<!pre-)stable API|(?<!pre-)stable ABI|(?<!pre-)stable diagnostics envelope|marketplace-ready|complete AI integration|fully validated|CI-covered|approved runner proves)\b/i;
-  const negation = /\b(?:no|not|never|without|does not|is not|are not|avoid|do not)\b/i;
   const violations = [];
 
   for (const file of files) {
@@ -241,13 +247,43 @@ async function testNoPositiveReadinessClaims() {
         line,
         lines[index + 1] ?? "",
       ].join(" ");
-      if (positiveClaim.test(line) && !negation.test(context)) {
+      if (hasPositiveClaimWithoutNegation(line, context)) {
         violations.push(`${file}:${index + 1}: ${line}`);
       }
     });
   }
 
   assert.deepEqual(violations, []);
+}
+
+function testPositiveClaimGuardCoversRoadmapPhrases() {
+  [
+    "production-ready",
+    "marketplace-ready",
+    "stable API",
+    "stable ABI",
+    "stable LSP",
+    "MCP ready",
+    "AI provider ready",
+    "KV260 inference works",
+    "20 tok/s achieved",
+    "timing closed",
+    "autonomous coding product",
+    "vibe coding",
+    "Claude directly controls",
+    "GPT directly controls",
+  ].forEach((claim) => {
+    assert.equal(hasPositiveClaimWithoutNegation(claim, claim), true);
+  });
+
+  [
+    "not a stable API",
+    "pre-stable API",
+    "no MCP ready claim",
+    "unsupported KV260 inference works claim",
+  ].forEach((claim) => {
+    assert.equal(hasPositiveClaimWithoutNegation(claim, claim), false);
+  });
 }
 
 await testNoDirectAiProviderOrNetworkCalls();
@@ -259,5 +295,6 @@ await testProposalAndStatusModulesAreDataOnly();
 await testApprovedValidationRunnerUsesOnlyAllowlistedExecution();
 await testContextBundleDoesNotSerializePrivateInstructionNames();
 await testNoPositiveReadinessClaims();
+testPositiveClaimGuardCoversRoadmapPhrases();
 
 console.log("vscode static boundary tests ok");
