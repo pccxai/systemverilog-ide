@@ -80,10 +80,12 @@ known flows only.
 
 The same directory now includes an experimental local VS Code extension
 scaffold.  Its command handlers are thin wrappers around the local facade:
-VS Code command -> extension wrapper -> facade -> JSON ->
-diagnostics/navigation records.  The scaffold is not published, is not
-marketplace-ready, has no LSP, and is not a stable ABI/API.  Current
-coverage is static/smoke tests, not VS Code GUI integration tests.
+VS Code command -> prototype settings -> extension wrapper -> facade ->
+JSON -> diagnostics/navigation records.  The prototype settings are
+validated before command wiring and route only into known facade flows.
+The scaffold is not published, is not marketplace-ready, has no LSP, and
+is not a stable ABI/API.  Current coverage is static/smoke tests, not VS
+Code GUI integration tests.
 The prototype documents the 1-based CLI position to 0-based editor
 position conversion expected by editor adapters.
 
@@ -98,6 +100,7 @@ SystemVerilog source or existing log file
   -> editor problem list or navigation entry
 
 VS Code command
+  -> prototype settings
   -> experimental extension wrapper
   -> local pccx-vscode-prototype facade
   -> JSON output

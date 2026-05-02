@@ -46,6 +46,9 @@ async function commandExists(command, cwd, env) {
 }
 
 async function findPython(cwd, env) {
+  if (env.PCCX_IDE_PYTHON) {
+    return env.PCCX_IDE_PYTHON;
+  }
   if (await commandExists("python", cwd, env)) {
     return "python";
   }

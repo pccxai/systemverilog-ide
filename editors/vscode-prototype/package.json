@@ -36,6 +36,51 @@
         "command": "pccxSystemVerilog.runNavigationLive",
         "title": "PCCX SystemVerilog: Run Navigation Live"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "PCCX SystemVerilog IDE Prototype",
+      "properties": {
+        "pccxSystemVerilog.mode": {
+          "type": "string",
+          "enum": [
+            "example",
+            "live"
+          ],
+          "default": "example",
+          "description": "Experimental local prototype setting selecting checked-example mode or live CLI mode for prototype commands; not a stable API."
+        },
+        "pccxSystemVerilog.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Experimental local prototype Python executable used by the live CLI prototype path; not a stable API."
+        },
+        "pccxSystemVerilog.defaultSource": {
+          "type": "string",
+          "default": "fixtures/missing_endmodule.sv",
+          "description": "Experimental local prototype workspace-relative default SystemVerilog source used by live diagnostics; not a stable API."
+        },
+        "pccxSystemVerilog.defaultLog": {
+          "type": "string",
+          "default": "fixtures/xsim/mixed.log",
+          "description": "Experimental local prototype workspace-relative default synthetic xsim-style log used by live diagnostics; not a stable API."
+        },
+        "pccxSystemVerilog.defaultModule": {
+          "type": "string",
+          "default": "simple_mod",
+          "description": "Experimental local prototype default module name used by navigation examples; not a stable API."
+        },
+        "pccxSystemVerilog.defaultDeclarationKind": {
+          "type": "string",
+          "enum": [
+            "module",
+            "package",
+            "interface",
+            "any"
+          ],
+          "default": "module",
+          "description": "Experimental local prototype default declaration kind used by navigation; not a stable API."
+        }
+      }
+    }
   }
 }

@@ -29,6 +29,7 @@ position fields for editor consumers.
 ## Live CLI Runner
 
 `src/cli-runner.mjs` is the only subprocess layer.  It uses Node built-ins,
+honors the facade process `PCCX_IDE_PYTHON` executable when set, otherwise
 prefers `python` and falls back to `python3`, sets `PYTHONPATH=src`, runs
 from the repository root, and passes arguments as arrays instead of shell
 strings.  It only exposes helpers for known `pccx_ide_cli` JSON flows:
@@ -81,15 +82,32 @@ The contributed commands are:
 - `pccxSystemVerilog.runDiagnosticsLive`
 - `pccxSystemVerilog.runNavigationLive`
 
+The prototype-only settings are:
+
+- `pccxSystemVerilog.mode`, default `example`
+- `pccxSystemVerilog.pythonPath`, default `python3`
+- `pccxSystemVerilog.defaultSource`, default `fixtures/missing_endmodule.sv`
+- `pccxSystemVerilog.defaultLog`, default `fixtures/xsim/mixed.log`
+- `pccxSystemVerilog.defaultModule`, default `simple_mod`
+- `pccxSystemVerilog.defaultDeclarationKind`, default `module`
+
+The default mode is checked-example mode.  The explicit example commands
+always build checked-example facade arguments, and the explicit live
+commands always build known live facade arguments.  Live diagnostics uses
+`--from-check <defaultSource>`.  Live navigation uses
+`--locate fixtures/modules <defaultModule> --kind <defaultDeclarationKind>`.
+
 The command handlers are thin wrappers around the local facade.  They
-build known facade argument arrays and run
-`bin/pccx-vscode-prototype.mjs`; they do not call `pccx_ide_cli`
-directly, do not invoke raw shell command strings, and do not accept
-arbitrary command execution.  Live paths are still prototype-only and are
+normalize the prototype-only settings, build known facade argument arrays,
+and run `bin/pccx-vscode-prototype.mjs`; they do not call `pccx_ide_cli`
+directly from the extension entry point, do not invoke raw shell command
+strings, and do not accept arbitrary command execution.  Live mode calls
+only known facade flows.  Live paths are still prototype-only and are
 passed to known facade flows as argument-array entries.
 
 This scaffold is not LSP, not a full IDE replacement, not a stable
 ABI/API, and not a marketplace-ready or published extension.
+There are no VS Code GUI/integration tests yet.
 
 ## Local Smoke
 
@@ -98,6 +116,7 @@ node editors/vscode-prototype/test/adapter.test.mjs
 node editors/vscode-prototype/test/cli-runner.test.mjs
 node editors/vscode-prototype/test/facade.test.mjs
 node editors/vscode-prototype/test/extension-manifest.test.mjs
+node editors/vscode-prototype/test/extension-config.test.mjs
 node editors/vscode-prototype/test/extension-entrypoint.test.mjs
 bash scripts/vscode-adapter-smoke.sh
 ```
