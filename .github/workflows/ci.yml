@@ -19,13 +19,21 @@ jobs:
           import os, re, sys
           PATTERN = re.compile(
               r"(?:\bis\s+|\bnow\s+|\balready\s+|\bcurrently\s+)?"
-              r"(production[- ]ready|timing[- ]closed|fully verified|"
-              r"stable plugin abi|stable lsp|kv260 inference (?:works|works now|is working|is functional))",
+              r"(production[- ]ready|marketplace[- ]ready|"
+              r"(?<!pre-)stable\s+(?:plugin\s+)?(?:api|abi|lsp)|"
+              r"(?<!pre-)stable\s+diagnostics\s+envelope|"
+              r"mcp\s+ready|ai\s+provider\s+ready|"
+              r"kv260\s+inference\s+(?:works|works\s+now|is\s+working|is\s+functional)|"
+              r"20\s*tok/s\s+achieved|timing[- ]closed|"
+              r"autonomous\s+coding\s+product|vibe\s+coding|"
+              r"(?:claude|gpt)\s+directly\s+controls|"
+              r"complete\s+ai\s+integration|fully\s+(?:verified|validated)|"
+              r"ci-covered|approved\s+runner\s+proves)",
               re.IGNORECASE,
           )
           NEGATION = re.compile(
               r"\b(?:no|not|never|avoid|without|forbidden|skip|do not"
-              r"|does not|is not|are not)\b",
+              r"|does not|is not|are not|unsupported)\b",
               re.IGNORECASE,
           )
           SCAN_EXTS = {".md", ".sh", ".yml", ".yaml"}
@@ -44,9 +52,14 @@ jobs:
                   if not any(rel.endswith(ext) for ext in SCAN_EXTS):
                       continue
                   with open(rel, encoding="utf-8", errors="replace") as fh:
-                      for i, line in enumerate(fh, 1):
-                          if PATTERN.search(line) and not NEGATION.search(line):
-                              violations.append(f"{rel}:{i}: {line.rstrip()}")
+                      lines = fh.read().splitlines()
+                      for index, line in enumerate(lines):
+                          context = " ".join(
+                              lines[i]
+                              for i in range(max(0, index - 2), min(len(lines), index + 2))
+                          )
+                          if PATTERN.search(line) and not NEGATION.search(context):
+                              violations.append(f"{rel}:{index + 1}: {line}")
           if violations:
               print("Forbidden positive claims detected:")
               for v in violations:
