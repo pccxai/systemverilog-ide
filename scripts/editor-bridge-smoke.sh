@@ -26,6 +26,7 @@ run_json editor-problems problems from-check fixtures/ok_module.sv --format json
 run_json editor-problems problems from-check fixtures/missing_endmodule.sv --format json
 run_json editor-problems problems from-xsim-log fixtures/xsim/mixed.log --format json
 run_json module-index index fixtures/modules --format json
+run_json declarations declarations fixtures/modules --format json
 run_json locate locate fixtures/modules/simple_module.sv simple_mod --format json
 
 echo "editor bridge smoke ok"

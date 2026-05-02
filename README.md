@@ -71,9 +71,14 @@ python -m pccx_ide_cli index fixtures/modules/ --format text
 python -m pccx_ide_cli index fixtures/modules/ --query simple_mod
 python -m pccx_ide_cli index fixtures/modules/ --query simple_mod --format text
 
-# Module locate (early navigation scaffold — not LSP, not stable API)
+# Declaration locate (early navigation scaffold — not LSP, not stable API)
 python -m pccx_ide_cli locate fixtures/modules/ simple_mod
+python -m pccx_ide_cli locate fixtures/modules/ pkg_defs --kind package
+python -m pccx_ide_cli locate fixtures/modules/ bus_if --kind interface
 python -m pccx_ide_cli locate fixtures/modules/ simple_mod --format text
+
+# Declaration export for editor bridge consumers (pre-stable)
+python -m pccx_ide_cli declarations fixtures/modules/ --format json
 
 # xsim log handoff scaffold (parses existing log files only)
 python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format json
@@ -108,16 +113,21 @@ fixtures/modules/two_modules.sv:3:1: module mod_b
 `module`, `package`, and `interface` declarations.  This is scanner-based
 navigation support, not semantic resolution or a full parser.
 
-Module locate text output format (one match, exit 0):
+Declaration locate text output format (one match, exit 0):
 ```
 module simple_mod
-fixtures/modules/simple_module.sv:1:0
+fixtures/modules/simple_module.sv:1:1
 ```
 
 No match exits 1. Multiple matches exit 2 with all candidates listed.
-`locate` is an early navigation scaffold, exact name only, not semantic
-navigation, not LSP, not a stable API. A future editor bridge can consume
-this output.
+`locate` defaults to module-only compatibility and can target
+`--kind module|package|interface|any`. It is an early scanner-based
+navigation scaffold, exact name only, not semantic navigation, not LSP,
+not a stable API. A future editor bridge can consume this output.
+
+`declarations` exports the same pre-stable module/package/interface
+records used by `index` without the legacy module-only wrapper. It is a
+CLI bridge scaffold, not semantic resolution or a full parser.
 
 `xsim-log` is an early handoff scaffold. It parses existing synthetic
 xsim-style log files into diagnostics-like JSON or text output. It does

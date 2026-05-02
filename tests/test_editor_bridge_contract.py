@@ -105,6 +105,19 @@ def test_contract_index_modules_json():
     assert payload["declarations"]
 
 
+def test_contract_declarations_json():
+    result = _run_cli("declarations", "fixtures/modules", "--format", "json")
+    assert result.returncode == 0, result.stderr
+
+    payload = _json_stdout(result)
+    assert payload["kind"] == "declarations"
+    assert payload["source"] == "fixtures/modules"
+    assert isinstance(payload["declarations"], list)
+    assert payload["declarations"]
+    kinds = {declaration["kind"] for declaration in payload["declarations"]}
+    assert {"module", "package", "interface"} <= kinds
+
+
 def test_contract_locate_simple_module_json():
     result = _run_cli(
         "locate",
@@ -124,6 +137,8 @@ def test_contract_locate_simple_module_json():
 
     match = payload["matches"][0]
     assert match["module"] == "simple_mod"
+    assert match["kind"] == "module"
+    assert match["name"] == "simple_mod"
     assert match["file"] == "fixtures/modules/simple_module.sv"
     assert match["line"] == 1
     assert match["column"] == 1
@@ -176,7 +191,10 @@ def test_contract_doc_mentions_core_flows_and_limitations():
     assert "problems from-check" in text
     assert "problems from-xsim-log" in text
     assert "index <path>" in text
-    assert "locate <path> <module-name>" in text
+    assert "declarations <path>" in text
+    assert "locate <path> <name>" in text
+    assert "--kind package" in text
+    assert "--kind interface" in text
     assert "--backend pccx-lab" in text
     assert "not an lsp server" in lowered
     assert "stable abi/api" in lowered
