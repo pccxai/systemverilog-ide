@@ -148,6 +148,9 @@ references, recent command status, current mode, validation summaries, and
 bounded snippets by path/range instead of whole workspaces.  Any command
 proposal or validation proposal must remain proposal-only until an
 editor/user-controlled executor accepts an allowlisted proposal ID.
+Patch proposals are also contract-only: they may describe reviewed edits
+with repository-relative paths and bounded hunk previews, but they do not
+apply changes or execute commands.
 Approved validation execution must use fixed argument arrays, bounded
 output, an explicit user-approved command invocation, and no shell
 interpolation.  pccx-lab command execution remains future/prepared in

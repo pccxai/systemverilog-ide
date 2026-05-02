@@ -189,6 +189,12 @@ raw absolute private paths, generated artifacts, launcher calls, AI
 provider calls, MCP, LSP, marketplace packaging, release/tag flow, or
 real pccx-lab execution.
 
+Patch proposals are contract-only in this prototype.  The checked
+contract accepts repository-relative paths and bounded hunk previews for
+future user review, rejects private paths, secrets, shell commands,
+generated artifacts, raw provider output, and auto-apply fields, and does
+not apply changes.
+
 ## Prototype Daily-Driver Loop
 
 1. Inspect diagnostics and navigation.
@@ -209,6 +215,7 @@ Now:
 - context bundle command
 - selected-symbol context
 - validation command proposal
+- patch proposal contract
 - approved validation runner boundary
 - validation summary in the context bundle
 - validation cache status command

@@ -292,6 +292,18 @@ direct file modification, and no stable API claim.
 The boundary notes are tracked in
 [`docs/LIVE_WORKSPACE_AND_AI_BOUNDARY.md`](./docs/LIVE_WORKSPACE_AND_AI_BOUNDARY.md).
 
+`src/patch-proposal-contract.mjs` defines a provider-free patch proposal
+contract for future user-reviewed edits.  The contract accepts only
+repository-relative paths, bounded hunk previews, bounded rationale and
+validation plan text, explicit risk level, and `requiresUserReview=true`.
+It rejects private paths, secret-like assignments, shell commands,
+generated artifacts, model files, raw provider output, unknown command
+fields, and auto-apply flags.  It does not apply patches, write files,
+execute validation, call pccx-lab, call pccx-llm-launcher, call an AI
+provider, implement MCP, implement LSP, package the extension, create a
+release, or create a tag.  The contract notes are tracked in
+[`docs/patch-proposal-contract.md`](./docs/patch-proposal-contract.md).
+
 `pccxSystemVerilog.proposeValidationCommand` returns allowlisted
 validation command proposals as JSON data.  The proposal includes
 allowlisted proposal IDs, argument-array templates, reasons, risk levels, and
@@ -357,6 +369,7 @@ Now:
 - AI assistant status command and bounded context bundle command
 - selected-symbol context
 - validation command proposal
+- patch proposal contract
 - disabled-by-default approved validation runner boundary
 - recent validation summary and cache status command
 - pccx-lab backend status command
@@ -397,6 +410,7 @@ node editors/vscode-prototype/test/context-bundle.test.mjs
 node editors/vscode-prototype/test/selected-symbol-context.test.mjs
 node editors/vscode-prototype/test/ai-assistant-boundary.test.mjs
 node editors/vscode-prototype/test/validation-proposals.test.mjs
+node editors/vscode-prototype/test/patch-proposal-contract.test.mjs
 node editors/vscode-prototype/test/validation-result-summary.test.mjs
 node editors/vscode-prototype/test/validation-result-cache.test.mjs
 node editors/vscode-prototype/test/approved-validation-runner.test.mjs
