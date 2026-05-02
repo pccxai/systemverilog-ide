@@ -203,6 +203,10 @@ diagnostics, candidate files, and an approved validation plan.  Passing
 validation summaries produce no seed, and the helper does not generate or
 apply patches.
 
+pccx-lab command descriptors are data-only.  The checked status descriptor
+is future-state preparation for a reviewed CLI/core boundary; it has no
+executable field and does not run pccx-lab.
+
 ## Prototype Daily-Driver Loop
 
 1. Inspect diagnostics and navigation.
@@ -225,6 +229,7 @@ Now:
 - validation command proposal
 - patch proposal contract
 - validation-to-patch handoff contract
+- pccx-lab command descriptor contract
 - approved validation runner boundary
 - validation summary in the context bundle
 - validation cache status command

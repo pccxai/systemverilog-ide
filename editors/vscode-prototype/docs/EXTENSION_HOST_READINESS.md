@@ -147,6 +147,8 @@ in-memory preview state without file writes.
 The validation-to-patch handoff helper is a bounded context seed only; it
 does not generate a patch for passing validation results and does not
 apply changes.
+The pccx-lab command descriptor contract is data-only future-state
+preparation and does not execute pccx-lab.
 
 `pccxSystemVerilog.proposeValidationCommand` currently proposes only
 allowlisted templates, including the VS Code adapter smoke, editor bridge

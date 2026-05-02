@@ -135,6 +135,7 @@ async function testProposalAndStatusModulesAreDataOnly() {
     resolve(EXTENSION_ROOT, "src/patch-proposal-contract.mjs"),
     resolve(EXTENSION_ROOT, "src/patch-proposal-preview.mjs"),
     resolve(EXTENSION_ROOT, "src/validation-patch-handoff.mjs"),
+    resolve(EXTENSION_ROOT, "src/pccx-lab-command-descriptor.mjs"),
     resolve(EXTENSION_ROOT, "src/pccx-lab-status.mjs"),
   ]);
 
