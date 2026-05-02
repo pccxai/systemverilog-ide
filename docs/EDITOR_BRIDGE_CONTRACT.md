@@ -3,12 +3,13 @@
 ## Status
 
 This is an early, pre-stable CLI contract for external editor bridges.
-It is not an LSP server, a VS Code extension, a JetBrains plugin, or a
-stable ABI/API.  Treat all JSON shapes as subject to change while the
-`pccx-lab` boundary and IDE surface mature.
+It is not an LSP server, a published VS Code extension, a JetBrains
+plugin, or a stable ABI/API.  Treat all JSON shapes as subject to change
+while the `pccx-lab` boundary and IDE surface mature.
 
 ## Intended Consumers
 
+- The experimental local VS Code extension scaffold.
 - Future VS Code extension work.
 - Future JetBrains or other editor bridges.
 - Local scripts that need deterministic JSON.
@@ -75,8 +76,14 @@ prototype that consumes the checked JSON examples or limited live
 `pccx_ide_cli` JSON flows and translates them into diagnostic and
 navigation records.  Its local command facade requires explicit
 checked-example or live mode selection and emits VS Code-style JSON for
-known flows only.  It is not a VS Code extension, is not published, does
-not implement LSP, and does not make the JSON shape a stable ABI/API.
+known flows only.
+
+The same directory now includes an experimental local VS Code extension
+scaffold.  Its command handlers are thin wrappers around the local facade:
+VS Code command -> extension wrapper -> facade -> JSON ->
+diagnostics/navigation records.  The scaffold is not published, is not
+marketplace-ready, has no LSP, and is not a stable ABI/API.  Current
+coverage is static/smoke tests, not VS Code GUI integration tests.
 The prototype documents the 1-based CLI position to 0-based editor
 position conversion expected by editor adapters.
 
@@ -89,6 +96,12 @@ SystemVerilog source or existing log file
   -> pccx_ide_cli command
   -> JSON output
   -> editor problem list or navigation entry
+
+VS Code command
+  -> experimental extension wrapper
+  -> local pccx-vscode-prototype facade
+  -> JSON output
+  -> diagnostics/navigation records
 ```
 
 `problems` converts local diagnostics and log records into editor-friendly
@@ -100,7 +113,8 @@ declaration records.  `declarations` exports those records directly, and
 
 - Scanner-based scaffolds, not full SystemVerilog parsing.
 - No LSP server in this repository today.
-- No editor extension is implemented here.
+- No published or marketplace-ready editor extension is implemented here.
+- No VS Code GUI integration test in this repository today.
 - No stable schema yet.
 - No real xsim or Vivado execution.
 - No hardware access or hardware correctness claim.

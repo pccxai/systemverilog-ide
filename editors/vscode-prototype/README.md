@@ -1,13 +1,15 @@
 # VS Code Prototype Adapter
 
 This directory is an experimental local prototype for translating
-pre-stable editor bridge JSON into VS Code-style data records.
+pre-stable editor bridge JSON into VS Code-style data records and for
+hosting a minimal local VS Code extension package scaffold.
 
-It is not a VS Code extension, is not published to the marketplace, does
-not implement LSP, and does not define a stable ABI/API.  It can consume
-the checked examples under `docs/examples/editor-bridge` and can also run
-limited live `pccx_ide_cli` JSON flows from this source tree.  Both paths
-are tested without a VS Code GUI, npm install, Vivado, xsim, or hardware.
+The extension scaffold is not published, is not marketplace-ready, has no
+LSP, and does not define a stable ABI/API.  It can consume the checked
+examples under `docs/examples/editor-bridge` and can also run limited
+live JSON flows from this source tree through the local command facade.
+The current tests are static/smoke tests, not VS Code GUI integration
+tests, and they run without npm install, Vivado, xsim, or hardware.
 
 ## Data Mapping
 
@@ -64,8 +66,30 @@ node editors/vscode-prototype/bin/pccx-vscode-prototype.mjs navigation \
 The facade supports checked-example mode and live CLI mode for known
 flows only.  It does not silently fall back between modes, does not use
 shell interpolation, and does not accept arbitrary command strings.
-This is still not a VS Code extension package, not LSP, not a stable
-ABI/API, and not a marketplace publishing path.
+
+## Extension Package Scaffold
+
+`package.json` and `src/extension.mjs` define a minimal experimental local
+VS Code extension scaffold.  The package is `private`, has version
+`0.0.0`, and intentionally has no publisher, npm dependencies, VS Code
+test runner, bundler, `vsce`, or marketplace publishing script.
+
+The contributed commands are:
+
+- `pccxSystemVerilog.showDiagnosticsExample`
+- `pccxSystemVerilog.showNavigationExample`
+- `pccxSystemVerilog.runDiagnosticsLive`
+- `pccxSystemVerilog.runNavigationLive`
+
+The command handlers are thin wrappers around the local facade.  They
+build known facade argument arrays and run
+`bin/pccx-vscode-prototype.mjs`; they do not call `pccx_ide_cli`
+directly, do not invoke raw shell command strings, and do not accept
+arbitrary command execution.  Live paths are still prototype-only and are
+passed to known facade flows as argument-array entries.
+
+This scaffold is not LSP, not a full IDE replacement, not a stable
+ABI/API, and not a marketplace-ready or published extension.
 
 ## Local Smoke
 
@@ -73,6 +97,8 @@ ABI/API, and not a marketplace publishing path.
 node editors/vscode-prototype/test/adapter.test.mjs
 node editors/vscode-prototype/test/cli-runner.test.mjs
 node editors/vscode-prototype/test/facade.test.mjs
+node editors/vscode-prototype/test/extension-manifest.test.mjs
+node editors/vscode-prototype/test/extension-entrypoint.test.mjs
 bash scripts/vscode-adapter-smoke.sh
 ```
 
