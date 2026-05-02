@@ -138,6 +138,7 @@ async function testProposalAndStatusModulesAreDataOnly() {
     resolve(EXTENSION_ROOT, "src/pccx-lab-command-descriptor.mjs"),
     resolve(EXTENSION_ROOT, "src/launcher-status-contract.mjs"),
     resolve(EXTENSION_ROOT, "src/local-workflow-status.mjs"),
+    resolve(EXTENSION_ROOT, "src/context-bundle-audit.mjs"),
     resolve(EXTENSION_ROOT, "src/pccx-lab-status.mjs"),
   ]);
 

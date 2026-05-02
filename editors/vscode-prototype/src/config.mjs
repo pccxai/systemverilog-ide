@@ -41,6 +41,7 @@ export const AI_COMMAND_IDS = Object.freeze([
   "pccxSystemVerilog.showPatchProposalPreview",
   "pccxSystemVerilog.clearPatchProposalPreview",
   "pccxSystemVerilog.showLocalWorkflowStatus",
+  "pccxSystemVerilog.showContextBundleAudit",
 ]);
 
 export const PCCX_LAB_COMMAND_IDS = Object.freeze([

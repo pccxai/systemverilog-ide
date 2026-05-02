@@ -11,6 +11,7 @@ import {
   FACADE_COMMAND_IDS,
   LIVE_WORKSPACE_NAVIGATION_COMMAND,
   PCCX_LAB_BACKEND_STATUS_COMMAND,
+  SHOW_CONTEXT_BUNDLE_AUDIT_COMMAND,
   SHOW_LOCAL_WORKFLOW_STATUS_COMMAND,
   SHOW_PATCH_PROPOSAL_PREVIEW_COMMAND,
   SHOW_RECENT_VALIDATION_RESULTS_COMMAND,
@@ -1293,6 +1294,72 @@ async function testLocalWorkflowStatusCommandReturnsFixtureOnlyBoundaryState() {
   assert.ok(informationMessages.some(([message]) => /Local workflow status/.test(message)));
 }
 
+async function testContextBundleAuditCommandReturnsBoundedAudit() {
+  const outputLines = [];
+  const informationMessages = [];
+  const document = {
+    uri: { fsPath: "/repo/rtl/top.sv" },
+    languageId: "systemverilog",
+    lineCount: 1,
+    lineAt() {
+      return { text: "module top;" };
+    },
+    getText() {
+      return "top";
+    },
+  };
+  const handler = createCommandHandler(
+    SHOW_CONTEXT_BUNDLE_AUDIT_COMMAND,
+    {
+      workspace: {
+        workspaceFolders: [{ uri: { fsPath: "/repo" } }],
+        getWorkspaceFolder() {
+          return { uri: { fsPath: "/repo" } };
+        },
+      },
+      window: {
+        activeTextEditor: {
+          document,
+          selection: {
+            start: { line: 0, character: 7 },
+            end: { line: 0, character: 10 },
+          },
+        },
+        showInformationMessage(...args) {
+          informationMessages.push(args);
+        },
+      },
+      languages: {
+        getDiagnostics() {
+          return [{ message: "missing endmodule", range: { start: { line: 0 }, end: { line: 0 } } }];
+        },
+      },
+    },
+    {
+      outputChannel: {
+        appendLine(line) {
+          outputLines.push(line);
+        },
+        show() {},
+      },
+    },
+  );
+
+  const result = await handler();
+
+  assert.equal(result.ok, true);
+  assert.equal(result.commandId, SHOW_CONTEXT_BUNDLE_AUDIT_COMMAND);
+  assert.equal(result.kind, "context-bundle-audit");
+  assert.ok(result.audit.approximateCharacterCount > 0);
+  assert.equal(result.audit.diagnosticCount, 1);
+  assert.equal(result.audit.snippetCount, 1);
+  assert.equal(result.audit.safety.providerCalls, false);
+  assert.equal(result.audit.safety.fullLogsExcluded, true);
+  assert.ok(outputLines.some((line) => line.includes("Context Bundle Audit")));
+  assert.ok(informationMessages.some(([message]) => /Context bundle audit/.test(message)));
+  assert.doesNotMatch(JSON.stringify(result.audit), /\/repo/);
+}
+
 async function testPccxLabBackendStatusCommandReturnsStatusOnly() {
   const settings = new Map([
     ["mode", "checkedExample"],
@@ -1365,6 +1432,7 @@ await testApprovedValidationRunnerExecutesAllowlistedProposalWhenEnabled();
 await testValidationResultCacheCommandsShowAndClear();
 await testPatchProposalPreviewCommandsShowAndClearCheckedProposalOnly();
 await testLocalWorkflowStatusCommandReturnsFixtureOnlyBoundaryState();
+await testContextBundleAuditCommandReturnsBoundedAudit();
 await testPccxLabBackendStatusCommandReturnsStatusOnly();
 
 console.log("vscode extension entrypoint tests ok");

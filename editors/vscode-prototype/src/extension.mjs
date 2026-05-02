@@ -56,6 +56,10 @@ import {
   createLocalWorkflowStatus,
   formatLocalWorkflowStatus,
 } from "./local-workflow-status.mjs";
+import {
+  createContextBundleAudit,
+  formatContextBundleAudit,
+} from "./context-bundle-audit.mjs";
 
 const EXTENSION_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_DIAGNOSTIC_FILE_ROOT = resolve(EXTENSION_ROOT, "../..");
@@ -89,6 +93,8 @@ export const CLEAR_PATCH_PROPOSAL_PREVIEW_COMMAND =
   "pccxSystemVerilog.clearPatchProposalPreview";
 export const SHOW_LOCAL_WORKFLOW_STATUS_COMMAND =
   "pccxSystemVerilog.showLocalWorkflowStatus";
+export const SHOW_CONTEXT_BUNDLE_AUDIT_COMMAND =
+  "pccxSystemVerilog.showContextBundleAudit";
 export const PCCX_LAB_BACKEND_STATUS_COMMAND =
   "pccxSystemVerilog.showPccxLabBackendStatus";
 
@@ -386,6 +392,9 @@ function appendCommandOutput(outputChannel, commandId, result) {
   }
   if (result.kind === "local-workflow-status") {
     outputChannel.appendLine(formatLocalWorkflowStatus(result.status));
+  }
+  if (result.kind === "context-bundle-audit") {
+    outputChannel.appendLine(formatContextBundleAudit(result.audit));
   }
   if (result.status?.kind === "pccx-lab-backend-status") {
     outputChannel.appendLine(JSON.stringify(result.status, null, 2));
@@ -941,6 +950,33 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
         };
         vscodeApi?.window?.showInformationMessage?.(
           `Local workflow status: ${status.extensionMode}, validation ${status.recentValidation.latestStatus}.`,
+          result,
+        );
+      } catch (error) {
+        result = { ok: false, commandId, error: error.message };
+        vscodeApi?.window?.showWarningMessage?.(result.error, result);
+      }
+      appendCommandOutput(runtime.outputChannel, commandId, result);
+      return result;
+    }
+
+    if (commandId === SHOW_CONTEXT_BUNDLE_AUDIT_COMMAND) {
+      let result;
+      try {
+        const config = normalizeConfig(rawConfig);
+        const context = collectActiveDocumentContext(vscodeApi, runtime, config);
+        const request = createAssistantRequest(config, context.input, {
+          workspaceRoot: context.workspaceRoot,
+        });
+        const audit = createContextBundleAudit(request.contextBundle);
+        result = {
+          ok: true,
+          commandId,
+          kind: "context-bundle-audit",
+          audit,
+        };
+        vscodeApi?.window?.showInformationMessage?.(
+          `Context bundle audit: ${audit.approximateCharacterCount} character(s), ${audit.diagnosticCount} diagnostic(s).`,
           result,
         );
       } catch (error) {
