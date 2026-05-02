@@ -1,0 +1,41 @@
+{
+  "name": "pccx-systemverilog-ide-prototype",
+  "displayName": "PCCX SystemVerilog IDE Prototype",
+  "description": "Experimental local VS Code extension scaffold for the PCCX SystemVerilog IDE prototype; not published and not marketplace-ready.",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/extension.mjs",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:pccxSystemVerilog.showDiagnosticsExample",
+    "onCommand:pccxSystemVerilog.showNavigationExample",
+    "onCommand:pccxSystemVerilog.runDiagnosticsLive",
+    "onCommand:pccxSystemVerilog.runNavigationLive"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "pccxSystemVerilog.showDiagnosticsExample",
+        "title": "PCCX SystemVerilog: Show Diagnostics Example"
+      },
+      {
+        "command": "pccxSystemVerilog.showNavigationExample",
+        "title": "PCCX SystemVerilog: Show Navigation Example"
+      },
+      {
+        "command": "pccxSystemVerilog.runDiagnosticsLive",
+        "title": "PCCX SystemVerilog: Run Diagnostics Live"
+      },
+      {
+        "command": "pccxSystemVerilog.runNavigationLive",
+        "title": "PCCX SystemVerilog: Run Navigation Live"
+      }
+    ]
+  }
+}
