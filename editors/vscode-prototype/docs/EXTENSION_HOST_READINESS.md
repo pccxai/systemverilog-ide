@@ -141,6 +141,9 @@ validation proposal shapes, plus a checked patch proposal contract for
 future user-reviewed edits, rather than direct execution.  User approval
 is still required before applying patches, running validation commands,
 or committing changes.
+`pccxSystemVerilog.showPatchProposalPreview` previews checked proposal IDs
+only, and `pccxSystemVerilog.clearPatchProposalPreview` clears the
+in-memory preview state without file writes.
 
 `pccxSystemVerilog.proposeValidationCommand` currently proposes only
 allowlisted templates, including the VS Code adapter smoke, editor bridge

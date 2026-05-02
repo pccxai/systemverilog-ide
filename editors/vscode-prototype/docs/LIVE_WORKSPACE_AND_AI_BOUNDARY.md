@@ -193,7 +193,9 @@ Patch proposals are contract-only in this prototype.  The checked
 contract accepts repository-relative paths and bounded hunk previews for
 future user review, rejects private paths, secrets, shell commands,
 generated artifacts, raw provider output, and auto-apply fields, and does
-not apply changes.
+not apply changes.  The preview command shows checked proposal IDs only
+through VS Code-native output and the clear command removes only the
+in-memory preview result.
 
 ## Prototype Daily-Driver Loop
 

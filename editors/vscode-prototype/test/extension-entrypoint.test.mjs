@@ -4,12 +4,14 @@ import {
   AI_CONTEXT_BUNDLE_COMMAND,
   AI_ASSISTANT_STATUS_COMMAND,
   APPROVED_VALIDATION_RUNNER_COMMAND,
+  CLEAR_PATCH_PROPOSAL_PREVIEW_COMMAND,
   CLEAR_VALIDATION_RESULT_CACHE_COMMAND,
   COMMAND_IDS,
   CHECKED_EXAMPLE_NAVIGATION_COMMAND,
   FACADE_COMMAND_IDS,
   LIVE_WORKSPACE_NAVIGATION_COMMAND,
   PCCX_LAB_BACKEND_STATUS_COMMAND,
+  SHOW_PATCH_PROPOSAL_PREVIEW_COMMAND,
   SHOW_RECENT_VALIDATION_RESULTS_COMMAND,
   SHOW_VALIDATION_CACHE_STATUS_COMMAND,
   VALIDATION_PROPOSAL_COMMAND,
@@ -1194,6 +1196,61 @@ async function testValidationResultCacheCommandsShowAndClear() {
   assert.ok(informationMessages.some(([message]) => /Cleared 1 cached validation result/.test(message)));
 }
 
+async function testPatchProposalPreviewCommandsShowAndClearCheckedProposalOnly() {
+  const informationMessages = [];
+  const warningMessages = [];
+  const outputLines = [];
+  const runtime = {
+    outputChannel: {
+      appendLine(line) {
+        outputLines.push(line);
+      },
+      show() {},
+    },
+  };
+  const vscodeApi = {
+    window: {
+      showInformationMessage(...args) {
+        informationMessages.push(args);
+      },
+      showWarningMessage(...args) {
+        warningMessages.push(args);
+      },
+    },
+  };
+  const showHandler = createCommandHandler(SHOW_PATCH_PROPOSAL_PREVIEW_COMMAND, vscodeApi, runtime);
+  const clearHandler = createCommandHandler(CLEAR_PATCH_PROPOSAL_PREVIEW_COMMAND, vscodeApi, runtime);
+
+  const shown = await showHandler("missingEndmodulePreview");
+
+  assert.equal(shown.ok, true);
+  assert.equal(shown.kind, "patch-proposal-preview");
+  assert.equal(shown.summary.proposalId, "missingEndmodulePreview");
+  assert.equal(shown.proposalOnly, true);
+  assert.equal(shown.appliesPatches, false);
+  assert.equal(shown.writesFiles, false);
+  assert.equal(shown.providerCalls, false);
+  assert.equal(shown.runtimeCalls, false);
+  assert.equal(runtime.recentPatchProposalPreview.summary.proposalId, "missingEndmodulePreview");
+  assert.ok(outputLines.some((line) => line.includes("Patch Proposal Preview")));
+  assert.ok(outputLines.some((line) => line.includes("appliesPatches: no")));
+  assert.ok(informationMessages.some(([message]) => /Patch proposal preview/.test(message)));
+  assert.doesNotMatch(JSON.stringify(shown), /\/home\/|TOKEN=|scripts\/private/);
+
+  const rejected = await showHandler({ proposal: { proposalId: "unsafe" } });
+
+  assert.equal(rejected.ok, false);
+  assert.match(rejected.error, /checked proposal IDs only/);
+  assert.ok(warningMessages.some(([message]) => /checked proposal IDs only/.test(message)));
+
+  const cleared = await clearHandler();
+
+  assert.equal(cleared.ok, true);
+  assert.equal(cleared.kind, "patch-proposal-preview-clear");
+  assert.equal(cleared.cleared, true);
+  assert.equal(runtime.recentPatchProposalPreview, null);
+}
+
 async function testPccxLabBackendStatusCommandReturnsStatusOnly() {
   const settings = new Map([
     ["mode", "checkedExample"],
@@ -1264,6 +1321,7 @@ await testApprovedValidationRunnerBlocksByDefaultAndUpdatesContext();
 await testApprovedValidationRunnerRequiresProposalIdWhenEnabled();
 await testApprovedValidationRunnerExecutesAllowlistedProposalWhenEnabled();
 await testValidationResultCacheCommandsShowAndClear();
+await testPatchProposalPreviewCommandsShowAndClearCheckedProposalOnly();
 await testPccxLabBackendStatusCommandReturnsStatusOnly();
 
 console.log("vscode extension entrypoint tests ok");

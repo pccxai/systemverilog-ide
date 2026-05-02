@@ -28,6 +28,8 @@
     "onCommand:pccxSystemVerilog.showRecentValidationResults",
     "onCommand:pccxSystemVerilog.showValidationCacheStatus",
     "onCommand:pccxSystemVerilog.clearValidationResultCache",
+    "onCommand:pccxSystemVerilog.showPatchProposalPreview",
+    "onCommand:pccxSystemVerilog.clearPatchProposalPreview",
     "onCommand:pccxSystemVerilog.showPccxLabBackendStatus"
   ],
   "contributes": {
@@ -91,6 +93,14 @@
       {
         "command": "pccxSystemVerilog.clearValidationResultCache",
         "title": "PCCX SystemVerilog: Clear Validation Result Cache (Experimental)"
+      },
+      {
+        "command": "pccxSystemVerilog.showPatchProposalPreview",
+        "title": "PCCX SystemVerilog: Show Patch Proposal Preview (Experimental)"
+      },
+      {
+        "command": "pccxSystemVerilog.clearPatchProposalPreview",
+        "title": "PCCX SystemVerilog: Clear Patch Proposal Preview (Experimental)"
       },
       {
         "command": "pccxSystemVerilog.showPccxLabBackendStatus",

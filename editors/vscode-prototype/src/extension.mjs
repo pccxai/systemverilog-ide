@@ -48,6 +48,10 @@ import {
 import {
   createPccxLabBackendStatus,
 } from "./pccx-lab-status.mjs";
+import {
+  createPatchProposalPreview,
+  listCheckedPatchProposals,
+} from "./patch-proposal-preview.mjs";
 
 const EXTENSION_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_DIAGNOSTIC_FILE_ROOT = resolve(EXTENSION_ROOT, "../..");
@@ -75,6 +79,10 @@ export const SHOW_VALIDATION_CACHE_STATUS_COMMAND =
   "pccxSystemVerilog.showValidationCacheStatus";
 export const CLEAR_VALIDATION_RESULT_CACHE_COMMAND =
   "pccxSystemVerilog.clearValidationResultCache";
+export const SHOW_PATCH_PROPOSAL_PREVIEW_COMMAND =
+  "pccxSystemVerilog.showPatchProposalPreview";
+export const CLEAR_PATCH_PROPOSAL_PREVIEW_COMMAND =
+  "pccxSystemVerilog.clearPatchProposalPreview";
 export const PCCX_LAB_BACKEND_STATUS_COMMAND =
   "pccxSystemVerilog.showPccxLabBackendStatus";
 
@@ -260,6 +268,15 @@ function validationEntryQuickPickItems(entries) {
   }));
 }
 
+function patchProposalQuickPickItems(proposals) {
+  return proposals.map((proposal) => ({
+    label: proposal.title,
+    description: [proposal.riskLevel, proposal.proposalId].filter(Boolean).join(" "),
+    detail: proposal.summary,
+    proposalId: proposal.proposalId,
+  }));
+}
+
 function validationOutputChannelFromRuntime(runtime = {}) {
   return runtime.validationOutputChannel ?? runtime.outputChannel;
 }
@@ -350,6 +367,15 @@ function appendCommandOutput(outputChannel, commandId, result) {
     outputChannel.appendLine(JSON.stringify({
       kind: result.kind,
       clearedCount: result.clearedCount,
+    }, null, 2));
+  }
+  if (result.kind === "patch-proposal-preview") {
+    outputChannel.appendLine(result.previewText);
+  }
+  if (result.kind === "patch-proposal-preview-clear") {
+    outputChannel.appendLine(JSON.stringify({
+      kind: result.kind,
+      cleared: result.cleared,
     }, null, 2));
   }
   if (result.status?.kind === "pccx-lab-backend-status") {
@@ -813,6 +839,65 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
         vscodeApi?.window?.showWarningMessage?.(result.error, result);
       }
       appendValidationOutput(validationOutputChannelFromRuntime(runtime), commandId, result);
+      appendCommandOutput(runtime.outputChannel, commandId, result);
+      return result;
+    }
+
+    if (commandId === SHOW_PATCH_PROPOSAL_PREVIEW_COMMAND) {
+      let result;
+      try {
+        let request = input;
+        if (request == null && typeof vscodeApi?.window?.showQuickPick === "function") {
+          const selected = await vscodeApi.window.showQuickPick(
+            patchProposalQuickPickItems(listCheckedPatchProposals({
+              checkedPatchProposals: runtime.checkedPatchProposals,
+            })),
+            {
+              title: "Patch Proposal Preview",
+              placeHolder: "Select a checked patch proposal",
+            },
+          );
+          request = selected?.proposalId ?? null;
+        }
+        result = {
+          ok: true,
+          commandId,
+          ...createPatchProposalPreview(request, {
+            checkedPatchProposals: runtime.checkedPatchProposals,
+          }),
+        };
+        runtime.recentPatchProposalPreview = result;
+        vscodeApi?.window?.showInformationMessage?.(
+          `Patch proposal preview: ${result.summary.title}`,
+          result,
+        );
+      } catch (error) {
+        result = { ok: false, commandId, error: error.message };
+        vscodeApi?.window?.showWarningMessage?.(result.error, result);
+      }
+      appendCommandOutput(runtime.outputChannel, commandId, result);
+      return result;
+    }
+
+    if (commandId === CLEAR_PATCH_PROPOSAL_PREVIEW_COMMAND) {
+      let result;
+      try {
+        const cleared = runtime.recentPatchProposalPreview != null;
+        runtime.recentPatchProposalPreview = null;
+        result = {
+          ok: true,
+          commandId,
+          kind: "patch-proposal-preview-clear",
+          cleared,
+        };
+        vscodeApi?.window?.showInformationMessage?.(
+          cleared ? "Cleared patch proposal preview." : "No patch proposal preview was cached.",
+          result,
+        );
+      } catch (error) {
+        result = { ok: false, commandId, error: error.message };
+        vscodeApi?.window?.showWarningMessage?.(result.error, result);
+      }
       appendCommandOutput(runtime.outputChannel, commandId, result);
       return result;
     }

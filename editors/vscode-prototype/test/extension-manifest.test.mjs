@@ -21,6 +21,8 @@ const COMMAND_IDS = [
   "pccxSystemVerilog.showRecentValidationResults",
   "pccxSystemVerilog.showValidationCacheStatus",
   "pccxSystemVerilog.clearValidationResultCache",
+  "pccxSystemVerilog.showPatchProposalPreview",
+  "pccxSystemVerilog.clearPatchProposalPreview",
   "pccxSystemVerilog.showPccxLabBackendStatus",
 ];
 
