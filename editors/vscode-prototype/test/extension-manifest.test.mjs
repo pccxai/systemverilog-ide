@@ -23,6 +23,7 @@ const COMMAND_IDS = [
   "pccxSystemVerilog.clearValidationResultCache",
   "pccxSystemVerilog.showPatchProposalPreview",
   "pccxSystemVerilog.clearPatchProposalPreview",
+  "pccxSystemVerilog.showLocalWorkflowStatus",
   "pccxSystemVerilog.showPccxLabBackendStatus",
 ];
 
@@ -125,6 +126,7 @@ async function testDocsKeepExperimentalScope() {
   assert.match(combined, /validation-to-patch handoff/i);
   assert.match(combined, /pccx-lab command\s+descriptor contract/i);
   assert.match(combined, /launcher status contract/i);
+  assert.match(combined, /showLocalWorkflowStatus/);
   assert.match(combined, /approved validation runner/i);
   assert.match(combined, /allowlisted proposal IDs/i);
   assert.match(combined, /pccx-lab backend status/i);

@@ -11,6 +11,7 @@ import {
   FACADE_COMMAND_IDS,
   LIVE_WORKSPACE_NAVIGATION_COMMAND,
   PCCX_LAB_BACKEND_STATUS_COMMAND,
+  SHOW_LOCAL_WORKFLOW_STATUS_COMMAND,
   SHOW_PATCH_PROPOSAL_PREVIEW_COMMAND,
   SHOW_RECENT_VALIDATION_RESULTS_COMMAND,
   SHOW_VALIDATION_CACHE_STATUS_COMMAND,
@@ -1251,6 +1252,47 @@ async function testPatchProposalPreviewCommandsShowAndClearCheckedProposalOnly()
   assert.equal(runtime.recentPatchProposalPreview, null);
 }
 
+async function testLocalWorkflowStatusCommandReturnsFixtureOnlyBoundaryState() {
+  const outputLines = [];
+  const informationMessages = [];
+  const runtime = {
+    outputChannel: {
+      appendLine(line) {
+        outputLines.push(line);
+      },
+      show() {},
+    },
+  };
+  const handler = createCommandHandler(
+    SHOW_LOCAL_WORKFLOW_STATUS_COMMAND,
+    {
+      window: {
+        showInformationMessage(...args) {
+          informationMessages.push(args);
+        },
+      },
+    },
+    runtime,
+  );
+
+  const result = await handler();
+
+  assert.equal(result.ok, true);
+  assert.equal(result.commandId, SHOW_LOCAL_WORKFLOW_STATUS_COMMAND);
+  assert.equal(result.kind, "local-workflow-status");
+  assert.equal(result.status.extensionMode, "checkedExample");
+  assert.equal(result.status.validationRunner.enabled, false);
+  assert.equal(result.status.recentValidation.count, 0);
+  assert.equal(result.status.pccxLabBoundary.state, "future");
+  assert.equal(result.status.pccxLabBoundary.executes, false);
+  assert.equal(result.status.launcherBoundary.state, "future");
+  assert.equal(result.status.launcherBoundary.launcherCalls, false);
+  assert.equal(result.status.safety.providerCalls, false);
+  assert.equal(result.status.safety.pccxLabExecution, false);
+  assert.ok(outputLines.some((line) => line.includes("Local Workflow Status")));
+  assert.ok(informationMessages.some(([message]) => /Local workflow status/.test(message)));
+}
+
 async function testPccxLabBackendStatusCommandReturnsStatusOnly() {
   const settings = new Map([
     ["mode", "checkedExample"],
@@ -1322,6 +1364,7 @@ await testApprovedValidationRunnerRequiresProposalIdWhenEnabled();
 await testApprovedValidationRunnerExecutesAllowlistedProposalWhenEnabled();
 await testValidationResultCacheCommandsShowAndClear();
 await testPatchProposalPreviewCommandsShowAndClearCheckedProposalOnly();
+await testLocalWorkflowStatusCommandReturnsFixtureOnlyBoundaryState();
 await testPccxLabBackendStatusCommandReturnsStatusOnly();
 
 console.log("vscode extension entrypoint tests ok");

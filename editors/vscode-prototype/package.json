@@ -30,6 +30,7 @@
     "onCommand:pccxSystemVerilog.clearValidationResultCache",
     "onCommand:pccxSystemVerilog.showPatchProposalPreview",
     "onCommand:pccxSystemVerilog.clearPatchProposalPreview",
+    "onCommand:pccxSystemVerilog.showLocalWorkflowStatus",
     "onCommand:pccxSystemVerilog.showPccxLabBackendStatus"
   ],
   "contributes": {
@@ -101,6 +102,10 @@
       {
         "command": "pccxSystemVerilog.clearPatchProposalPreview",
         "title": "PCCX SystemVerilog: Clear Patch Proposal Preview (Experimental)"
+      },
+      {
+        "command": "pccxSystemVerilog.showLocalWorkflowStatus",
+        "title": "PCCX SystemVerilog: Show Local Workflow Status (Experimental)"
       },
       {
         "command": "pccxSystemVerilog.showPccxLabBackendStatus",

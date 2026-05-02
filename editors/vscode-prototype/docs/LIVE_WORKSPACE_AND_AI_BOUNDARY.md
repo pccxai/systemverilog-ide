@@ -212,6 +212,11 @@ bounded future-state metadata, but it does not call pccx-llm-launcher,
 communicate with devices, include model paths, include board logs, or make
 device performance claims.
 
+Local workflow status aggregates only local and fixture state: extension
+mode, validation runner settings, recent validation cache summary,
+pccx-lab descriptor state, launcher fixture status, and bounded context
+counts.  It does not execute pccx-lab or call the launcher.
+
 ## Prototype Daily-Driver Loop
 
 1. Inspect diagnostics and navigation.
@@ -236,6 +241,7 @@ Now:
 - validation-to-patch handoff contract
 - pccx-lab command descriptor contract
 - launcher status contract
+- local workflow status command
 - approved validation runner boundary
 - validation summary in the context bundle
 - validation cache status command

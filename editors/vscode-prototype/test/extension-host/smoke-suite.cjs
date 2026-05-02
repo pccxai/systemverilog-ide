@@ -73,6 +73,7 @@ async function run() {
     "pccxSystemVerilog.clearValidationResultCache",
     "pccxSystemVerilog.showPatchProposalPreview",
     "pccxSystemVerilog.clearPatchProposalPreview",
+    "pccxSystemVerilog.showLocalWorkflowStatus",
     "pccxSystemVerilog.showPccxLabBackendStatus",
   ]);
 
@@ -396,6 +397,19 @@ async function run() {
   assert.equal(clearPatchPreview.ok, true);
   assert.equal(clearPatchPreview.kind, "patch-proposal-preview-clear");
   assert.equal(clearPatchPreview.cleared, true);
+
+  const localWorkflowStatus = await vscode.commands.executeCommand(
+    "pccxSystemVerilog.showLocalWorkflowStatus",
+  );
+  assert.equal(localWorkflowStatus.ok, true);
+  assert.equal(localWorkflowStatus.kind, "local-workflow-status");
+  assert.equal(localWorkflowStatus.status.extensionMode, "liveWorkspace");
+  assert.equal(localWorkflowStatus.status.pccxLabBoundary.state, "future");
+  assert.equal(localWorkflowStatus.status.pccxLabBoundary.executes, false);
+  assert.equal(localWorkflowStatus.status.launcherBoundary.state, "future");
+  assert.equal(localWorkflowStatus.status.launcherBoundary.launcherCalls, false);
+  assert.equal(localWorkflowStatus.status.safety.providerCalls, false);
+  assert.equal(localWorkflowStatus.status.safety.pccxLabExecution, false);
 
   const disabledValidationRun = await vscode.commands.executeCommand(
     "pccxSystemVerilog.runApprovedValidationCommand",
