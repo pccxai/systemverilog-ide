@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 
 import {
+  AI_CONTEXT_BUNDLE_COMMAND,
+  AI_ASSISTANT_STATUS_COMMAND,
   COMMAND_IDS,
   CHECKED_EXAMPLE_NAVIGATION_COMMAND,
+  FACADE_COMMAND_IDS,
   activate,
   buildFacadeArgsForCommand,
   buildFacadeInvocationForCommand,
@@ -76,7 +79,7 @@ function configFor(commandId) {
 }
 
 function testKnownFacadeArgs() {
-  for (const commandId of COMMAND_IDS) {
+  for (const commandId of FACADE_COMMAND_IDS) {
     assert.deepEqual(
       buildFacadeArgsForCommand(commandId, configFor(commandId)),
       EXPECTED_ARGS.get(commandId),
@@ -215,6 +218,7 @@ function testResolveCommandRequestUsesVsCodeSettings() {
     ["pythonPath", "python-custom"],
     ["defaultSource", "configured.sv"],
     ["defaultLog", "configured.log"],
+    ["defaultNavigationRoot", "configured/modules"],
     ["defaultModule", "pkg_defs"],
     ["defaultDeclarationKind", "package"],
   ]);
@@ -246,6 +250,7 @@ function testResolveCommandRequestUsesVsCodeSettings() {
     pythonPath: "python-custom",
     defaultSource: "configured.sv",
     defaultLog: "configured.log",
+    defaultNavigationRoot: "configured/modules",
     defaultModule: "pkg_defs",
     defaultDeclarationKind: "package",
   });
@@ -266,6 +271,7 @@ function testResolveCommandRequestUsesVsCodeSettings() {
       pythonPath: "python-custom",
       defaultSource: "configured.sv",
       defaultLog: "configured.log",
+      defaultNavigationRoot: "configured/modules",
       defaultModule: "pkg_defs",
       defaultDeclarationKind: "package",
     },
@@ -287,6 +293,7 @@ function testResolveCommandRequestUsesVsCodeSettings() {
       pythonPath: "python-custom",
       defaultSource: "configured.sv",
       defaultLog: "configured.log",
+      defaultNavigationRoot: "configured/modules",
       defaultModule: "pkg_defs",
       defaultDeclarationKind: "package",
     },
@@ -308,6 +315,7 @@ function testResolveCommandRequestUsesVsCodeSettings() {
       pythonPath: "python-custom",
       defaultSource: "explicit.sv",
       defaultLog: "configured.log",
+      defaultNavigationRoot: "configured/modules",
       defaultModule: "pkg_defs",
       defaultDeclarationKind: "package",
     },
@@ -607,6 +615,132 @@ async function testCommandHandlerCanBeUsedWithoutRealVsCode() {
   assert.equal(result.ok, true);
 }
 
+async function testAIStatusCommandReturnsDisabledBackendNone() {
+  const handler = createCommandHandler(AI_ASSISTANT_STATUS_COMMAND, null, {});
+
+  const result = await handler();
+
+  assert.equal(result.ok, true);
+  assert.equal(result.commandId, AI_ASSISTANT_STATUS_COMMAND);
+  assert.equal(result.status.status, "disabled");
+  assert.equal(result.status.backend, "none");
+  assert.equal(result.status.providerCalls, false);
+  assert.equal(result.status.runtimeCalls, false);
+  assert.equal(result.status.providerCallsImplemented, false);
+  assert.equal(result.status.runtimeCallsImplemented, false);
+  assert.equal(result.status.mcpServerImplemented, false);
+  assert.deepEqual(
+    result.status.allowedActions.map((action) => action.kind),
+    [
+      "explainDiagnostics",
+      "proposePatch",
+      "proposeValidationCommand",
+      "summarizeLog",
+      "askForMoreContext",
+      "openRelatedSymbol",
+    ],
+  );
+  assert.ok(result.status.allowedActions.every((action) => action.execution === "proposalOnly"));
+  assert.ok(result.status.disallowedActions.includes("writeFile"));
+  assert.ok(result.status.disallowedActions.includes("release"));
+  assert.ok(result.status.disallowedActions.includes("accessSecrets"));
+}
+
+async function testAIContextBundleCommandUsesActiveEditorSelectionAndDiagnostics() {
+  const document = {
+    uri: { fsPath: "/repo/rtl/top.sv" },
+    languageId: "systemverilog",
+    getText(range) {
+      assert.equal(range.start.line, 0);
+      return "module top;\nendmodule\n";
+    },
+  };
+  const selection = {
+    start: { line: 0, character: 0 },
+    end: { line: 1, character: 9 },
+  };
+  const vscodeApi = {
+    DiagnosticSeverity: {
+      Error: 0,
+      Warning: 1,
+      Information: 2,
+      Hint: 3,
+    },
+    workspace: {
+      workspaceFolders: [{ uri: { fsPath: "/repo" } }],
+      getWorkspaceFolder() {
+        return { uri: { fsPath: "/repo" } };
+      },
+    },
+    window: {
+      activeTextEditor: {
+        document,
+        selection,
+      },
+    },
+    languages: {
+      getDiagnostics(uri) {
+        assert.equal(uri.fsPath, "/repo/rtl/top.sv");
+        return [
+          {
+            range: {
+              start: { line: 0, character: 0 },
+              end: { line: 0, character: 6 },
+            },
+            severity: 0,
+            message: "missing endmodule",
+            source: "pccx_ide_cli",
+            code: "PCCX-SCAFFOLD-003",
+          },
+        ];
+      },
+    },
+  };
+  const runtime = {
+    recentNavigationItems: [
+      {
+        name: "top",
+        kind: "module",
+        file: "/repo/rtl/top.sv",
+        line: 1,
+        column: 1,
+      },
+    ],
+    recentCommandStatus: {
+      commandId: "pccxSystemVerilog.publishCheckedExampleDiagnostics",
+      ok: true,
+      actionKind: "diagnostics",
+      summary: "1 diagnostic(s)",
+      facade: { command: "diagnostics", mode: "example" },
+      diagnosticCount: 1,
+      navigationItemCount: 0,
+    },
+  };
+  const handler = createCommandHandler(AI_CONTEXT_BUNDLE_COMMAND, vscodeApi, runtime);
+
+  const result = await handler();
+
+  assert.equal(result.ok, true);
+  assert.equal(result.commandId, AI_CONTEXT_BUNDLE_COMMAND);
+  assert.equal(result.kind, "ai-context-bundle");
+  assert.equal(result.status, "disabled");
+  assert.equal(result.backend, "none");
+  assert.equal(result.providerCalls, false);
+  assert.equal(result.runtimeCalls, false);
+  assert.deepEqual(result.contextBundle.selectedFile, { path: "rtl/top.sv" });
+  assert.equal(result.contextBundle.selectedRange.start.line, 0);
+  assert.equal(result.contextBundle.configuration.mode, "checkedExample");
+  assert.equal(result.contextBundle.configuration.aiAssistant.enabled, false);
+  assert.equal(result.contextBundle.diagnostics.length, 1);
+  assert.equal(result.contextBundle.diagnostics[0].path, "rtl/top.sv");
+  assert.equal(result.contextBundle.snippets.length, 1);
+  assert.equal(result.contextBundle.snippets[0].path, "rtl/top.sv");
+  assert.equal(result.contextBundle.symbols.declarations.length, 1);
+  assert.equal(result.contextBundle.symbols.declarations[0].path, "rtl/top.sv");
+  assert.equal(result.contextBundle.recentCommand.commandId, "pccxSystemVerilog.publishCheckedExampleDiagnostics");
+  assert.doesNotMatch(JSON.stringify(result.contextBundle), /\/repo/);
+}
+
 testKnownFacadeArgs();
 testUnknownCommandsRejected();
 testCheckedExampleDiagnosticsCommandStaysExampleMode();
@@ -621,5 +755,7 @@ await testCheckedExampleDefinitionProviderReturnsLocations();
 await testActivationRegistersCheckedExampleDefinitionProvider();
 await testNoVsCodeRuntimeIsANoop();
 await testCommandHandlerCanBeUsedWithoutRealVsCode();
+await testAIStatusCommandReturnsDisabledBackendNone();
+await testAIContextBundleCommandUsesActiveEditorSelectionAndDiagnostics();
 
 console.log("vscode extension entrypoint tests ok");

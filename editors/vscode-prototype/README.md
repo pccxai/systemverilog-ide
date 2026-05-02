@@ -4,8 +4,8 @@ This directory is an experimental local VS Code prototype for translating
 pre-stable editor bridge JSON into VS Code-style data records and for
 hosting a minimal local VS Code extension package scaffold.
 
-The extension scaffold is not published, is not marketplace-ready, has no
-LSP, and does not define a stable ABI/API.  It can consume the checked
+The extension scaffold is not published, has no marketplace packaging,
+has no LSP, and does not define a stable ABI/API.  It can consume the checked
 examples under `docs/examples/editor-bridge` and can also run limited
 live JSON flows from this source tree through the local command facade.
 The default tests are mostly static/mock tests, not VS Code GUI
@@ -26,9 +26,10 @@ handoff should flow through the existing facade and CLI/core boundary
 rather than being duplicated inside this extension scaffold.
 
 `pccx-llm-launcher` is a future local LLM/chat/model backend candidate.
-This prototype only adds an AI assistant boundary/stub and context bundle
-contract.  There are no AI provider calls, no pccx-llm-launcher runtime
-calls, and no MCP server implementation in this scaffold.
+This prototype only adds AI assistant status and context bundle commands
+behind a controlled tool boundary.  There are no AI provider calls, no
+pccx-llm-launcher runtime calls, and no MCP server implementation in this
+scaffold.
 
 ## Data Mapping
 
@@ -77,9 +78,11 @@ The live workspace command shape is limited to known facade argument
 arrays.  `pccxSystemVerilog.publishLiveWorkspaceDiagnostics` maps to the
 known diagnostics facade flow for the configured default source, and
 `pccxSystemVerilog.showLiveWorkspaceNavigation` maps to the known locate
-flow for the configured default module/kind.  The older
+flow for the configured navigation root, module, and kind.  The older
 `runDiagnosticsLive` and `runNavigationLive` command IDs remain
-experimental opt-in aliases for now.
+experimental opt-in aliases for now.  A controlled tiny fixture workspace
+lives at `test/fixtures/live-workspace`; the opt-in runtime smoke uses
+that fixture only and does not scan a user workspace.
 
 ## Command Facade
 
@@ -126,6 +129,8 @@ The contributed commands are:
 - `pccxSystemVerilog.showNavigationExample`
 - `pccxSystemVerilog.runDiagnosticsLive`
 - `pccxSystemVerilog.runNavigationLive`
+- `pccxSystemVerilog.showAIAssistantStatus`
+- `pccxSystemVerilog.buildAIContextBundle`
 
 The prototype-only settings are:
 
@@ -137,6 +142,7 @@ The prototype-only settings are:
 - `pccxSystemVerilog.pythonPath`, default `python3`
 - `pccxSystemVerilog.defaultSource`, default `fixtures/missing_endmodule.sv`
 - `pccxSystemVerilog.defaultLog`, default `fixtures/xsim/mixed.log`
+- `pccxSystemVerilog.defaultNavigationRoot`, default `fixtures/modules`
 - `pccxSystemVerilog.defaultModule`, default `simple_mod`
 - `pccxSystemVerilog.defaultDeclarationKind`, default `module`
 
@@ -153,7 +159,7 @@ has no LSP provider yet.  The explicit example commands always build
 checked-example facade arguments, and the explicit live commands always
 build known live facade arguments.  Live diagnostics uses
 `--from-check <defaultSource>`.  Live navigation uses
-`--locate fixtures/modules <defaultModule> --kind <defaultDeclarationKind>`.
+`--locate <defaultNavigationRoot> <defaultModule> --kind <defaultDeclarationKind>`.
 Live mode remains separate and explicit; the extension does not silently
 fall back between live and checked-example modes.
 
@@ -198,45 +204,49 @@ checked-example diagnostics command publishes at least one real VS Code
 diagnostic with URI, range, severity, message, and source fields through
 a `DiagnosticCollection`, and that the checked-example navigation
 command returns at least one Location-style record with URI, range,
-symbol, target kind, and source fields.  The same opt-in smoke also
-opens a temporary SystemVerilog-like document and executes
-`vscode.executeDefinitionProvider` to verify that the experimental
-VS Code-native `DefinitionProvider` returns at least one `Location` with
-sane URI and range fields.  A guarded local-only Extension Host runtime
-smoke now exists at
+symbol, target kind, and source fields.  The same opt-in smoke opens the
+controlled fixture workspace and executes `vscode.executeDefinitionProvider`
+to verify that the experimental VS Code-native `DefinitionProvider`
+returns at least one `Location` with sane URI and range fields.  A guarded
+local-only Extension Host runtime smoke exists at
 `scripts/vscode-extension-host-smoke.sh`, but it exits 2 by default and
 only runs when `PCCX_RUN_EXTENSION_HOST_SMOKE=1` is set.  The runtime
 smoke loads the local extension package, verifies activation/command
-registration, confirms the live workspace diagnostics command fails
-clearly while disabled by default, and executes the checked-example
-diagnostics publishing command plus the checked-example navigation
-command and provider smoke.  It does not run an enabled live CLI path,
-package the extension, add an LSP
-provider, or install from the marketplace.  Extension Host gates are
+registration, confirms live workspace commands fail clearly while
+disabled, runs live diagnostics against the controlled fixture only, and
+executes the checked-example diagnostics/navigation command paths plus
+the provider smoke.  It also checks the AI assistant status command and
+context bundle command without provider/runtime calls.  It does not
+package the extension, add an LSP provider, or install through a
+marketplace flow.  Extension Host gates are
 tracked in
 [`docs/EXTENSION_HOST_READINESS.md`](./docs/EXTENSION_HOST_READINESS.md).
 
 ## AI Assistant Boundary and Context Bundle
 
 `src/ai-assistant-boundary.mjs` models a future local coding-assistant
-mode as proposals only.  Allowed proposal kinds include explaining
-diagnostics, proposing a patch, proposing a validation command,
-summarizing xsim/log output, asking for more context, opening a related
-symbol, and proposing a pccx-lab tool call through a controlled tool
-boundary.  Direct file writes, git commits, pushes, release/tag actions,
-ruleset/settings/secrets changes, staging/private repo access, and
-arbitrary shell commands are disallowed by default.
+mode as proposals only.  `pccxSystemVerilog.showAIAssistantStatus`
+returns the local status, configured backend, and proposal boundaries.
+Allowed proposal kinds are `explainDiagnostics`, `proposePatch`,
+`proposeValidationCommand`, `summarizeLog`, `askForMoreContext`, and
+`openRelatedSymbol`.  Direct `writeFile`, `commit`, `push`, `merge`,
+`release`, `tag`, `changeRuleset`, `accessSecrets`, and `accessStaging`
+actions are disallowed.  User approval remains required before any patch,
+validation command, or commit is executed outside this proposal boundary.
 
-`src/context-bundle.mjs` is a token-saving context bundle stub for future
-AI-assisted SystemVerilog development workflow experiments.  It prefers
-the current file, selected range/symbol, active diagnostics, declaration
-references, recent validation summaries, pccx-lab output summaries, and
-small bounded snippets.  It references files by path/range instead of
-including whole workspaces, excludes `node_modules`, `.vscode-test`,
-binary-like content, and private worker instruction paths, and redacts
-secret-like assignments.  This is a JSON contract/stub only: no AI
-provider calls, no pccx-llm-launcher runtime calls yet, no MCP server
-implementation, no direct file modification, and no stable API claim.
+`src/context-bundle.mjs` is a token-saving context bundle contract for
+future AI-assisted SystemVerilog development workflow experiments.
+`pccxSystemVerilog.buildAIContextBundle` returns a bounded JSON object
+for the active editor state without calling a provider.  It prefers the
+current file path, selected range, active diagnostics, recent navigation
+references, recent command status, current mode/configuration, and small
+bounded snippets only for explicit selections.  It references files by
+path/range instead of including whole workspaces, excludes `node_modules`,
+`.vscode-test`, `AGENTS.md`, `package-lock.json`, binary-like content,
+and private worker instruction paths, and redacts secret-like assignment
+lines.  This is a JSON contract only: no AI provider calls, no
+pccx-llm-launcher runtime calls yet, no MCP server implementation, no
+direct file modification, and no stable API claim.
 The boundary notes are tracked in
 [`docs/LIVE_WORKSPACE_AND_AI_BOUNDARY.md`](./docs/LIVE_WORKSPACE_AND_AI_BOUNDARY.md).
 
@@ -255,8 +265,29 @@ not implemented skins and not completion claims.  This is not a completed
 custom theme system, and the current work is not a custom theme engine.
 
 This scaffold is not LSP, not a full IDE replacement, not a stable
-ABI/API, and not a marketplace-ready or published extension.
+ABI/API, and has no marketplace packaging or published extension.
 CI does not run the real Extension Host runtime smoke yet.
+
+## Daily-Driver Roadmap
+
+Now:
+
+- checked-example diagnostics, navigation, and DefinitionProvider smoke
+- explicit live workspace boundary with controlled fixture diagnostics
+- AI assistant status command and bounded context bundle command
+
+Next:
+
+- fixture-backed live diagnostics/navigation coverage with richer status
+- selected symbol context and definition-aware bundle references
+- validation command proposal and pccx-lab command palette integration
+
+Later:
+
+- pccx-llm-launcher local assistant backend behind a reviewed contract
+- MCP controlled tool boundary
+- richer editor UI/panels
+- optional theme presets through host/user theme tokens
 
 ## Local Smoke
 

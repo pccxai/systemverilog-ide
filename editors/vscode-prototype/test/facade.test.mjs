@@ -64,6 +64,22 @@ async function testDiagnosticsLiveFromCheck() {
   assert.equal(output.diagnostics[0].range.start.line, 0);
 }
 
+async function testDiagnosticsLiveFromControlledFixture() {
+  const fixture = "editors/vscode-prototype/test/fixtures/live-workspace/broken_missing_endmodule.sv";
+  const output = await runSuccess([
+    "diagnostics",
+    "--mode",
+    "live",
+    "--from-check",
+    fixture,
+  ]);
+
+  assert.equal(output.kind, "vscode-diagnostics");
+  assert.equal(output.mode, "live");
+  assert.equal(output.diagnostics.length, 1);
+  assert.equal(output.diagnostics[0].file, fixture);
+}
+
 async function testDiagnosticsLiveFromXsimLog() {
   const output = await runSuccess([
     "diagnostics",
@@ -126,6 +142,29 @@ async function testNavigationLiveLocatePackage() {
   assert.equal(output.items[0].name, "pkg_defs");
 }
 
+async function testNavigationLiveLocateControlledFixture() {
+  const output = await runSuccess([
+    "navigation",
+    "--mode",
+    "live",
+    "--locate",
+    "editors/vscode-prototype/test/fixtures/live-workspace",
+    "live_top",
+    "--kind",
+    "module",
+  ]);
+
+  assert.equal(output.kind, "vscode-navigation");
+  assert.equal(output.mode, "live");
+  assert.equal(output.items.length, 1);
+  assert.equal(output.items[0].kind, "module");
+  assert.equal(output.items[0].name, "live_top");
+  assert.equal(
+    output.items[0].file,
+    "editors/vscode-prototype/test/fixtures/live-workspace/top.sv",
+  );
+}
+
 async function testInvalidModeFails() {
   const result = await runFacade([
     "diagnostics",
@@ -178,10 +217,12 @@ async function testWrongFlowOptionFails() {
 
 await testDiagnosticsExampleMode();
 await testDiagnosticsLiveFromCheck();
+await testDiagnosticsLiveFromControlledFixture();
 await testDiagnosticsLiveFromXsimLog();
 await testNavigationExampleMode();
 await testNavigationLiveDeclarations();
 await testNavigationLiveLocatePackage();
+await testNavigationLiveLocateControlledFixture();
 await testInvalidModeFails();
 await testMissingRequiredArgsFail();
 await testNoArbitraryCommandOption();

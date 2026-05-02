@@ -6,7 +6,9 @@ import {
   COMMAND_IDS,
   CONFIG_KEYS,
   CONFIG_SECTION,
+  FACADE_COMMAND_IDS,
   assertKnownCommandId,
+  isFacadeCommandId,
   buildFacadeArgsForCommand,
   defaultConfig,
   isLiveFacadeArgs,
@@ -25,6 +27,10 @@ import {
 import {
   registerCheckedExampleDefinitionProvider,
 } from "./definition-provider.mjs";
+import {
+  createAssistantBoundaryStatus,
+  createAssistantRequest,
+} from "./ai-assistant-boundary.mjs";
 
 const EXTENSION_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_DIAGNOSTIC_FILE_ROOT = resolve(EXTENSION_ROOT, "../..");
@@ -33,9 +39,14 @@ const DEFAULT_FACADE_PATH = resolve(EXTENSION_ROOT, "bin/pccx-vscode-prototype.m
 const OUTPUT_CHANNEL_NAME = "PCCX SystemVerilog IDE Prototype";
 export const CHECKED_EXAMPLE_NAVIGATION_COMMAND =
   "pccxSystemVerilog.showCheckedExampleNavigation";
+export const AI_ASSISTANT_STATUS_COMMAND =
+  "pccxSystemVerilog.showAIAssistantStatus";
+export const AI_CONTEXT_BUNDLE_COMMAND =
+  "pccxSystemVerilog.buildAIContextBundle";
 
 export {
   COMMAND_IDS,
+  FACADE_COMMAND_IDS,
   buildFacadeArgsForCommand,
   createNavigationLocationRecords,
   createCommandExecutionPlan,
@@ -152,7 +163,11 @@ export function resolveCommandRequest(commandId, input, vscodeApi, rawConfig = r
     ? normalizeConfig({ ...config, defaultSource: explicitPath })
     : config;
 
-  buildFacadeArgsForCommand(commandId, commandConfig);
+  if (isFacadeCommandId(commandId)) {
+    buildFacadeArgsForCommand(commandId, commandConfig);
+  } else {
+    assertKnownCommandId(commandId);
+  }
   return commandConfig;
 }
 
@@ -177,6 +192,12 @@ function appendCommandOutput(outputChannel, commandId, result) {
   }
 
   outputChannel.appendLine(`[${commandId}]`);
+  if (result.status?.status) {
+    outputChannel.appendLine(`AI assistant status: ${result.status.status}`);
+  }
+  if (result.contextSummary) {
+    outputChannel.appendLine(JSON.stringify(result.contextSummary, null, 2));
+  }
   if (result.action?.summary) {
     outputChannel.appendLine(result.action.summary);
   }
@@ -252,11 +273,212 @@ export function createPresenterDeps(vscodeApi, runtime = {}) {
   };
 }
 
+function plainRange(range) {
+  if (!range) {
+    return null;
+  }
+  return {
+    start: {
+      line: Number.isInteger(range.start?.line) ? range.start.line : 0,
+      character: Number.isInteger(range.start?.character) ? range.start.character : 0,
+    },
+    end: {
+      line: Number.isInteger(range.end?.line) ? range.end.line : 0,
+      character: Number.isInteger(range.end?.character) ? range.end.character : 0,
+    },
+  };
+}
+
+function rangeIsEmpty(range) {
+  return !range ||
+    (
+      range.start?.line === range.end?.line &&
+      range.start?.character === range.end?.character
+    );
+}
+
+function diagnosticSeverityName(vscodeApi, severity) {
+  const diagnosticSeverity = vscodeApi?.DiagnosticSeverity ?? {};
+  if (severity === diagnosticSeverity.Error || severity === 0) {
+    return "Error";
+  }
+  if (severity === diagnosticSeverity.Warning || severity === 1) {
+    return "Warning";
+  }
+  if (severity === diagnosticSeverity.Information || severity === 2) {
+    return "Information";
+  }
+  if (severity === diagnosticSeverity.Hint || severity === 3) {
+    return "Hint";
+  }
+  return "Information";
+}
+
+function diagnosticCode(value) {
+  if (value == null) {
+    return "";
+  }
+  if (typeof value === "object" && value.value != null) {
+    return String(value.value);
+  }
+  return String(value);
+}
+
+function workspaceRootForDocument(vscodeApi, document) {
+  const folder = document?.uri
+    ? vscodeApi?.workspace?.getWorkspaceFolder?.(document.uri)
+    : null;
+  return folder?.uri?.fsPath ?? vscodeApi?.workspace?.workspaceFolders?.[0]?.uri?.fsPath ?? null;
+}
+
+function contextConfiguration(config) {
+  const defaultPccxLabCommand = defaultConfig().pccxLab.command;
+  return {
+    mode: config.mode,
+    liveWorkspace: {
+      enabled: config.liveWorkspace.enabled,
+    },
+    aiAssistant: {
+      enabled: config.aiAssistant.enabled,
+      backend: config.aiAssistant.backend,
+    },
+    pccxLab: {
+      commandBoundary: config.pccxLab.command === defaultPccxLabCommand
+        ? defaultPccxLabCommand
+        : "custom",
+    },
+  };
+}
+
+function collectActiveDiagnostics(vscodeApi, runtime, document) {
+  if (!document?.uri) {
+    return [];
+  }
+  const diagnostics = typeof vscodeApi?.languages?.getDiagnostics === "function"
+    ? vscodeApi.languages.getDiagnostics(document.uri)
+    : runtime.diagnosticsCollection?.get?.(document.uri);
+  if (!Array.isArray(diagnostics)) {
+    return [];
+  }
+  return diagnostics.map((diagnostic) => ({
+    file: document.uri.fsPath,
+    range: plainRange(diagnostic.range),
+    severity: diagnosticSeverityName(vscodeApi, diagnostic.severity),
+    message: diagnostic.message,
+    source: diagnostic.source,
+    code: diagnosticCode(diagnostic.code),
+  }));
+}
+
+function collectActiveDocumentContext(vscodeApi, runtime, config) {
+  const editor = vscodeApi?.window?.activeTextEditor;
+  const document = editor?.document;
+  const workspaceRoot = workspaceRootForDocument(vscodeApi, document);
+  const selectionRange = plainRange(editor?.selection);
+  const files = [];
+
+  if (
+    document?.uri?.fsPath &&
+    editor?.selection &&
+    !rangeIsEmpty(editor.selection) &&
+    typeof document.getText === "function"
+  ) {
+    files.push({
+      path: document.uri.fsPath,
+      language: document.languageId ?? "systemverilog",
+      range: selectionRange,
+      text: document.getText(editor.selection),
+    });
+  }
+
+  return {
+    workspaceRoot,
+    input: {
+      workspaceRoot,
+      selectedFilePath: document?.uri?.fsPath,
+      selectedRange: selectionRange,
+      activeDiagnostics: collectActiveDiagnostics(vscodeApi, runtime, document),
+      symbolContext: {
+        declarations: Array.isArray(runtime.recentNavigationItems)
+          ? runtime.recentNavigationItems
+          : [],
+      },
+      files,
+      configuration: contextConfiguration(config),
+      recentCommandStatus: runtime.recentCommandStatus ?? null,
+    },
+  };
+}
+
+function facadeStatusFromPlan(plan) {
+  const args = Array.isArray(plan?.facadeArgs) ? plan.facadeArgs : [];
+  const modeIndex = args.indexOf("--mode");
+  return {
+    command: args[0] ?? "",
+    mode: modeIndex >= 0 ? args[modeIndex + 1] ?? "" : "",
+  };
+}
+
+function rememberCommandResult(runtime, commandId, result) {
+  runtime.recentCommandStatus = {
+    commandId,
+    ok: result?.ok === true,
+    actionKind: result?.action?.kind ?? "",
+    summary: result?.action?.summary ?? "",
+    facade: facadeStatusFromPlan(result?.plan),
+    diagnosticCount: Array.isArray(result?.action?.diagnostics)
+      ? result.action.diagnostics.length
+      : 0,
+    navigationItemCount: Array.isArray(result?.action?.items)
+      ? result.action.items.length
+      : 0,
+    error: result?.error ?? "",
+  };
+  if (Array.isArray(result?.action?.items)) {
+    runtime.recentNavigationItems = result.action.items;
+  }
+}
+
 export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
   assertKnownCommandId(commandId);
   return async (input) => {
-    const returnsNavigationLocations = commandId === CHECKED_EXAMPLE_NAVIGATION_COMMAND;
     const rawConfig = readRawExtensionConfig(vscodeApi);
+
+    if (commandId === AI_ASSISTANT_STATUS_COMMAND) {
+      let result;
+      try {
+        const status = createAssistantBoundaryStatus(rawConfig);
+        result = { ok: true, commandId, status };
+      } catch (error) {
+        result = { ok: false, commandId, error: error.message };
+        vscodeApi?.window?.showWarningMessage?.(result.error, result);
+      }
+      appendCommandOutput(runtime.outputChannel, commandId, result);
+      return result;
+    }
+
+    if (commandId === AI_CONTEXT_BUNDLE_COMMAND) {
+      let result;
+      try {
+        const config = normalizeConfig(rawConfig);
+        const context = collectActiveDocumentContext(vscodeApi, runtime, config);
+        const request = createAssistantRequest(config, context.input, {
+          workspaceRoot: context.workspaceRoot,
+        });
+        result = {
+          ok: true,
+          commandId,
+          ...request,
+        };
+      } catch (error) {
+        result = { ok: false, commandId, error: error.message };
+        vscodeApi?.window?.showWarningMessage?.(result.error, result);
+      }
+      appendCommandOutput(runtime.outputChannel, commandId, result);
+      return result;
+    }
+
+    const returnsNavigationLocations = commandId === CHECKED_EXAMPLE_NAVIGATION_COMMAND;
     const explicitPath = pathFromCommandInput(input);
     const request = (
       commandId === "pccxSystemVerilog.publishLiveWorkspaceDiagnostics" ||
@@ -282,6 +504,7 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
         fileRoot: runtime.navigationFileRoot ?? DEFAULT_NAVIGATION_FILE_ROOT,
       })
       : await runPrototypeCommand(commandId, request, deps);
+    rememberCommandResult(runtime, commandId, result);
     if (!result.ok) {
       presenterDeps.showWarningMessage?.(result.error, result);
     }

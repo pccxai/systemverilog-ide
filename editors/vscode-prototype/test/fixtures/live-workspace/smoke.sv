@@ -1,0 +1,2 @@
+module smoke;
+endmodule

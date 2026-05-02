@@ -13,13 +13,20 @@ import {
 function testDisabledByDefault() {
   const status = createAssistantBoundaryStatus();
 
-  assert.deepEqual(status, {
-    version: AI_ASSISTANT_BOUNDARY_VERSION,
-    status: AI_ASSISTANT_STATUSES.DISABLED,
-    backend: "none",
-    providerCalls: false,
-    runtimeCalls: false,
-  });
+  assert.equal(status.version, AI_ASSISTANT_BOUNDARY_VERSION);
+  assert.equal(status.status, AI_ASSISTANT_STATUSES.DISABLED);
+  assert.equal(status.backend, "none");
+  assert.equal(status.providerCalls, false);
+  assert.equal(status.runtimeCalls, false);
+  assert.equal(status.providerCallsImplemented, false);
+  assert.equal(status.runtimeCallsImplemented, false);
+  assert.equal(status.mcpServerImplemented, false);
+  assert.equal(status.proposalOnly, true);
+  assert.deepEqual(
+    status.allowedActions.map((action) => action.kind),
+    AI_PROPOSAL_KINDS,
+  );
+  assert.deepEqual(status.disallowedActions, DISALLOWED_AI_ACTIONS);
 }
 
 function testEnabledButNoBackendIsNotConfigured() {
@@ -65,8 +72,10 @@ function testLauncherBackendRemainsProposalBoundary() {
   );
   assert.ok(request.allowedActions.every((action) => action.execution === "proposalOnly"));
   assert.deepEqual(request.disallowedActions, DISALLOWED_AI_ACTIONS);
-  assert.ok(request.disallowedActions.includes("directFileWrite"));
-  assert.ok(request.disallowedActions.includes("arbitraryShellCommand"));
+  assert.ok(request.disallowedActions.includes("writeFile"));
+  assert.ok(request.disallowedActions.includes("commit"));
+  assert.ok(request.disallowedActions.includes("accessSecrets"));
+  assert.equal(request.kind, "ai-context-bundle");
   assert.equal(request.contextSummary.selectedFile.path, "rtl/top.sv");
   assert.equal(request.contextSummary.diagnosticCount, 1);
 }
@@ -81,7 +90,7 @@ function testCommandProposalsAreProposalOnly() {
     },
   );
   assert.throws(
-    () => createCommandProposal("directFileWrite"),
+    () => createCommandProposal("writeFile"),
     /unsupported AI assistant proposal kind/,
   );
 }
