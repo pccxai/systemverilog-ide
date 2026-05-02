@@ -17,6 +17,7 @@ node editors/vscode-prototype/test/extension-config.test.mjs
 node editors/vscode-prototype/test/extension-entrypoint.test.mjs
 node editors/vscode-prototype/test/command-handlers.test.mjs
 node editors/vscode-prototype/test/presenter.test.mjs
+node editors/vscode-prototype/test/presentation-boundary.test.mjs
 node editors/vscode-prototype/test/extension-host-readiness.test.mjs
 node editors/vscode-prototype/src/adapter.mjs diagnostics \
   docs/examples/editor-bridge/problems-xsim-mixed.example.json \

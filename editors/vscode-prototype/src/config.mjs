@@ -10,6 +10,7 @@ export const CONFIG_KEYS = Object.freeze([
 ]);
 
 export const COMMAND_IDS = Object.freeze([
+  "pccxSystemVerilog.publishCheckedExampleDiagnostics",
   "pccxSystemVerilog.showDiagnosticsExample",
   "pccxSystemVerilog.showNavigationExample",
   "pccxSystemVerilog.runDiagnosticsLive",
@@ -88,7 +89,10 @@ export function normalizeConfig(rawConfig = {}) {
 export function buildFacadeArgsForCommand(commandId, rawConfig = {}) {
   const config = normalizeConfig(rawConfig);
 
-  if (commandId === "pccxSystemVerilog.showDiagnosticsExample") {
+  if (
+    commandId === "pccxSystemVerilog.publishCheckedExampleDiagnostics" ||
+    commandId === "pccxSystemVerilog.showDiagnosticsExample"
+  ) {
     return ["diagnostics", "--mode", "example", "--source", "check-missing-endmodule"];
   }
 

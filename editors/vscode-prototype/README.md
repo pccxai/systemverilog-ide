@@ -83,6 +83,7 @@ VS Code manifest wrapper; the implementation stays in `src/extension.mjs`.
 
 The contributed commands are:
 
+- `pccxSystemVerilog.publishCheckedExampleDiagnostics`
 - `pccxSystemVerilog.showDiagnosticsExample`
 - `pccxSystemVerilog.showNavigationExample`
 - `pccxSystemVerilog.runDiagnosticsLive`
@@ -97,11 +98,16 @@ The prototype-only settings are:
 - `pccxSystemVerilog.defaultModule`, default `simple_mod`
 - `pccxSystemVerilog.defaultDeclarationKind`, default `module`
 
-The default mode is checked-example mode.  The explicit example commands
-always build checked-example facade arguments, and the explicit live
-commands always build known live facade arguments.  Live diagnostics uses
+The default diagnostics publishing command is
+`pccxSystemVerilog.publishCheckedExampleDiagnostics`.  It is experimental
+and always uses the checked `check-missing-endmodule` example through the
+facade boundary.  The explicit example commands always build
+checked-example facade arguments, and the explicit live commands always
+build known live facade arguments.  Live diagnostics uses
 `--from-check <defaultSource>`.  Live navigation uses
 `--locate fixtures/modules <defaultModule> --kind <defaultDeclarationKind>`.
+Live mode remains separate and explicit; the extension does not silently
+fall back between live and checked-example modes.
 
 The command handlers are thin wrappers around the local facade.  They
 normalize the prototype-only settings, build known facade argument arrays,
@@ -118,23 +124,39 @@ Diagnostics facade payloads become `{ kind: "diagnostics", diagnostics,
 summary }` actions, and navigation facade payloads become
 `{ kind: "navigation", items, summary }` actions.  Tests use injected and
 mocked VS Code-like dependencies such as `runFacade`, `updateDiagnostics`,
-and `showNavigationItems`; they do not use a real `DiagnosticCollection`,
-quick pick, or VS Code GUI integration test.
+and `showNavigationItems` for static coverage.
 
 `src/presenter.mjs` is the experimental local presenter scaffold.  It
 consumes command-handler UI actions and maps diagnostics/navigation
 actions to mocked VS Code-like APIs.  Diagnostics presentation groups
 records by file for a `DiagnosticCollection`-like dependency, and
 navigation presentation creates deterministic QuickPick-like items.
-These behaviors are tested through mocks only.  A guarded local-only
-Extension Host runtime smoke now exists at
+The opt-in Extension Host runtime smoke additionally verifies that the
+checked-example diagnostics command publishes at least one real VS Code
+diagnostic with URI, range, severity, message, and source fields through
+a `DiagnosticCollection`.  A guarded local-only Extension Host runtime
+smoke now exists at
 `scripts/vscode-extension-host-smoke.sh`, but it exits 2 by default and
 only runs when `PCCX_RUN_EXTENSION_HOST_SMOKE=1` is set.  The runtime
 smoke loads the local extension package, verifies activation/command
-registration, and executes one checked-example command.  It does not run
-the live CLI path, package the extension, or install from the
-marketplace.  Extension Host gates are tracked in
+registration, and executes the checked-example diagnostics publishing
+command.  It does not run the live CLI path, package the extension, or
+install from the marketplace.  Extension Host gates are tracked in
 [`docs/EXTENSION_HOST_READINESS.md`](./docs/EXTENSION_HOST_READINESS.md).
+
+## Theme-Neutral Presentation Boundary
+
+`src/presentation-boundary.mjs` defines the first theme-neutral
+presentation boundary for editor-facing records.  Diagnostics and command
+output carry semantic fields such as file, range, severity, message, and
+source; they do not carry editor colors or style constants.  The VS Code
+path uses native `DiagnosticSeverity` and `DiagnosticCollection` APIs.
+
+The current policy is host theme first.  Future UI or webview surfaces
+should use host theme tokens or explicit user-provided theme tokens.
+VS Code, Xcode, and JetBrains are future presentation preset families,
+not implemented skins and not completion claims.  This is not a completed
+custom theme system.
 
 This scaffold is not LSP, not a full IDE replacement, not a stable
 ABI/API, and not a marketplace-ready or published extension.
@@ -151,6 +173,7 @@ node editors/vscode-prototype/test/extension-config.test.mjs
 node editors/vscode-prototype/test/extension-entrypoint.test.mjs
 node editors/vscode-prototype/test/command-handlers.test.mjs
 node editors/vscode-prototype/test/presenter.test.mjs
+node editors/vscode-prototype/test/presentation-boundary.test.mjs
 node editors/vscode-prototype/test/extension-host-readiness.test.mjs
 bash scripts/vscode-adapter-smoke.sh
 ```

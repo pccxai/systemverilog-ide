@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const EXTENSION_ROOT = resolve(ROOT, "editors/vscode-prototype");
 const COMMAND_IDS = [
+  "pccxSystemVerilog.publishCheckedExampleDiagnostics",
   "pccxSystemVerilog.showDiagnosticsExample",
   "pccxSystemVerilog.showNavigationExample",
   "pccxSystemVerilog.runDiagnosticsLive",

@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { dirname, resolve } from "node:path";
+import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -20,6 +20,7 @@ import {
 } from "./presenter.mjs";
 
 const EXTENSION_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const DEFAULT_DIAGNOSTIC_FILE_ROOT = resolve(EXTENSION_ROOT, "../..");
 const DEFAULT_FACADE_PATH = resolve(EXTENSION_ROOT, "bin/pccx-vscode-prototype.mjs");
 const OUTPUT_CHANNEL_NAME = "PCCX SystemVerilog IDE Prototype";
 
@@ -182,6 +183,14 @@ function facadeRunnerFromRuntime(runtime = {}) {
   };
 }
 
+function diagnosticFileForUri(file, root = DEFAULT_DIAGNOSTIC_FILE_ROOT) {
+  const filePath = file == null ? "" : String(file);
+  if (filePath.length === 0 || isAbsolute(filePath)) {
+    return filePath;
+  }
+  return resolve(root, filePath);
+}
+
 export function createPresenterDeps(vscodeApi, runtime = {}) {
   const diagnosticSeverity = {
     Error: vscodeApi?.DiagnosticSeverity?.Error ?? "Error",
@@ -191,7 +200,8 @@ export function createPresenterDeps(vscodeApi, runtime = {}) {
 
   return {
     createUri(file) {
-      return vscodeApi?.Uri?.file ? vscodeApi.Uri.file(file) : { fsPath: file };
+      const filePath = diagnosticFileForUri(file, runtime.diagnosticFileRoot);
+      return vscodeApi?.Uri?.file ? vscodeApi.Uri.file(filePath) : { fsPath: filePath };
     },
     createRange(startLine, startCharacter, endLine, endCharacter) {
       return typeof vscodeApi?.Range === "function"
