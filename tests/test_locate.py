@@ -112,6 +112,11 @@ def test_locate_module_directory_recursive():
     assert matches[0]["module"] == "child_mod"
 
 
+def test_locate_module_ignores_package_with_same_name():
+    matches = locate_module(FIXTURES / "package_decl.sv", "util_pkg")
+    assert matches == []
+
+
 # ── CLI: index --query ────────────────────────────────────────────────────────
 
 def test_cli_index_query_exact_match_json():

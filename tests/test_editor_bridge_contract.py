@@ -101,6 +101,8 @@ def test_contract_index_modules_json():
     assert payload["kind"] == "module-index"
     assert isinstance(payload["modules"], list)
     assert payload["modules"]
+    assert isinstance(payload["declarations"], list)
+    assert payload["declarations"]
 
 
 def test_contract_locate_simple_module_json():

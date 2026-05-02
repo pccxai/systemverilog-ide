@@ -197,28 +197,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0 if not envelope["diagnostics"] else 1
 
     if args.command == "index":
-        from .module_index import build_index, filter_modules, scan_path
+        from .module_index import build_index, filter_declarations, scan_path
 
         if not args.path.exists():
             sys.stderr.write(f"error: path does not exist: {args.path}\n")
             return 2
 
-        modules = scan_path(args.path)
+        declarations = scan_path(args.path)
         if args.query is not None:
-            modules = filter_modules(modules, args.query)
-        index = build_index(str(args.path), modules)
+            declarations = filter_declarations(declarations, args.query)
+        index = build_index(str(args.path), declarations)
 
         if args.format == "json":
             json.dump(index, sys.stdout, indent=2, sort_keys=True)
             sys.stdout.write("\n")
         else:
-            count = len(modules)
+            count = len(declarations)
+            module_only = all(d["kind"] == "module" for d in declarations)
+            noun = "module" if module_only else "declaration"
             plural = "s" if count != 1 else ""
             sys.stdout.write(f"source: {index['source']}\n")
-            sys.stdout.write(f"{count} module{plural}\n")
-            for m in modules:
+            sys.stdout.write(f"{count} {noun}{plural}\n")
+            for d in declarations:
                 sys.stdout.write(
-                    f"{m['file']}:{m['line']}:{m['column']}: module {m['name']}\n"
+                    f"{d['file']}:{d['line']}:{d['column']}: "
+                    f"{d['kind']} {d['name']}\n"
                 )
         return 0
 

@@ -4,13 +4,16 @@ import re
 from pathlib import Path
 from typing import Any
 
-# Matches `module <name>` at the start of a line (optional leading whitespace).
-# Conservative: handles  module foo;  /  module foo #(  /  module foo (
-# Column convention: 1-based character offset of the `module` keyword.
+# Matches simple declaration lines at the start of a line (optional leading
+# whitespace). Conservative: handles:
+#   module foo; / module foo #( / module foo (
+#   package foo;
+#   interface bus_if; / interface bus_if #( / interface bus_if (
+# Column convention: 1-based character offset of the declaration keyword.
 # Limitation: column reflects the visible text after block-comment removal;
-# if /* */ spans precede `module` on the same line the column is scanner-based,
-# not byte-offset in the original source.
-_MODULE_LINE_RE = re.compile(r"^(\s*)module\s+(\w+)")
+# if /* */ spans precede a declaration on the same line the column is
+# scanner-based, not byte-offset in the original source.
+_DECL_LINE_RE = re.compile(r"^(\s*)(module|package|interface)\s+(\w+)")
 
 _IGNORE_DIRS: frozenset[str] = frozenset({".git", "__pycache__", "build", "dist", "target"})
 _SV_SUFFIXES: frozenset[str] = frozenset({".sv", ".v"})
@@ -50,10 +53,11 @@ def _scan_text(text: str, source: str) -> list[dict[str, Any]]:
         visible, in_block_comment = _strip_block_comments(line, in_block_comment)
         if visible.lstrip().startswith("//"):
             continue
-        m = _MODULE_LINE_RE.match(visible)
+        m = _DECL_LINE_RE.match(visible)
         if m:
             results.append({
-                "name": m.group(2),
+                "kind": m.group(2),
+                "name": m.group(3),
                 "file": source,
                 "line": line_num,
                 "column": len(m.group(1)) + 1,
@@ -67,7 +71,7 @@ def scan_file(path: Path) -> list[dict[str, Any]]:
 
 
 def scan_path(path: Path) -> list[dict[str, Any]]:
-    """Return module records for a single file or a directory tree.
+    """Return declaration records for a single file or a directory tree.
 
     Directory scan skips _IGNORE_DIRS and collects .sv and .v files only.
     Output is sorted by (file, line, name) for determinism.
@@ -81,16 +85,31 @@ def scan_path(path: Path) -> list[dict[str, Any]]:
         for f in path.rglob(f"*{suffix}")
         if not any(part in _IGNORE_DIRS for part in f.parts)
     )
-    modules: list[dict[str, Any]] = []
+    declarations: list[dict[str, Any]] = []
     for f in sv_files:
-        modules.extend(scan_file(f))
+        declarations.extend(scan_file(f))
 
-    modules.sort(key=lambda m: (m["file"], m["line"], m["name"]))
-    return modules
+    declarations.sort(key=lambda d: (d["file"], d["line"], d["kind"], d["name"]))
+    return declarations
 
 
-def build_index(source: str, modules: list[dict[str, Any]]) -> dict[str, Any]:
+def _legacy_module_record(declaration: dict[str, Any]) -> dict[str, Any]:
     return {
+        "name": declaration["name"],
+        "file": declaration["file"],
+        "line": declaration["line"],
+        "column": declaration["column"],
+    }
+
+
+def build_index(source: str, declarations: list[dict[str, Any]]) -> dict[str, Any]:
+    modules = [
+        _legacy_module_record(d)
+        for d in declarations
+        if d["kind"] == "module"
+    ]
+    return {
+        "declarations": declarations,
         "kind": "module-index",
         "modules": modules,
         "source": source,
@@ -98,11 +117,18 @@ def build_index(source: str, modules: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def filter_modules(
+def filter_declarations(
     entries: list[dict[str, Any]], query: str
 ) -> list[dict[str, Any]]:
     """Return entries whose 'name' exactly matches query (case-sensitive)."""
     return [e for e in entries if e["name"] == query]
+
+
+def filter_modules(
+    entries: list[dict[str, Any]], query: str
+) -> list[dict[str, Any]]:
+    """Backward-compatible alias for exact declaration-name filtering."""
+    return filter_declarations(entries, query)
 
 
 def locate_module(path: Path, name: str) -> list[dict[str, Any]]:
@@ -123,7 +149,7 @@ def locate_module(path: Path, name: str) -> list[dict[str, Any]]:
             "column": m["column"],
         }
         for m in raw
-        if m["name"] == name
+        if m["kind"] == "module" and m["name"] == name
     ]
     matches.sort(key=lambda m: (m["file"], m["line"]))
     return matches
