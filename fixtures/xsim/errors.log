@@ -1,0 +1,2 @@
+ERROR: [VRFC 10-1234] syntax error near token ';'
+src/top.sv:12: error: module declaration failed

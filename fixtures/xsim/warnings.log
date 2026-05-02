@@ -1,0 +1,2 @@
+WARNING: [XSIM 43-9999] signal has no driver
+src/warn.sv:7:5: warning: implicit net created

@@ -154,3 +154,17 @@ jobs:
             exit 1
           fi
           echo "index missing path correctly fails"
+      - name: cli smoke (xsim-log clean JSON)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli xsim-log \
+              fixtures/xsim/clean.log --format json \
+              | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='xsim-log'; assert d['diagnostics']==[]"
+          echo "xsim-log clean JSON smoke ok"
+      - name: cli smoke (xsim-log mixed text)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli xsim-log \
+              fixtures/xsim/mixed.log --format text \
+              | grep -q "5 diagnostics"
+          echo "xsim-log mixed text smoke ok"
