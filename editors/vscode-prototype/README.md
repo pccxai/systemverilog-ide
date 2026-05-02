@@ -115,6 +115,15 @@ mocked VS Code-like dependencies such as `runFacade`, `updateDiagnostics`,
 and `showNavigationItems`; they do not use a real `DiagnosticCollection`,
 quick pick, or VS Code GUI integration test.
 
+`src/presenter.mjs` is the experimental local presenter scaffold.  It
+consumes command-handler UI actions and maps diagnostics/navigation
+actions to mocked VS Code-like APIs.  Diagnostics presentation groups
+records by file for a `DiagnosticCollection`-like dependency, and
+navigation presentation creates deterministic QuickPick-like items.
+These behaviors are tested through mocks only; there are still no real
+VS Code GUI or Extension Host integration tests.  Extension Host gates are
+tracked in [`docs/EXTENSION_HOST_READINESS.md`](./docs/EXTENSION_HOST_READINESS.md).
+
 This scaffold is not LSP, not a full IDE replacement, not a stable
 ABI/API, and not a marketplace-ready or published extension.
 There are no VS Code GUI/integration tests yet.
@@ -129,6 +138,7 @@ node editors/vscode-prototype/test/extension-manifest.test.mjs
 node editors/vscode-prototype/test/extension-config.test.mjs
 node editors/vscode-prototype/test/extension-entrypoint.test.mjs
 node editors/vscode-prototype/test/command-handlers.test.mjs
+node editors/vscode-prototype/test/presenter.test.mjs
 bash scripts/vscode-adapter-smoke.sh
 ```
 
