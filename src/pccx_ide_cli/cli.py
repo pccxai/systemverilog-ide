@@ -92,6 +92,22 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    xsim_log = sub.add_parser(
+        "xsim-log",
+        help="Parse an existing xsim-style log file into diagnostics-like output.",
+    )
+    xsim_log.add_argument(
+        "log_file",
+        type=Path,
+        help="Path to an existing xsim-style log file.",
+    )
+    xsim_log.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     sub.add_parser(
         "schema",
         help="Print the diagnostics envelope JSON schema.",
@@ -211,6 +227,24 @@ def main(argv: Sequence[str] | None = None) -> int:
                 f"error: ambiguous: {len(matches)} matches for module {args.name}\n"
             )
             return 2
+        return 0
+
+    if args.command == "xsim-log":
+        from .xsim_log import format_text, parse_log_file
+
+        if not args.log_file.exists():
+            sys.stderr.write(f"error: log file does not exist: {args.log_file}\n")
+            return 2
+        if not args.log_file.is_file():
+            sys.stderr.write(f"error: log path is not a file: {args.log_file}\n")
+            return 2
+
+        envelope = parse_log_file(args.log_file)
+        if args.format == "json":
+            json.dump(envelope, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_text(envelope))
         return 0
 
     parser.error(f"unknown command: {args.command}")

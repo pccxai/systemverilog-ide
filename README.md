@@ -75,6 +75,10 @@ python -m pccx_ide_cli index fixtures/modules/ --query simple_mod --format text
 python -m pccx_ide_cli locate fixtures/modules/ simple_mod
 python -m pccx_ide_cli locate fixtures/modules/ simple_mod --format text
 
+# xsim log handoff scaffold (parses existing log files only)
+python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format json
+python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format text
+
 # Print the diagnostics schema
 python -m pccx_ide_cli schema
 ```
@@ -106,6 +110,12 @@ No match exits 1. Multiple matches exit 2 with all candidates listed.
 `locate` is an early navigation scaffold, exact name only, not semantic
 navigation, not LSP, not a stable API. A future editor bridge can consume
 this output.
+
+`xsim-log` is an early handoff scaffold. It parses existing synthetic
+xsim-style log files into diagnostics-like JSON or text output. It does
+not run xsim or Vivado, does not prove hardware correctness, and does
+not claim full Vivado/xsim coverage. The output shape is pre-stable; a
+future `pccx-lab` integration may provide richer log and report handoff.
 
 Tests are run with:
 

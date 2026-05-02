@@ -183,15 +183,48 @@ python -m pccx_ide_cli locate fixtures/modules/ simple_mod --format text
 
 ---
 
-## xsim handoff (planned)
+## xsim log handoff scaffold (active, pre-stable)
 
-xsim runs and log surfacing remain on the `pccx-lab` side.  This CLI is
-expected to:
+`pccx-ide xsim-log` parses an existing xsim-style log file and emits a
+small diagnostics-like document for future editor integration.
 
-1. Pass through a `run` request to `pccx-lab`.
-2. Translate the resulting log / report into the same diagnostics
-   envelope where it makes sense, or surface a structured run-summary
-   document (envelope version to be defined alongside the lab CLI).
+### Usage
+
+```bash
+python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format json
+python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format text
+```
+
+### Output shape (JSON)
+
+```json
+{
+  "tool": "pccx-ide-cli",
+  "kind": "xsim-log",
+  "source": "<path passed on CLI>",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "VRFC 10-1234",
+      "message": "syntax error near token ';'",
+      "raw_line": "ERROR: [VRFC 10-1234] syntax error near token ';'"
+    }
+  ]
+}
+```
+
+### Scope
+
+- Parses existing log files only; it does not run xsim or Vivado.
+- Uses synthetic fixtures in this repository; no hardware logs are
+  required.
+- Supports only simple severity-prefixed lines, file:line diagnostics,
+  file:line:column diagnostics, and simple bracket codes.
+- Unknown lines are ignored.
+- This does not prove hardware correctness and is not a full
+  Vivado/xsim parser.
+- Output is pre-stable.  Future `pccx-lab` integration may provide
+  richer log and report handoff.
 
 ---
 
