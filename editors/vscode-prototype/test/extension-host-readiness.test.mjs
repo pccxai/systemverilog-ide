@@ -13,6 +13,10 @@ async function readText(path) {
   return readFile(path, "utf8");
 }
 
+async function readJson(path) {
+  return JSON.parse(await readText(path));
+}
+
 async function pathExists(path) {
   try {
     await access(path, constants.F_OK);
@@ -25,17 +29,27 @@ async function pathExists(path) {
   }
 }
 
-async function testNoRuntimeDependencyChurn() {
-  const manifest = JSON.parse(await readText(resolve(EXTENSION_ROOT, "package.json")));
+async function testPinnedRuntimeDependencyOnly() {
+  const manifest = await readJson(resolve(EXTENSION_ROOT, "package.json"));
+  const lockfile = await readJson(resolve(EXTENSION_ROOT, "package-lock.json"));
   const deps = {
     ...(manifest.dependencies ?? {}),
     ...(manifest.devDependencies ?? {}),
   };
 
-  assert.equal(deps["@vscode/test-electron"], undefined);
+  assert.equal(manifest.dependencies, undefined);
+  assert.deepEqual(manifest.devDependencies, {
+    "@vscode/test-electron": "2.5.2",
+  });
+  assert.equal(deps["@vscode/test-electron"], "2.5.2");
   assert.equal(deps.vscode, undefined);
   assert.equal(await pathExists(resolve(ROOT, "package-lock.json")), false);
-  assert.equal(await pathExists(resolve(EXTENSION_ROOT, "package-lock.json")), false);
+  assert.equal(lockfile.packages[""].devDependencies["@vscode/test-electron"], "2.5.2");
+  assert.equal(lockfile.packages["node_modules/@vscode/test-electron"].version, "2.5.2");
+  assert.match(
+    lockfile.packages["node_modules/@vscode/test-electron"].integrity,
+    /^sha512-/,
+  );
 }
 
 function testGuardedScriptDefault() {
@@ -50,10 +64,12 @@ function testGuardedScriptDefault() {
   const output = `${result.stdout}\n${result.stderr}`;
 
   assert.equal(result.status, 2);
-  assert.match(output, /Extension Host smoke is not enabled yet/);
-  assert.match(output, /static\/mock-only/);
-  assert.match(output, /no real VS Code Extension Host coverage is claimed/);
-  assert.match(output, /PCCX_RUN_EXTENSION_HOST_SMOKE=1/);
+  assert.match(output, /Extension Host smoke is available but not enabled by default/);
+  assert.match(output, /Default coverage remains static\/mock-only/);
+  assert.match(output, /opt-in local runtime check/);
+  assert.match(output, /PCCX_RUN_EXTENSION_HOST_SMOKE=1 bash scripts\/vscode-extension-host-smoke\.sh/);
+  assert.match(output, /npm ci --prefix editors\/vscode-prototype/);
+  assert.match(output, /VS Code 1\.90\.2/);
   assert.match(output, /@vscode\/test-electron/);
   assert.match(output, /do not add vsce/);
 }
@@ -61,34 +77,54 @@ function testGuardedScriptDefault() {
 async function testReadinessDocsAndCiPolicy() {
   const readme = await readText(resolve(EXTENSION_ROOT, "README.md"));
   const readiness = await readText(resolve(EXTENSION_ROOT, "docs/EXTENSION_HOST_READINESS.md"));
-  const bridgeContract = await readText(resolve(ROOT, "docs/EDITOR_BRIDGE_CONTRACT.md"));
   const ci = await readText(resolve(ROOT, ".github/workflows/ci.yml"));
+  const extensionEntrypoint = await readText(resolve(EXTENSION_ROOT, "src/extension.mjs"));
+  const extensionWrapper = await readText(resolve(EXTENSION_ROOT, "src/extension.cjs"));
 
   assert.match(readme, /experimental local VS Code prototype/i);
   assert.match(readme, /mostly static\/mock tests/i);
-  assert.match(readme, /guarded local-only\s+Extension Host smoke/i);
-  assert.match(readiness, /Option B/i);
-  assert.match(readiness, /guarded local-only scaffold/i);
+  assert.match(readme, /limited opt-in\s+Extension Host runtime smoke/i);
+  assert.match(readiness, /Option A/i);
+  assert.match(readiness, /local-only Extension Host runtime smoke/i);
+  assert.match(readiness, /not a product claim/i);
   assert.match(readiness, /PCCX_RUN_EXTENSION_HOST_SMOKE=1/);
-  assert.match(readiness, /No real VS Code Extension Host coverage is claimed/i);
-  assert.match(bridgeContract, /guarded local-only\s+Extension Host smoke scaffold/i);
+  assert.match(readiness, /does not imply\s+marketplace readiness/i);
+  assert.match(readiness, /(?:not LSP|LSP support|LSP server)/i);
+  assert.match(readiness, /(?:not a stable ABI\/API|stable ABI\/API claim)/i);
+  assert.match(readiness, /facade boundary/i);
   assert.doesNotMatch(ci, /vscode-extension-host-smoke\.sh/);
+  assert.doesNotMatch(ci, /PCCX_RUN_EXTENSION_HOST_SMOKE/);
+  assert.doesNotMatch(extensionEntrypoint, /pccx_ide_cli/);
+  assert.doesNotMatch(extensionWrapper, /pccx_ide_cli/);
+  assert.match(extensionWrapper, /require\("vscode"\)/);
+  assert.match(extensionWrapper, /import\("\.\/extension\.mjs"\)/);
 }
 
-async function testGuardScriptNamesFutureRunnerButDoesNotProvideIt() {
+async function testRuntimeRunnerIsPinnedAndBounded() {
   const script = await readText(SCRIPT);
+  const runnerPath = resolve(EXTENSION_ROOT, "test/extension-host/run-extension-host-smoke.mjs");
+  const suitePath = resolve(EXTENSION_ROOT, "test/extension-host/smoke-suite.cjs");
+  const runner = await readText(runnerPath);
+  const suite = await readText(suitePath);
 
   assert.match(script, /PCCX_RUN_EXTENSION_HOST_SMOKE/);
   assert.match(script, /run-extension-host-smoke\.mjs/);
-  assert.equal(
-    await pathExists(resolve(EXTENSION_ROOT, "test/extension-host/run-extension-host-smoke.mjs")),
-    false,
-  );
+  assert.match(script, /npm ci --prefix editors\/vscode-prototype/);
+  assert.match(runner, /VSCODE_TEST_VERSION = "1\.90\.2"/);
+  assert.match(runner, /runTests/);
+  assert.match(runner, /extensionDevelopmentPath/);
+  assert.match(runner, /\.vscode-test/);
+  assert.match(runner, /--extensions-dir=/);
+  assert.match(runner, /--user-data-dir=/);
+  assert.match(suite, /getCommands/);
+  assert.match(suite, /showDiagnosticsExample/);
+  assert.doesNotMatch(suite, /executeCommand\(\s*"pccxSystemVerilog\.runDiagnosticsLive"/);
+  assert.doesNotMatch(suite, /executeCommand\(\s*"pccxSystemVerilog\.runNavigationLive"/);
 }
 
-await testNoRuntimeDependencyChurn();
+await testPinnedRuntimeDependencyOnly();
 testGuardedScriptDefault();
 await testReadinessDocsAndCiPolicy();
-await testGuardScriptNamesFutureRunnerButDoesNotProvideIt();
+await testRuntimeRunnerIsPinnedAndBounded();
 
 console.log("vscode extension host readiness tests ok");

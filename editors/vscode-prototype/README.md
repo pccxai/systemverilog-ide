@@ -8,9 +8,10 @@ The extension scaffold is not published, is not marketplace-ready, has no
 LSP, and does not define a stable ABI/API.  It can consume the checked
 examples under `docs/examples/editor-bridge` and can also run limited
 live JSON flows from this source tree through the local command facade.
-The current tests are mostly static/mock tests, not VS Code GUI
+The default tests are mostly static/mock tests, not VS Code GUI
 integration tests, and they run without npm install, Vivado, xsim, or
-hardware.
+hardware.  A limited opt-in Extension Host runtime smoke exists for local
+dependency-policy review; it is not a product claim.
 
 ## Data Mapping
 
@@ -71,10 +72,14 @@ shell interpolation, and does not accept arbitrary command strings.
 
 ## Extension Package Scaffold
 
-`package.json` and `src/extension.mjs` define a minimal experimental local
+`package.json`, `src/extension.cjs`, and `src/extension.mjs` define a
+minimal experimental local
 VS Code extension scaffold.  The package is `private`, has version
-`0.0.0`, and intentionally has no publisher, npm dependencies, VS Code
-test runner, bundler, `vsce`, or marketplace publishing script.
+`0.0.0`, and intentionally has no publisher, runtime dependencies,
+bundler, `vsce`, or marketplace publishing script.  The only npm
+dependency is the exact dev dependency `@vscode/test-electron@2.5.2` for
+the guarded local Extension Host smoke.  `src/extension.cjs` is only the
+VS Code manifest wrapper; the implementation stays in `src/extension.mjs`.
 
 The contributed commands are:
 
@@ -122,15 +127,18 @@ actions to mocked VS Code-like APIs.  Diagnostics presentation groups
 records by file for a `DiagnosticCollection`-like dependency, and
 navigation presentation creates deterministic QuickPick-like items.
 These behaviors are tested through mocks only.  A guarded local-only
-Extension Host smoke scaffold now exists at
-`scripts/vscode-extension-host-smoke.sh`, but it exits as not enabled by
-default and no real VS Code Extension Host coverage is claimed yet.
-Extension Host gates are tracked in
+Extension Host runtime smoke now exists at
+`scripts/vscode-extension-host-smoke.sh`, but it exits 2 by default and
+only runs when `PCCX_RUN_EXTENSION_HOST_SMOKE=1` is set.  The runtime
+smoke loads the local extension package, verifies activation/command
+registration, and executes one checked-example command.  It does not run
+the live CLI path, package the extension, or install from the
+marketplace.  Extension Host gates are tracked in
 [`docs/EXTENSION_HOST_READINESS.md`](./docs/EXTENSION_HOST_READINESS.md).
 
 This scaffold is not LSP, not a full IDE replacement, not a stable
 ABI/API, and not a marketplace-ready or published extension.
-There are no enabled VS Code GUI or Extension Host integration tests yet.
+CI does not run the real Extension Host runtime smoke yet.
 
 ## Local Smoke
 
@@ -149,13 +157,17 @@ bash scripts/vscode-adapter-smoke.sh
 
 `scripts/vscode-extension-host-smoke.sh` is intentionally guarded.  By
 default it exits with a clear not-enabled message and does not download
-VS Code, Electron, or npm dependencies.  `PCCX_RUN_EXTENSION_HOST_SMOKE=1`
-is reserved for a future pinned `@vscode/test-electron` runner after the
-dependency and CI policy are explicitly reviewed.
+VS Code or Electron.  The enabled local path uses pinned
+`@vscode/test-electron@2.5.2` and VS Code `1.90.2`; the first enabled run
+downloads that VS Code build into `editors/vscode-prototype/.vscode-test`.
 
 ```bash
-# Expected exit 2 until a real Extension Host runner is explicitly enabled.
+# Expected exit 2 unless the local runtime smoke is explicitly enabled.
 bash scripts/vscode-extension-host-smoke.sh
+
+# Opt-in local Extension Host runtime smoke.
+npm ci --prefix editors/vscode-prototype
+PCCX_RUN_EXTENSION_HOST_SMOKE=1 bash scripts/vscode-extension-host-smoke.sh
 ```
 
 The adapter can also print translated examples:

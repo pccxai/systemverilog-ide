@@ -45,7 +45,7 @@ async function testPackageManifestShape() {
   assert.match(manifest.description, /not published/i);
   assert.doesNotMatch(manifest.description, /marketplace/i);
   assert.ok(manifest.engines?.vscode);
-  assert.equal(manifest.main, "./src/extension.mjs");
+  assert.equal(manifest.main, "./src/extension.cjs");
 }
 
 async function testNoMarketplacePublishingShape() {
@@ -59,7 +59,9 @@ async function testNoMarketplacePublishingShape() {
   assert.equal(manifest.scripts?.publish, undefined);
   assert.equal(manifest.scripts?.package, undefined);
   assert.equal(manifest.dependencies, undefined);
-  assert.equal(manifest.devDependencies, undefined);
+  assert.deepEqual(manifest.devDependencies, {
+    "@vscode/test-electron": "2.5.2",
+  });
 }
 
 async function testCommandContributions() {
@@ -96,7 +98,8 @@ async function testDocsKeepExperimentalScope() {
   assert.match(combined, /no LSP/i);
   assert.match(combined, /not a stable ABI\/API/i);
   assert.match(combined, /static\/mock tests/i);
-  assert.match(combined, /no real VS Code Extension Host coverage is claimed/i);
+  assert.match(combined, /limited opt-in Extension Host runtime smoke/i);
+  assert.match(combined, /not a product claim/i);
 }
 
 await testPackageManifestShape();
