@@ -52,6 +52,13 @@ async function run() {
   const activation = await developmentExtension.activate();
   assert.equal(developmentExtension.isActive, true);
   assert.deepEqual(activation.registered, expectedCommandIds);
+  assert.ok(
+    activation.definitionProviders.some((provider) => (
+      provider.id === "pccxSystemVerilog.definitionProvider.checkedExample" &&
+      provider.registered === true
+    )),
+    "checked-example DefinitionProvider was not registered",
+  );
 
   const commands = await vscode.commands.getCommands(true);
   for (const commandId of expectedCommandIds) {
@@ -126,6 +133,32 @@ async function run() {
   assert.equal(firstLocation.source, "pccx-vscode-prototype");
   assert.equal(firstLocation.location.uri.toString(), firstLocation.uri.toString());
   assert.equal(firstLocation.location.range.start.line, firstLocation.range.start.line);
+
+  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  assert.ok(workspaceRoot, "runtime smoke workspace was not opened");
+  const definitionUri = vscode.Uri.file(path.join(workspaceRoot, "smoke.sv"));
+  const document = await vscode.workspace.openTextDocument(definitionUri);
+  assert.equal(document.uri.toString(), definitionUri.toString());
+  const definitionLocations = await vscode.commands.executeCommand(
+    "vscode.executeDefinitionProvider",
+    definitionUri,
+    new vscode.Position(0, 7),
+  );
+
+  assert.ok(Array.isArray(definitionLocations));
+  assert.ok(definitionLocations.length > 0);
+  const providerLocation = definitionLocations[0];
+  assert.ok(providerLocation instanceof vscode.Location);
+  assert.ok(providerLocation.uri instanceof vscode.Uri);
+  assert.ok(providerLocation.range instanceof vscode.Range);
+  assert.ok(providerLocation.uri.fsPath.endsWith(".sv"));
+  assert.ok(providerLocation.range.start.line >= 0);
+  assert.ok(providerLocation.range.start.character >= 0);
+  assert.equal(providerLocation.range.end.line, providerLocation.range.start.line);
+  assert.equal(
+    providerLocation.range.end.character,
+    providerLocation.range.start.character + 1,
+  );
 
   const extensionModule = await importExtensionEntrypoint();
   assert.equal(typeof extensionModule.deactivate, "function");

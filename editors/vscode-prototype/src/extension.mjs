@@ -21,13 +21,17 @@ import {
 import {
   createNavigationLocationRecords,
 } from "./navigation-locations.mjs";
+import {
+  registerCheckedExampleDefinitionProvider,
+} from "./definition-provider.mjs";
 
 const EXTENSION_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_DIAGNOSTIC_FILE_ROOT = resolve(EXTENSION_ROOT, "../..");
 const DEFAULT_NAVIGATION_FILE_ROOT = DEFAULT_DIAGNOSTIC_FILE_ROOT;
 const DEFAULT_FACADE_PATH = resolve(EXTENSION_ROOT, "bin/pccx-vscode-prototype.mjs");
 const OUTPUT_CHANNEL_NAME = "PCCX SystemVerilog IDE Prototype";
-const CHECKED_EXAMPLE_NAVIGATION_COMMAND = "pccxSystemVerilog.showCheckedExampleNavigation";
+export const CHECKED_EXAMPLE_NAVIGATION_COMMAND =
+  "pccxSystemVerilog.showCheckedExampleNavigation";
 
 export {
   COMMAND_IDS,
@@ -156,6 +160,16 @@ export async function runFacadeForCommand(commandId, options = {}, runtime = {})
   return runFacadeInvocation(invocation, runtime);
 }
 
+export async function runCheckedExampleNavigationLocations(rawConfig = {}, deps = {}) {
+  const result = await runPrototypeCommand(CHECKED_EXAMPLE_NAVIGATION_COMMAND, rawConfig, {
+    runFacade: deps.runFacade,
+  });
+  if (result.ok) {
+    result.locations = createNavigationLocationRecords(result.action?.items, deps);
+  }
+  return result;
+}
+
 function appendCommandOutput(outputChannel, commandId, result) {
   if (!outputChannel?.appendLine) {
     return;
@@ -257,13 +271,13 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
         ? undefined
         : (_items, action) => presentAction(action, presenterDeps),
     };
-    const result = await runPrototypeCommand(commandId, request, deps);
-    if (result.ok && returnsNavigationLocations) {
-      result.locations = createNavigationLocationRecords(result.action?.items, {
+    const result = returnsNavigationLocations
+      ? await runCheckedExampleNavigationLocations(request, {
         ...presenterDeps,
+        runFacade: deps.runFacade,
         fileRoot: runtime.navigationFileRoot ?? DEFAULT_NAVIGATION_FILE_ROOT,
-      });
-    }
+      })
+      : await runPrototypeCommand(commandId, request, deps);
     if (!result.ok) {
       presenterDeps.showWarningMessage?.(result.error, result);
     }
@@ -291,6 +305,7 @@ export async function activate(context, injectedVscodeApi = null, runtime = {}) 
     ?? vscodeApi.languages?.createDiagnosticCollection?.(OUTPUT_CHANNEL_NAME);
   const commandRuntime = { ...runtime, diagnosticsCollection, outputChannel };
   const registered = [];
+  const definitionProviders = [];
 
   for (const commandId of COMMAND_IDS) {
     const disposable = vscodeApi.commands.registerCommand(
@@ -301,13 +316,28 @@ export async function activate(context, injectedVscodeApi = null, runtime = {}) 
     registered.push(commandId);
   }
 
+  definitionProviders.push(registerCheckedExampleDefinitionProvider(vscodeApi, context, {
+    runCheckedExampleNavigationLocations() {
+      const rawConfig = readRawExtensionConfig(vscodeApi);
+      const presenterDeps = {
+        ...createPresenterDeps(vscodeApi, commandRuntime),
+        ...(commandRuntime.presenterDeps ?? {}),
+      };
+      return runCheckedExampleNavigationLocations(rawConfig, {
+        ...presenterDeps,
+        runFacade: commandRuntime.runFacade ?? facadeRunnerFromRuntime(commandRuntime),
+        fileRoot: commandRuntime.navigationFileRoot ?? DEFAULT_NAVIGATION_FILE_ROOT,
+      });
+    },
+  }));
+
   if (outputChannel) {
     context?.subscriptions?.push?.(outputChannel);
   }
   if (diagnosticsCollection && diagnosticsCollection !== runtime.diagnosticsCollection) {
     context?.subscriptions?.push?.(diagnosticsCollection);
   }
-  return { registered };
+  return { registered, definitionProviders };
 }
 
 export function deactivate() {}

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 import {
   COMMAND_IDS,
+  CHECKED_EXAMPLE_NAVIGATION_COMMAND,
   activate,
   buildFacadeArgsForCommand,
   buildFacadeInvocationForCommand,
@@ -12,6 +13,11 @@ import {
   readExtensionConfig,
   resolveCommandRequest,
 } from "../src/extension.mjs";
+import {
+  CHECKED_EXAMPLE_DEFINITION_PROVIDER_ID,
+  CHECKED_EXAMPLE_DEFINITION_SELECTOR,
+  checkedExampleDefinitionProvider,
+} from "../src/definition-provider.mjs";
 
 const EXPECTED_ARGS = new Map([
   [
@@ -273,6 +279,9 @@ async function testEntrypointExportsAndActivation() {
   );
 
   assert.deepEqual(activation.registered, COMMAND_IDS);
+  assert.equal(activation.definitionProviders.length, 1);
+  assert.equal(activation.definitionProviders[0].id, CHECKED_EXAMPLE_DEFINITION_PROVIDER_ID);
+  assert.equal(activation.definitionProviders[0].registered, false);
   assert.equal(registered.size, COMMAND_IDS.length);
   assert.equal(subscriptions.length, COMMAND_IDS.length + 1);
 
@@ -361,6 +370,142 @@ async function testCheckedExampleNavigationCommandReturnsLocations() {
   assert.equal(quickPickCalls.length, 0);
 }
 
+async function testCheckedExampleDefinitionProviderReturnsLocations() {
+  const location = { uri: { fsPath: "/repo/root/pkg.sv" }, range: { start: { line: 0 } } };
+  const provider = checkedExampleDefinitionProvider({
+    async runCheckedExampleNavigationLocations() {
+      return {
+        ok: true,
+        locations: [
+          { location },
+          { uri: { fsPath: "/repo/root/simple.sv" }, range: { start: { line: 1 } } },
+        ],
+      };
+    },
+  });
+
+  const definitions = await provider.provideDefinition({}, {}, {});
+
+  assert.equal(definitions.length, 2);
+  assert.equal(definitions[0], location);
+  assert.deepEqual(definitions[1], {
+    uri: { fsPath: "/repo/root/simple.sv" },
+    range: { start: { line: 1 } },
+  });
+}
+
+async function testActivationRegistersCheckedExampleDefinitionProvider() {
+  const registered = new Map();
+  const subscriptions = [];
+  const definitionRegistrations = [];
+  const facadeCalls = [];
+  const vscodeApi = {
+    Uri: {
+      file(file) {
+        return { fsPath: file };
+      },
+    },
+    Range: class Range {
+      constructor(startLine, startCharacter, endLine, endCharacter) {
+        this.start = { line: startLine, character: startCharacter };
+        this.end = { line: endLine, character: endCharacter };
+      }
+    },
+    Location: class Location {
+      constructor(uri, range) {
+        this.uri = uri;
+        this.range = range;
+      }
+    },
+    commands: {
+      registerCommand(commandId, handler) {
+        registered.set(commandId, handler);
+        return { dispose() {} };
+      },
+    },
+    languages: {
+      registerDefinitionProvider(selector, provider) {
+        definitionRegistrations.push({ selector, provider });
+        return { dispose() {} };
+      },
+    },
+    window: {
+      createOutputChannel() {
+        return { appendLine() {}, show() {}, dispose() {} };
+      },
+      showInformationMessage() {},
+      showErrorMessage() {},
+    },
+  };
+
+  const activation = await activate(
+    { subscriptions },
+    vscodeApi,
+    {
+      async runFacade(args, env, plan) {
+        facadeCalls.push({ args, env, plan });
+        return {
+          ok: true,
+          json: {
+            kind: "vscode-navigation",
+            items: [
+              {
+                name: "pkg_defs",
+                kind: "package",
+                file: "fixtures/modules/package_defs.sv",
+                line: 1,
+                column: 1,
+                zero_based_line: 0,
+                zero_based_column: 0,
+              },
+            ],
+          },
+        };
+      },
+    },
+  );
+
+  assert.deepEqual(activation.registered, COMMAND_IDS);
+  assert.deepEqual(activation.definitionProviders, [
+    {
+      id: CHECKED_EXAMPLE_DEFINITION_PROVIDER_ID,
+      selector: CHECKED_EXAMPLE_DEFINITION_SELECTOR,
+      registered: true,
+    },
+  ]);
+  assert.equal(definitionRegistrations.length, 1);
+  assert.equal(definitionRegistrations[0].selector, CHECKED_EXAMPLE_DEFINITION_SELECTOR);
+  assert.ok(
+    CHECKED_EXAMPLE_DEFINITION_SELECTOR.some((selector) => selector.language === "systemverilog"),
+  );
+  assert.ok(
+    CHECKED_EXAMPLE_DEFINITION_SELECTOR.some((selector) => selector.pattern === "**/*.sv"),
+  );
+  assert.equal(subscriptions.length, COMMAND_IDS.length + 2);
+
+  const definitions = await definitionRegistrations[0].provider.provideDefinition(
+    { uri: { fsPath: "/workspace/smoke.sv" } },
+    { line: 0, character: 7 },
+    {},
+  );
+
+  assert.equal(facadeCalls.length, 1);
+  assert.equal(facadeCalls[0].plan.commandId, CHECKED_EXAMPLE_NAVIGATION_COMMAND);
+  assert.deepEqual(facadeCalls[0].args, [
+    "navigation",
+    "--mode",
+    "example",
+    "--source",
+    "declarations",
+  ]);
+  assert.deepEqual(facadeCalls[0].env, {});
+  assert.equal(definitions.length, 1);
+  assert.match(definitions[0].uri.fsPath, /fixtures\/modules\/package_defs\.sv$/);
+  assert.equal(definitions[0].range.start.line, 0);
+  assert.equal(definitions[0].range.start.character, 0);
+  assert.equal(definitions[0].range.end.character, 1);
+}
+
 async function testNoVsCodeRuntimeIsANoop() {
   const activation = await activate({ subscriptions: [] }, { commands: null });
   assert.deepEqual(activation.registered, []);
@@ -394,6 +539,8 @@ testNavigationLocationMapping();
 testResolveCommandRequestUsesVsCodeSettings();
 await testEntrypointExportsAndActivation();
 await testCheckedExampleNavigationCommandReturnsLocations();
+await testCheckedExampleDefinitionProviderReturnsLocations();
+await testActivationRegistersCheckedExampleDefinitionProvider();
 await testNoVsCodeRuntimeIsANoop();
 await testCommandHandlerCanBeUsedWithoutRealVsCode();
 

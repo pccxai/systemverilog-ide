@@ -25,6 +25,10 @@ should earn CI promotion separately.
   `pccxSystemVerilog.showCheckedExampleNavigation`, returning checked
   example declaration records as VS Code `Uri`/`Range`/`Location`-style
   data when the local runtime smoke is explicitly enabled.
+- Minimal VS Code-native `DefinitionProvider` registration for
+  SystemVerilog-like file documents.  The provider uses checked-example
+  navigation by default through the existing facade boundary and returns
+  VS Code `Location` results in the opt-in runtime smoke.
 - Checked editor bridge examples.
 - Live CLI runner for known local JSON flows.
 - Guard behavior for the local-only Extension Host runtime smoke.
@@ -34,15 +38,16 @@ should earn CI promotion separately.
 ## Not Tested Today
 
 - Real QuickPick.
+- Complete semantic cursor/symbol resolution.
 - LSP provider registration.
 - Packaging.
 - `vsce`.
 - Marketplace install.
 
-The runtime smoke is limited coverage for the activation and command
-facade boundary only.  It is not a product claim and does not imply
-marketplace readiness, a published extension, LSP support, or a stable
-ABI/API.
+The runtime smoke is limited coverage for the activation, command facade,
+and VS Code-native provider boundary only.  It is not a product claim and
+does not imply marketplace readiness, a published extension, LSP support,
+complete semantic navigation, or a stable ABI/API.
 
 ## Guarded Local Scaffold
 
@@ -69,9 +74,14 @@ diagnostic with URI, range, severity, message, and source fields.  The
 navigation command uses checked example mode by default through
 `navigation --mode example --source declarations`; it returns
 Location-style records with URI, range, symbol, target kind, and source
-fields.  Live mode remains explicit and separate, and the runtime smoke
-does not execute live CLI commands by default.  There is no LSP provider
-yet.
+fields.  The same smoke opens a temporary SystemVerilog-like document
+and executes `vscode.executeDefinitionProvider` to verify that the
+experimental VS Code-native `DefinitionProvider` returns at least one
+`Location` with sane URI and range fields.  The provider currently
+reuses the checked-example declaration result and does not complete
+semantic cursor/symbol resolution.  Live mode remains explicit and
+separate, and the runtime smoke does not execute live CLI commands by
+default.  This is not LSP, and there is no LSP provider yet.
 
 The guarded script is not run by CI today.
 
@@ -109,7 +119,9 @@ system.
 1. Keep the facade boundary.
 2. Do not call `pccx_ide_cli` directly from activation.
 3. Do not run live CLI commands in the runtime smoke by default.
-4. Promote the runtime smoke to CI only after separate stability evidence.
-5. Do not add `vsce`, publisher metadata, packaging scripts, LSP, or
+4. Keep the VS Code-native `DefinitionProvider` separate from any LSP
+   implementation.
+5. Promote the runtime smoke to CI only after separate stability evidence.
+6. Do not add `vsce`, publisher metadata, packaging scripts, LSP, or
    marketplace flow.
-6. Do not make a marketplace, published-extension, or stable API claim.
+7. Do not make a marketplace, published-extension, or stable API claim.
