@@ -88,10 +88,12 @@ models for diagnostics and navigation behind injected VS Code-like
 dependencies.
 The presenter scaffold maps those UI action models to mockable
 DiagnosticCollection-like and QuickPick-like APIs without requiring real
-VS Code GUI tests.
+VS Code GUI tests.  A guarded local-only Extension Host smoke scaffold
+exists, but it is disabled by default and no real VS Code Extension Host
+coverage is claimed yet.
 The scaffold is not published, is not marketplace-ready, has no LSP, and
-is not a stable ABI/API.  Current coverage is static/smoke tests, not VS
-Code GUI integration tests.
+is not a stable ABI/API.  Current coverage is mostly static/mock tests
+and smoke tests, not VS Code GUI integration tests.
 The prototype documents the 1-based CLI position to 0-based editor
 position conversion expected by editor adapters.
 
