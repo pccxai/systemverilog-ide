@@ -566,6 +566,11 @@ export function buildContextBundle(input = {}, options = {}) {
     validation: {
       recent: recentValidation,
       recentHistory: recentValidationHistory,
+      historyPolicy: {
+        maxResults: limits.maxRecentValidationResults,
+        summaryOnly: true,
+        fullLogsExcluded: true,
+      },
     },
     recentCommand: normalizeRecentCommandStatus(input.recentCommandStatus, limits),
     pccxLab: {

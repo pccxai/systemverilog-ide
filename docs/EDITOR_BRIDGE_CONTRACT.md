@@ -93,8 +93,9 @@ AI-assisted SystemVerilog development workflow work is boundary-only:
 AI assistant status and context bundle commands expose local status,
 bounded context, selected-symbol context, validation command proposal
 data, disabled-by-default approved validation runner status/result data,
-and proposal actions, with no AI provider calls, no
-pccx-llm-launcher runtime calls yet, and no MCP server implementation.
+summary-only validation cache status, and proposal actions, with no AI
+provider calls, no pccx-llm-launcher runtime calls yet, and no MCP server
+implementation.
 
 The same directory now includes an experimental local VS Code extension
 scaffold.  Its command handlers are thin wrappers around the local facade:

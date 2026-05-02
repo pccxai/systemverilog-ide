@@ -106,6 +106,7 @@ async function testReadinessDocsAndCiPolicy() {
   assert.match(`${readme}\n${readiness}`, /proposeValidationCommand/);
   assert.match(`${readme}\n${readiness}`, /runApprovedValidationCommand/);
   assert.match(`${readme}\n${readiness}`, /showRecentValidationResults/);
+  assert.match(`${readme}\n${readiness}`, /showValidationCacheStatus/);
   assert.match(`${readme}\n${readiness}`, /clearValidationResultCache/);
   assert.match(`${readme}\n${readiness}`, /showPccxLabBackendStatus/);
   assert.match(`${readme}\n${readiness}`, /context bundle command/i);
@@ -161,6 +162,7 @@ async function testRuntimeRunnerIsPinnedAndBounded() {
   assert.match(suite, /proposeValidationCommand/);
   assert.match(suite, /runApprovedValidationCommand/);
   assert.match(suite, /showRecentValidationResults/);
+  assert.match(suite, /showValidationCacheStatus/);
   assert.match(suite, /clearValidationResultCache/);
   assert.match(suite, /validationRunner\.enabled/);
   assert.match(suite, /vscodeAdapterSmoke/);

@@ -11,6 +11,7 @@ import {
   LIVE_WORKSPACE_NAVIGATION_COMMAND,
   PCCX_LAB_BACKEND_STATUS_COMMAND,
   SHOW_RECENT_VALIDATION_RESULTS_COMMAND,
+  SHOW_VALIDATION_CACHE_STATUS_COMMAND,
   VALIDATION_PROPOSAL_COMMAND,
   activate,
   buildFacadeArgsForCommand,
@@ -408,7 +409,7 @@ async function testEntrypointExportsAndActivation() {
   assert.equal(activation.definitionProviders[0].id, CHECKED_EXAMPLE_DEFINITION_PROVIDER_ID);
   assert.equal(activation.definitionProviders[0].registered, false);
   assert.equal(registered.size, COMMAND_IDS.length);
-  assert.equal(subscriptions.length, COMMAND_IDS.length + 1);
+  assert.equal(subscriptions.length, COMMAND_IDS.length + 2);
 
   const result = await registered.get("pccxSystemVerilog.showDiagnosticsExample")();
   assert.equal(result.ok, true);
@@ -725,7 +726,7 @@ async function testActivationRegistersCheckedExampleDefinitionProvider() {
   assert.ok(
     CHECKED_EXAMPLE_DEFINITION_SELECTOR.some((selector) => selector.pattern === "**/*.sv"),
   );
-  assert.equal(subscriptions.length, COMMAND_IDS.length + 2);
+  assert.equal(subscriptions.length, COMMAND_IDS.length + 3);
 
   const definitions = await definitionRegistrations[0].provider.provideDefinition(
     { uri: { fsPath: "/workspace/smoke.sv" } },
@@ -1110,6 +1111,7 @@ async function testValidationResultCacheCommandsShowAndClear() {
   ]);
   const quickPickCalls = [];
   const informationMessages = [];
+  const validationOutputLines = [];
   const vscodeApi = {
     workspace: {
       workspaceFolders: [{ uri: { fsPath: "/repo/workspace" } }],
@@ -1133,16 +1135,24 @@ async function testValidationResultCacheCommandsShowAndClear() {
   };
   const runtime = {
     repoRoot: "/repo",
+    validationOutputChannel: {
+      appendLine(line) {
+        validationOutputLines.push(line);
+      },
+      show() {},
+    },
     validationExecFile(_executable, _args, _options, done) {
       done(null, "ok\nTOKEN=hidden\n/home/dev/repo/file.sv\n", "");
     },
   };
   const runHandler = createCommandHandler(APPROVED_VALIDATION_RUNNER_COMMAND, vscodeApi, runtime);
   const showHandler = createCommandHandler(SHOW_RECENT_VALIDATION_RESULTS_COMMAND, vscodeApi, runtime);
+  const statusHandler = createCommandHandler(SHOW_VALIDATION_CACHE_STATUS_COMMAND, vscodeApi, runtime);
   const clearHandler = createCommandHandler(CLEAR_VALIDATION_RESULT_CACHE_COMMAND, vscodeApi, runtime);
 
   await runHandler({ proposalId: "vscodeAdapterSmoke" });
   const shown = await showHandler();
+  const status = await statusHandler();
 
   assert.equal(shown.ok, true);
   assert.equal(shown.kind, "validation-result-cache");
@@ -1153,9 +1163,26 @@ async function testValidationResultCacheCommandsShowAndClear() {
   assert.equal(shown.selected.proposalId, "vscodeAdapterSmoke");
   assert.equal(quickPickCalls.length, 1);
   assert.equal(quickPickCalls[0].options.title, "Recent Validation Results");
+  assert.match(quickPickCalls[0].items[0].detail, /proposal vscodeAdapterSmoke/);
+  assert.match(quickPickCalls[0].items[0].detail, /redacted/);
+  assert.equal(status.ok, true);
+  assert.equal(status.kind, "validation-result-cache-status");
+  assert.equal(status.status.count, 1);
+  assert.equal(status.status.maxSize, 5);
+  assert.equal(status.status.latest.proposalId, "vscodeAdapterSmoke");
+  assert.equal(status.status.latest.status, "passed");
+  assert.equal(status.status.summaryOnly, true);
+  assert.equal(status.status.fullLogsExcluded, true);
   assert.doesNotMatch(JSON.stringify(shown.entries), /TOKEN=hidden/);
   assert.doesNotMatch(JSON.stringify(shown.entries), /\/home\/dev/);
   assert.doesNotMatch(JSON.stringify(shown.entries), /scripts\/vscode-adapter-smoke\.sh/);
+  assert.ok(validationOutputLines.some((line) => line.includes("Validation Result Summary")));
+  assert.ok(validationOutputLines.some((line) => line.includes("proposalId: vscodeAdapterSmoke")));
+  assert.ok(validationOutputLines.some((line) => line.includes("Validation Cache Status")));
+  assert.ok(validationOutputLines.some((line) => line.includes("fullLogsExcluded: yes")));
+  assert.doesNotMatch(validationOutputLines.join("\n"), /TOKEN=hidden/);
+  assert.doesNotMatch(validationOutputLines.join("\n"), /\/home\/dev/);
+  assert.doesNotMatch(validationOutputLines.join("\n"), /scripts\/vscode-adapter-smoke\.sh/);
 
   const cleared = await clearHandler();
 
@@ -1164,7 +1191,7 @@ async function testValidationResultCacheCommandsShowAndClear() {
   assert.equal(cleared.clearedCount, 1);
   assert.equal(runtime.validationResultCache.size(), 0);
   assert.equal(runtime.recentValidationSummary, null);
-  assert.match(informationMessages[0][0], /Cleared 1 cached validation result/);
+  assert.ok(informationMessages.some(([message]) => /Cleared 1 cached validation result/.test(message)));
 }
 
 async function testPccxLabBackendStatusCommandReturnsStatusOnly() {

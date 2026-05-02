@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 
 import {
   VALIDATION_RESULT_CACHE_ENTRY_VERSION,
+  VALIDATION_RESULT_CACHE_STATUS_VERSION,
   createValidationResultCache,
   createValidationResultCacheEntry,
+  formatValidationResultCacheEntry,
+  formatValidationResultCacheStatus,
 } from "../src/validation-result-cache.mjs";
 
 function summary(proposalId, options = {}) {
@@ -112,8 +115,53 @@ function testCacheClearReturnsCountAndEmptiesEntries() {
   assert.equal(cache.size(), 0);
 }
 
+function testCacheStatusAndFormattingStaySummaryOnly() {
+  const cache = createValidationResultCache({ maxSize: 2, maxOutputLines: 2 });
+  const entry = cache.add(summary("vscodeAdapterSmoke", {
+    status: "failed",
+    exitCode: 1,
+    durationMs: 42,
+    stdoutSummary: {
+      lines: ["ok", "TOKEN=hidden", "/home/dev/repo/file.sv", "tail"],
+      lineCount: 4,
+      truncated: false,
+    },
+    stderrSummary: {
+      lines: ["failure"],
+      lineCount: 1,
+      truncated: false,
+    },
+  }));
+  const status = cache.status();
+  const entryText = formatValidationResultCacheEntry(entry);
+  const statusText = formatValidationResultCacheStatus(status);
+  const combined = `${entryText}\n${statusText}`;
+
+  assert.equal(status.version, VALIDATION_RESULT_CACHE_STATUS_VERSION);
+  assert.equal(status.count, 1);
+  assert.equal(status.maxSize, 2);
+  assert.equal(status.latest.proposalId, "vscodeAdapterSmoke");
+  assert.equal(status.latest.status, "failed");
+  assert.equal(status.latest.exitCode, 1);
+  assert.equal(status.latest.durationMs, 42);
+  assert.equal(status.redactionApplied, true);
+  assert.equal(status.truncated, true);
+  assert.equal(status.summaryOnly, true);
+  assert.equal(status.fullLogsExcluded, true);
+  assert.match(entryText, /Validation Result Summary/);
+  assert.match(entryText, /proposalId: vscodeAdapterSmoke/);
+  assert.match(entryText, /redactionApplied: yes/);
+  assert.match(statusText, /Validation Cache Status/);
+  assert.match(statusText, /fullLogsExcluded: yes/);
+  assert.doesNotMatch(combined, /TOKEN=hidden/);
+  assert.doesNotMatch(combined, /\/home\/dev/);
+  assert.doesNotMatch(combined, /tail/);
+  assert.doesNotMatch(combined, /scripts\/vscode-adapter-smoke\.sh/);
+}
+
 testCacheKeepsNewestFirstWithinMaxSize();
 testCacheEntriesAreSummaryOnlyRedactedAndBounded();
 testCacheClearReturnsCountAndEmptiesEntries();
+testCacheStatusAndFormattingStaySummaryOnly();
 
 console.log("vscode validation result cache tests ok");

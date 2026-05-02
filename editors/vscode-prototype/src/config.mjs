@@ -36,6 +36,7 @@ export const AI_COMMAND_IDS = Object.freeze([
   "pccxSystemVerilog.proposeValidationCommand",
   "pccxSystemVerilog.runApprovedValidationCommand",
   "pccxSystemVerilog.showRecentValidationResults",
+  "pccxSystemVerilog.showValidationCacheStatus",
   "pccxSystemVerilog.clearValidationResultCache",
 ]);
 

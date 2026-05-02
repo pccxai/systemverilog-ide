@@ -69,6 +69,7 @@ async function run() {
     "pccxSystemVerilog.proposeValidationCommand",
     "pccxSystemVerilog.runApprovedValidationCommand",
     "pccxSystemVerilog.showRecentValidationResults",
+    "pccxSystemVerilog.showValidationCacheStatus",
     "pccxSystemVerilog.clearValidationResultCache",
     "pccxSystemVerilog.showPccxLabBackendStatus",
   ]);
@@ -418,6 +419,23 @@ async function run() {
       postValidationContext.contextBundle.validation.recent.safety.allowlisted,
       true,
     );
+    assert.deepEqual(postValidationContext.contextBundle.validation.historyPolicy, {
+      maxResults: 5,
+      summaryOnly: true,
+      fullLogsExcluded: true,
+    });
+
+    const cacheStatus = await vscode.commands.executeCommand(
+      "pccxSystemVerilog.showValidationCacheStatus",
+    );
+    assert.equal(cacheStatus.ok, true);
+    assert.equal(cacheStatus.kind, "validation-result-cache-status");
+    assert.equal(cacheStatus.status.count, 2);
+    assert.equal(cacheStatus.status.maxSize, 5);
+    assert.equal(cacheStatus.status.latest.proposalId, "vscodeAdapterSmoke");
+    assert.equal(cacheStatus.status.latest.status, "passed");
+    assert.equal(cacheStatus.status.summaryOnly, true);
+    assert.equal(cacheStatus.status.fullLogsExcluded, true);
   } finally {
     await updatePrototypeConfig("validationRunner.enabled", false);
     await updatePrototypeConfig("validationRunner.mode", "disabled");

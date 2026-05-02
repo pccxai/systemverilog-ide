@@ -1,8 +1,10 @@
 import { summarizeOutputText } from "./validation-result-summary.mjs";
 
 export const VALIDATION_RESULT_CACHE_ENTRY_VERSION = "pccx.validationResultCacheEntry.v0";
+export const VALIDATION_RESULT_CACHE_STATUS_VERSION = "pccx.validationResultCacheStatus.v0";
 export const DEFAULT_VALIDATION_RESULT_CACHE_MAX_SIZE = 5;
 export const DEFAULT_VALIDATION_RESULT_CACHE_OUTPUT_LINES = 20;
+export const DEFAULT_VALIDATION_RESULT_CACHE_DISPLAY_LINES = 8;
 
 const SECRET_ASSIGNMENT_PATTERN =
   /\b(?:api[_-]?key|authorization|bearer|client[_-]?secret|password|private[_-]?key|secret|token)\b\s*[:=]/i;
@@ -100,6 +102,100 @@ function cloneEntry(entry) {
   return JSON.parse(JSON.stringify(entry));
 }
 
+function lineCount(summary) {
+  return Math.max(0, Math.floor(finiteNumber(summary?.lineCount)));
+}
+
+function outputLines(summary, maxLines = DEFAULT_VALIDATION_RESULT_CACHE_DISPLAY_LINES) {
+  return Array.isArray(summary?.lines)
+    ? summary.lines
+      .map((line) => boundedText(String(line ?? ""), 500))
+      .slice(0, Math.max(0, maxLines))
+    : [];
+}
+
+function yesNo(value) {
+  return value === true ? "yes" : "no";
+}
+
+function latestStatus(entry) {
+  if (!entry) {
+    return null;
+  }
+  return {
+    proposalId: boundedText(entry.proposalId ?? "", 120),
+    label: boundedText(entry.label ?? "", 160),
+    status: boundedText(entry.status ?? "unknown", 80),
+    exitCode: entry.exitCode == null ? null : Math.floor(finiteNumber(entry.exitCode)),
+    durationMs: entry.durationMs == null
+      ? null
+      : Math.max(0, Math.floor(finiteNumber(entry.durationMs))),
+    truncated: entry.truncated === true,
+    redactionApplied: entry.redactionApplied === true,
+  };
+}
+
+export function createValidationResultCacheStatus(entries = [], maxSize = DEFAULT_VALIDATION_RESULT_CACHE_MAX_SIZE) {
+  const safeEntries = Array.isArray(entries) ? entries : [];
+  return {
+    version: VALIDATION_RESULT_CACHE_STATUS_VERSION,
+    count: safeEntries.length,
+    maxSize: Math.max(0, Math.floor(finiteNumber(maxSize))),
+    latest: latestStatus(safeEntries[0]),
+    truncated: safeEntries.some((entry) => entry?.truncated === true),
+    redactionApplied: safeEntries.some((entry) => entry?.redactionApplied === true),
+    summaryOnly: true,
+    fullLogsExcluded: true,
+  };
+}
+
+export function formatValidationResultCacheEntry(entry = {}, options = {}) {
+  const maxLines = clampInteger(
+    options.maxDisplayLines,
+    DEFAULT_VALIDATION_RESULT_CACHE_DISPLAY_LINES,
+    0,
+    40,
+  );
+  const stdoutLines = outputLines(entry.stdoutSummary, maxLines);
+  const stderrLines = outputLines(entry.stderrSummary, maxLines);
+  const lines = [
+    "Validation Result Summary",
+    `proposalId: ${boundedText(entry.proposalId ?? "", 120) || "(none)"}`,
+    `label: ${boundedText(entry.label ?? "", 160) || "validation"}`,
+    `status: ${boundedText(entry.status ?? "unknown", 80)}`,
+    `exitCode: ${entry.exitCode == null ? "none" : Math.floor(finiteNumber(entry.exitCode))}`,
+    `durationMs: ${entry.durationMs == null ? "none" : Math.max(0, Math.floor(finiteNumber(entry.durationMs)))}`,
+    `workingDirectoryKind: ${boundedText(entry.workingDirectoryKind ?? "", 80) || "unknown"}`,
+    `commandKind: ${boundedText(entry.commandKind ?? "", 120) || "validation-proposal"}`,
+    `redactionApplied: ${yesNo(entry.redactionApplied === true)}`,
+    `truncated: ${yesNo(entry.truncated === true)}`,
+    `summary: ${boundedText(entry.summaryText ?? "", 800) || "(none)"}`,
+    `stdoutSummary: ${lineCount(entry.stdoutSummary)} line(s), shown ${stdoutLines.length}, truncated=${yesNo(entry.stdoutSummary?.truncated === true)}`,
+    ...stdoutLines.map((line) => `  ${line}`),
+    `stderrSummary: ${lineCount(entry.stderrSummary)} line(s), shown ${stderrLines.length}, truncated=${yesNo(entry.stderrSummary?.truncated === true)}`,
+    ...stderrLines.map((line) => `  ${line}`),
+  ];
+  return lines.join("\n");
+}
+
+export function formatValidationResultCacheStatus(status = {}) {
+  const latest = status.latest;
+  return [
+    "Validation Cache Status",
+    `count: ${Math.max(0, Math.floor(finiteNumber(status.count)))}`,
+    `maxSize: ${Math.max(0, Math.floor(finiteNumber(status.maxSize)))}`,
+    `latestProposalId: ${latest?.proposalId || "(none)"}`,
+    `latestLabel: ${latest?.label || "(none)"}`,
+    `latestStatus: ${latest?.status || "(none)"}`,
+    `latestExitCode: ${latest?.exitCode == null ? "none" : latest.exitCode}`,
+    `latestDurationMs: ${latest?.durationMs == null ? "none" : latest.durationMs}`,
+    `redactionApplied: ${yesNo(status.redactionApplied === true)}`,
+    `truncated: ${yesNo(status.truncated === true)}`,
+    `summaryOnly: ${yesNo(status.summaryOnly === true)}`,
+    `fullLogsExcluded: ${yesNo(status.fullLogsExcluded === true)}`,
+  ].join("\n");
+}
+
 export function createValidationResultCacheEntry(validationResult = {}, options = {}) {
   const source = validationResult?.resultSummary &&
     typeof validationResult.resultSummary === "object"
@@ -171,6 +267,12 @@ export function createValidationResultCache(options = {}) {
     },
     latest() {
       return entries[0] ? cloneEntry(entries[0]) : null;
+    },
+    status() {
+      return createValidationResultCacheStatus(entries, maxSize);
+    },
+    maxSize() {
+      return maxSize;
     },
     clear() {
       const count = entries.length;
