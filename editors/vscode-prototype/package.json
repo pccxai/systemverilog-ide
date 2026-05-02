@@ -26,6 +26,7 @@
     "onCommand:pccxSystemVerilog.proposeValidationCommand",
     "onCommand:pccxSystemVerilog.runApprovedValidationCommand",
     "onCommand:pccxSystemVerilog.showRecentValidationResults",
+    "onCommand:pccxSystemVerilog.showValidationCacheStatus",
     "onCommand:pccxSystemVerilog.clearValidationResultCache",
     "onCommand:pccxSystemVerilog.showPccxLabBackendStatus"
   ],
@@ -82,6 +83,10 @@
       {
         "command": "pccxSystemVerilog.showRecentValidationResults",
         "title": "PCCX SystemVerilog: Show Recent Validation Results (Experimental)"
+      },
+      {
+        "command": "pccxSystemVerilog.showValidationCacheStatus",
+        "title": "PCCX SystemVerilog: Show Validation Cache Status (Experimental)"
       },
       {
         "command": "pccxSystemVerilog.clearValidationResultCache",

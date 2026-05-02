@@ -121,6 +121,7 @@ checked-example symbols.  It executes
 `pccxSystemVerilog.proposeValidationCommand`, and
 `pccxSystemVerilog.runApprovedValidationCommand`,
 `pccxSystemVerilog.showRecentValidationResults`,
+`pccxSystemVerilog.showValidationCacheStatus`,
 `pccxSystemVerilog.clearValidationResultCache`, and
 `pccxSystemVerilog.showPccxLabBackendStatus`, verifying disabled/backend
 `none` status, proposal-only actions, disabled runner blocking behavior,
@@ -154,6 +155,8 @@ allowlisted command/argument arrays.  Output is bounded and summarized
 for a small in-memory validation-result cache and token-saving context
 bundles.  `pccxSystemVerilog.showRecentValidationResults` shows cached
 summary-only entries through VS Code-native surfaces, and
+`pccxSystemVerilog.showValidationCacheStatus` reports summary-only cache
+count, max size, latest status, and redaction/truncation flags.
 `pccxSystemVerilog.clearValidationResultCache` clears that local cache.
 The cache does not persist to disk and does not store full logs, raw
 shell command strings, secrets, tokens, private home paths, generated

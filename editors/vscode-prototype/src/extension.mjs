@@ -42,6 +42,8 @@ import {
 } from "./approved-validation-runner.mjs";
 import {
   createValidationResultCache,
+  formatValidationResultCacheEntry,
+  formatValidationResultCacheStatus,
 } from "./validation-result-cache.mjs";
 import {
   createPccxLabBackendStatus,
@@ -52,6 +54,7 @@ const DEFAULT_DIAGNOSTIC_FILE_ROOT = resolve(EXTENSION_ROOT, "../..");
 const DEFAULT_NAVIGATION_FILE_ROOT = DEFAULT_DIAGNOSTIC_FILE_ROOT;
 const DEFAULT_FACADE_PATH = resolve(EXTENSION_ROOT, "bin/pccx-vscode-prototype.mjs");
 const OUTPUT_CHANNEL_NAME = "PCCX SystemVerilog IDE Prototype";
+const VALIDATION_OUTPUT_CHANNEL_NAME = "PCCX SystemVerilog Validation Results";
 export const CHECKED_EXAMPLE_NAVIGATION_COMMAND =
   "pccxSystemVerilog.showCheckedExampleNavigation";
 export const LIVE_WORKSPACE_NAVIGATION_COMMAND =
@@ -68,6 +71,8 @@ export const APPROVED_VALIDATION_RUNNER_COMMAND =
   "pccxSystemVerilog.runApprovedValidationCommand";
 export const SHOW_RECENT_VALIDATION_RESULTS_COMMAND =
   "pccxSystemVerilog.showRecentValidationResults";
+export const SHOW_VALIDATION_CACHE_STATUS_COMMAND =
+  "pccxSystemVerilog.showValidationCacheStatus";
 export const CLEAR_VALIDATION_RESULT_CACHE_COMMAND =
   "pccxSystemVerilog.clearValidationResultCache";
 export const PCCX_LAB_BACKEND_STATUS_COMMAND =
@@ -245,9 +250,49 @@ function validationEntryQuickPickItems(entries) {
     description: [entry.status, entry.exitCode == null ? "" : `exit ${entry.exitCode}`]
       .filter(Boolean)
       .join(" "),
-    detail: entry.summaryText,
+    detail: [
+      entry.proposalId ? `proposal ${entry.proposalId}` : "",
+      entry.durationMs == null ? "" : `${entry.durationMs}ms`,
+      entry.redactionApplied ? "redacted" : "",
+      entry.truncated ? "truncated" : "",
+    ].filter(Boolean).join(" | "),
     entry,
   }));
+}
+
+function validationOutputChannelFromRuntime(runtime = {}) {
+  return runtime.validationOutputChannel ?? runtime.outputChannel;
+}
+
+function appendValidationOutput(outputChannel, commandId, result) {
+  if (!outputChannel?.appendLine) {
+    return;
+  }
+
+  outputChannel.appendLine(`[${commandId}]`);
+  if (result.kind === "validation-result-cache") {
+    outputChannel.appendLine(`cachedResultCount: ${result.entries?.length ?? 0}`);
+    if (result.selected) {
+      outputChannel.appendLine(formatValidationResultCacheEntry(result.selected));
+    } else {
+      for (const entry of result.entries ?? []) {
+        outputChannel.appendLine(formatValidationResultCacheEntry(entry, { maxDisplayLines: 0 }));
+      }
+    }
+  }
+  if (result.kind === "validation-result-cache-status") {
+    outputChannel.appendLine(formatValidationResultCacheStatus(result.status));
+  }
+  if (result.kind === "validation-result-cache-clear") {
+    outputChannel.appendLine(`clearedCount: ${result.clearedCount}`);
+  }
+  if (result.kind === "approved-validation-result" && result.resultSummary) {
+    outputChannel.appendLine(formatValidationResultCacheEntry(result.resultSummary));
+  }
+  if (result.error) {
+    outputChannel.appendLine(result.error);
+  }
+  outputChannel.show?.(true);
 }
 
 function appendCommandOutput(outputChannel, commandId, result) {
@@ -293,6 +338,12 @@ function appendCommandOutput(outputChannel, commandId, result) {
         truncated: entry.truncated,
         redactionApplied: entry.redactionApplied,
       })),
+    }, null, 2));
+  }
+  if (result.kind === "validation-result-cache-status") {
+    outputChannel.appendLine(JSON.stringify({
+      kind: result.kind,
+      status: result.status,
     }, null, 2));
   }
   if (result.kind === "validation-result-cache-clear") {
@@ -693,6 +744,12 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
             { title: "Recent Validation Results", placeHolder: "Select a cached validation summary" },
           );
           result.selected = selected?.entry ?? null;
+          if (result.selected) {
+            vscodeApi?.window?.showInformationMessage?.(
+              `Validation summary: ${shortValidationEntryLabel(result.selected)}`,
+              result,
+            );
+          }
         } else {
           vscodeApi?.window?.showInformationMessage?.(
             `${entries.length} recent validation result(s) cached. ${shortValidationEntryLabel(entries[0])}`,
@@ -703,6 +760,34 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
         result = { ok: false, commandId, error: error.message };
         vscodeApi?.window?.showWarningMessage?.(result.error, result);
       }
+      appendValidationOutput(validationOutputChannelFromRuntime(runtime), commandId, result);
+      appendCommandOutput(runtime.outputChannel, commandId, result);
+      return result;
+    }
+
+    if (commandId === SHOW_VALIDATION_CACHE_STATUS_COMMAND) {
+      let result;
+      try {
+        const cache = validationResultCacheFromRuntime(runtime);
+        const status = cache.status();
+        result = {
+          ok: true,
+          commandId,
+          kind: "validation-result-cache-status",
+          status,
+        };
+        const latestText = status.latest
+          ? ` Latest: ${status.latest.label || status.latest.proposalId} ${status.latest.status}.`
+          : "";
+        vscodeApi?.window?.showInformationMessage?.(
+          `Validation cache: ${status.count}/${status.maxSize} result(s).${latestText}`,
+          result,
+        );
+      } catch (error) {
+        result = { ok: false, commandId, error: error.message };
+        vscodeApi?.window?.showWarningMessage?.(result.error, result);
+      }
+      appendValidationOutput(validationOutputChannelFromRuntime(runtime), commandId, result);
       appendCommandOutput(runtime.outputChannel, commandId, result);
       return result;
     }
@@ -727,6 +812,7 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
         result = { ok: false, commandId, error: error.message };
         vscodeApi?.window?.showWarningMessage?.(result.error, result);
       }
+      appendValidationOutput(validationOutputChannelFromRuntime(runtime), commandId, result);
       appendCommandOutput(runtime.outputChannel, commandId, result);
       return result;
     }
@@ -753,6 +839,17 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
         vscodeApi?.window?.showWarningMessage?.(result.error, result);
       }
       result.commandId = commandId;
+      if (runtime.recentValidationSummary) {
+        appendValidationOutput(
+          validationOutputChannelFromRuntime(runtime),
+          commandId,
+          {
+            kind: "validation-result-cache",
+            entries: [runtime.recentValidationSummary],
+            selected: runtime.recentValidationSummary,
+          },
+        );
+      }
       appendCommandOutput(runtime.outputChannel, commandId, result);
       return result;
     }
@@ -823,9 +920,16 @@ export async function activate(context, injectedVscodeApi = null, runtime = {}) 
   }
 
   const outputChannel = vscodeApi.window?.createOutputChannel?.(OUTPUT_CHANNEL_NAME);
+  const validationOutputChannel =
+    vscodeApi.window?.createOutputChannel?.(VALIDATION_OUTPUT_CHANNEL_NAME);
   const diagnosticsCollection = runtime.diagnosticsCollection
     ?? vscodeApi.languages?.createDiagnosticCollection?.(OUTPUT_CHANNEL_NAME);
-  const commandRuntime = { ...runtime, diagnosticsCollection, outputChannel };
+  const commandRuntime = {
+    ...runtime,
+    diagnosticsCollection,
+    outputChannel,
+    validationOutputChannel,
+  };
   const registered = [];
   const definitionProviders = [];
 
@@ -855,6 +959,9 @@ export async function activate(context, injectedVscodeApi = null, runtime = {}) 
 
   if (outputChannel) {
     context?.subscriptions?.push?.(outputChannel);
+  }
+  if (validationOutputChannel) {
+    context?.subscriptions?.push?.(validationOutputChannel);
   }
   if (diagnosticsCollection && diagnosticsCollection !== runtime.diagnosticsCollection) {
     context?.subscriptions?.push?.(diagnosticsCollection);

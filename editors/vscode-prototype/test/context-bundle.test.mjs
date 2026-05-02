@@ -313,6 +313,11 @@ function testStableBoundedShape() {
   assert.equal(bundle.validation.recent.safety.allowlisted, true);
   assert.equal(bundle.validation.recent.safety.shell, false);
   assert.equal(bundle.validation.recentHistory.length, 2);
+  assert.deepEqual(bundle.validation.historyPolicy, {
+    maxResults: 5,
+    summaryOnly: true,
+    fullLogsExcluded: true,
+  });
   assert.deepEqual(
     bundle.validation.recentHistory.map((entry) => entry.proposalId),
     ["vscodeAdapterSmoke", "editorBridgeSmoke"],

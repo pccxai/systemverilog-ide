@@ -180,7 +180,8 @@ working-directory kind, command kind, bounded stdout/stderr summaries,
 truncation/redaction flags, and safety metadata.  It does not persist to
 disk and does not store full logs, raw shell command strings, secrets,
 tokens, private home paths, generated blobs, model paths, or pccx-lab
-outputs.
+outputs.  The cache UX exposes recent entries and cache status through
+VS Code-native surfaces and a summary-only validation output channel.
 
 The context bundle can carry the latest cached validation summary and a
 small bounded recent validation history.  It does not include full logs,
@@ -210,6 +211,7 @@ Now:
 - validation command proposal
 - approved validation runner boundary
 - validation summary in the context bundle
+- validation cache status command
 - pccx-lab backend status
 
 Next:

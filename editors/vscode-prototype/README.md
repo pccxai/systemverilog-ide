@@ -139,6 +139,7 @@ The contributed commands are:
 - `pccxSystemVerilog.proposeValidationCommand`
 - `pccxSystemVerilog.runApprovedValidationCommand`
 - `pccxSystemVerilog.showRecentValidationResults`
+- `pccxSystemVerilog.showValidationCacheStatus`
 - `pccxSystemVerilog.clearValidationResultCache`
 - `pccxSystemVerilog.showPccxLabBackendStatus`
 
@@ -244,7 +245,7 @@ command paths plus the provider smoke.  It checks the AI assistant status
 command, selected-symbol context bundle command, validation command
 proposal, disabled approved validation runner behavior, one explicit
 allowlisted validation run, validation summary handoff into the context
-bundle, local validation-result cache command registration, and pccx-lab
+bundle, local validation-result cache commands, and pccx-lab
 backend status command without provider/runtime calls.  It does not
 package the extension, add an LSP provider, or install through a
 marketplace flow.  Extension Host gates are
@@ -320,6 +321,9 @@ it does not persist to disk and does not store full stdout/stderr logs,
 secrets, tokens, private home paths, raw command strings, generated blobs,
 model paths, or pccx-lab outputs.  `pccxSystemVerilog.showRecentValidationResults`
 shows the small recent cache through VS Code-native surfaces, and
+`pccxSystemVerilog.showValidationCacheStatus` reports the cache count,
+max size, latest status, and redaction/truncation flags through a
+summary-only validation output channel.
 `pccxSystemVerilog.clearValidationResultCache` clears the in-memory cache.
 This cache boundary does not add AI provider calls, MCP, LSP, marketplace
 packaging, pccx-llm-launcher calls, real pccx-lab execution, releases, or
@@ -354,7 +358,7 @@ Now:
 - selected-symbol context
 - validation command proposal
 - disabled-by-default approved validation runner boundary
-- recent validation summary in the context bundle
+- recent validation summary and cache status command
 - pccx-lab backend status command
 
 Next:
@@ -378,7 +382,7 @@ Later:
 3. Propose a validation command as data with `pccxSystemVerilog.proposeValidationCommand`.
 4. User approves an allowlisted validation proposal ID.
 5. Run `pccxSystemVerilog.runApprovedValidationCommand` only after the runner is explicitly enabled.
-6. Feed the bounded validation result cache summary back into the context bundle.
+6. Inspect the bounded validation cache status and feed the summary back into the context bundle.
 7. Future local coding-assistant mode can propose a patch or next validation step, but does not execute either directly.
 
 ## Local Smoke
