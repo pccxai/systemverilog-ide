@@ -176,6 +176,32 @@ async function testNavigationExampleAction() {
   assert.deepEqual(calls.navigation[0].items, [item]);
 }
 
+async function testCheckedExampleNavigationAction() {
+  const item = { name: "pkg_defs", kind: "package", file: "pkg.sv" };
+  const { calls, deps } = mockDeps({
+    kind: "vscode-navigation",
+    items: [item],
+  });
+
+  const result = await runPrototypeCommand(
+    "pccxSystemVerilog.showCheckedExampleNavigation",
+    { mode: "live", pythonPath: "python-custom" },
+    deps,
+  );
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(calls.runFacade[0].args, [
+    "navigation",
+    "--mode",
+    "example",
+    "--source",
+    "declarations",
+  ]);
+  assert.deepEqual(calls.runFacade[0].env, {});
+  assert.equal(result.action.kind, "navigation");
+  assert.deepEqual(result.action.items, [item]);
+}
+
 async function testNavigationLiveAction() {
   const { calls, deps } = mockDeps({
     kind: "vscode-navigation",
@@ -322,6 +348,7 @@ await testDiagnosticsExampleAction();
 await testPublishCheckedExampleDiagnosticsAction();
 await testDiagnosticsLiveAction();
 await testNavigationExampleAction();
+await testCheckedExampleNavigationAction();
 await testNavigationLiveAction();
 await testRunFacadeUsesArgumentArray();
 await testInvalidConfigControlledFailure();

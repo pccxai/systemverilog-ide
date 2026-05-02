@@ -18,15 +18,21 @@ import {
 import {
   presentAction,
 } from "./presenter.mjs";
+import {
+  createNavigationLocationRecords,
+} from "./navigation-locations.mjs";
 
 const EXTENSION_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_DIAGNOSTIC_FILE_ROOT = resolve(EXTENSION_ROOT, "../..");
+const DEFAULT_NAVIGATION_FILE_ROOT = DEFAULT_DIAGNOSTIC_FILE_ROOT;
 const DEFAULT_FACADE_PATH = resolve(EXTENSION_ROOT, "bin/pccx-vscode-prototype.mjs");
 const OUTPUT_CHANNEL_NAME = "PCCX SystemVerilog IDE Prototype";
+const CHECKED_EXAMPLE_NAVIGATION_COMMAND = "pccxSystemVerilog.showCheckedExampleNavigation";
 
 export {
   COMMAND_IDS,
   buildFacadeArgsForCommand,
+  createNavigationLocationRecords,
   createCommandExecutionPlan,
   defaultConfig,
   normalizeConfig,
@@ -216,6 +222,11 @@ export function createPresenterDeps(vscodeApi, runtime = {}) {
         ? new vscodeApi.Diagnostic(range, message, severity)
         : { range, message, severity };
     },
+    createLocation(uri, range) {
+      return typeof vscodeApi?.Location === "function"
+        ? new vscodeApi.Location(uri, range)
+        : { uri, range };
+    },
     diagnosticSeverity,
     diagnosticsCollection: runtime.diagnosticsCollection,
     showInformationMessage: vscodeApi?.window?.showInformationMessage?.bind(vscodeApi.window),
@@ -229,6 +240,7 @@ export function createPresenterDeps(vscodeApi, runtime = {}) {
 export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
   createCommandExecutionPlan(commandId, defaultConfig());
   return async (input) => {
+    const returnsNavigationLocations = commandId === CHECKED_EXAMPLE_NAVIGATION_COMMAND;
     const rawConfig = readRawExtensionConfig(vscodeApi);
     const explicitPath = pathFromCommandInput(input);
     const request = commandId === "pccxSystemVerilog.runDiagnosticsLive" && explicitPath
@@ -241,9 +253,17 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
     const deps = {
       runFacade: runtime.runFacade ?? facadeRunnerFromRuntime(runtime),
       updateDiagnostics: (_diagnostics, action) => presentAction(action, presenterDeps),
-      showNavigationItems: (_items, action) => presentAction(action, presenterDeps),
+      showNavigationItems: returnsNavigationLocations
+        ? undefined
+        : (_items, action) => presentAction(action, presenterDeps),
     };
     const result = await runPrototypeCommand(commandId, request, deps);
+    if (result.ok && returnsNavigationLocations) {
+      result.locations = createNavigationLocationRecords(result.action?.items, {
+        ...presenterDeps,
+        fileRoot: runtime.navigationFileRoot ?? DEFAULT_NAVIGATION_FILE_ROOT,
+      });
+    }
     if (!result.ok) {
       presenterDeps.showWarningMessage?.(result.error, result);
     }

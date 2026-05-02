@@ -11,6 +11,7 @@ export const CONFIG_KEYS = Object.freeze([
 
 export const COMMAND_IDS = Object.freeze([
   "pccxSystemVerilog.publishCheckedExampleDiagnostics",
+  "pccxSystemVerilog.showCheckedExampleNavigation",
   "pccxSystemVerilog.showDiagnosticsExample",
   "pccxSystemVerilog.showNavigationExample",
   "pccxSystemVerilog.runDiagnosticsLive",
@@ -96,7 +97,10 @@ export function buildFacadeArgsForCommand(commandId, rawConfig = {}) {
     return ["diagnostics", "--mode", "example", "--source", "check-missing-endmodule"];
   }
 
-  if (commandId === "pccxSystemVerilog.showNavigationExample") {
+  if (
+    commandId === "pccxSystemVerilog.showCheckedExampleNavigation" ||
+    commandId === "pccxSystemVerilog.showNavigationExample"
+  ) {
     return ["navigation", "--mode", "example", "--source", "declarations"];
   }
 

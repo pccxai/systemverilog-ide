@@ -14,6 +14,7 @@
   ],
   "activationEvents": [
     "onCommand:pccxSystemVerilog.publishCheckedExampleDiagnostics",
+    "onCommand:pccxSystemVerilog.showCheckedExampleNavigation",
     "onCommand:pccxSystemVerilog.showDiagnosticsExample",
     "onCommand:pccxSystemVerilog.showNavigationExample",
     "onCommand:pccxSystemVerilog.runDiagnosticsLive",
@@ -24,6 +25,10 @@
       {
         "command": "pccxSystemVerilog.publishCheckedExampleDiagnostics",
         "title": "PCCX SystemVerilog: Publish Checked Example Diagnostics (Experimental)"
+      },
+      {
+        "command": "pccxSystemVerilog.showCheckedExampleNavigation",
+        "title": "PCCX SystemVerilog: Show Checked Example Navigation (Experimental)"
       },
       {
         "command": "pccxSystemVerilog.showDiagnosticsExample",

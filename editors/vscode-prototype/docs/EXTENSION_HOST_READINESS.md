@@ -21,6 +21,10 @@ should earn CI promotion separately.
 - Presenter behavior with mocked VS Code-like dependencies.
 - Real VS Code `DiagnosticCollection` population for the checked-example
   diagnostics command when the local runtime smoke is explicitly enabled.
+- Command-first navigation for
+  `pccxSystemVerilog.showCheckedExampleNavigation`, returning checked
+  example declaration records as VS Code `Uri`/`Range`/`Location`-style
+  data when the local runtime smoke is explicitly enabled.
 - Checked editor bridge examples.
 - Live CLI runner for known local JSON flows.
 - Guard behavior for the local-only Extension Host runtime smoke.
@@ -30,6 +34,7 @@ should earn CI promotion separately.
 ## Not Tested Today
 
 - Real QuickPick.
+- LSP provider registration.
 - Packaging.
 - `vsce`.
 - Marketplace install.
@@ -56,11 +61,17 @@ The runner lives under `editors/vscode-prototype/test/extension-host/`.
 It uses `@vscode/test-electron@2.5.2`, pins VS Code to `1.90.2`, creates
 a temporary workspace, loads the local extension package, verifies the
 expected command IDs, and executes only
-`pccxSystemVerilog.publishCheckedExampleDiagnostics`.  That command uses
-checked example diagnostics by default, goes through the facade boundary,
-and verifies that VS Code receives at least one diagnostic with URI,
-range, severity, message, and source fields.  It does not execute live
-CLI commands by default.
+`pccxSystemVerilog.publishCheckedExampleDiagnostics` and
+`pccxSystemVerilog.showCheckedExampleNavigation`.  The diagnostics
+command uses checked example diagnostics by default, goes through the
+facade boundary, and verifies that VS Code receives at least one
+diagnostic with URI, range, severity, message, and source fields.  The
+navigation command uses checked example mode by default through
+`navigation --mode example --source declarations`; it returns
+Location-style records with URI, range, symbol, target kind, and source
+fields.  Live mode remains explicit and separate, and the runtime smoke
+does not execute live CLI commands by default.  There is no LSP provider
+yet.
 
 The guarded script is not run by CI today.
 
@@ -88,6 +99,10 @@ system.
 - CI keeps running the static/mock VS Code adapter smoke only.
 - CI promotion for the runtime smoke requires a separate stability review
   because the first enabled run downloads VS Code/Electron.
+- Theme handling remains host theme first.  Future visual presets can be
+  added through host theme tokens or explicit user-provided theme tokens;
+  the current work is not a completed custom theme system or custom theme
+  engine.
 
 ## Next Gates
 
