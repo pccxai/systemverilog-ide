@@ -52,6 +52,10 @@ import {
   createPatchProposalPreview,
   listCheckedPatchProposals,
 } from "./patch-proposal-preview.mjs";
+import {
+  createLocalWorkflowStatus,
+  formatLocalWorkflowStatus,
+} from "./local-workflow-status.mjs";
 
 const EXTENSION_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_DIAGNOSTIC_FILE_ROOT = resolve(EXTENSION_ROOT, "../..");
@@ -83,6 +87,8 @@ export const SHOW_PATCH_PROPOSAL_PREVIEW_COMMAND =
   "pccxSystemVerilog.showPatchProposalPreview";
 export const CLEAR_PATCH_PROPOSAL_PREVIEW_COMMAND =
   "pccxSystemVerilog.clearPatchProposalPreview";
+export const SHOW_LOCAL_WORKFLOW_STATUS_COMMAND =
+  "pccxSystemVerilog.showLocalWorkflowStatus";
 export const PCCX_LAB_BACKEND_STATUS_COMMAND =
   "pccxSystemVerilog.showPccxLabBackendStatus";
 
@@ -377,6 +383,9 @@ function appendCommandOutput(outputChannel, commandId, result) {
       kind: result.kind,
       cleared: result.cleared,
     }, null, 2));
+  }
+  if (result.kind === "local-workflow-status") {
+    outputChannel.appendLine(formatLocalWorkflowStatus(result.status));
   }
   if (result.status?.kind === "pccx-lab-backend-status") {
     outputChannel.appendLine(JSON.stringify(result.status, null, 2));
@@ -892,6 +901,46 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
         };
         vscodeApi?.window?.showInformationMessage?.(
           cleared ? "Cleared patch proposal preview." : "No patch proposal preview was cached.",
+          result,
+        );
+      } catch (error) {
+        result = { ok: false, commandId, error: error.message };
+        vscodeApi?.window?.showWarningMessage?.(result.error, result);
+      }
+      appendCommandOutput(runtime.outputChannel, commandId, result);
+      return result;
+    }
+
+    if (commandId === SHOW_LOCAL_WORKFLOW_STATUS_COMMAND) {
+      let result;
+      try {
+        const config = normalizeConfig(rawConfig);
+        const validationCache = validationResultCacheFromRuntime(runtime);
+        let contextSummary = null;
+        try {
+          const context = collectActiveDocumentContext(vscodeApi, runtime, config);
+          const request = createAssistantRequest(config, context.input, {
+            workspaceRoot: context.workspaceRoot,
+          });
+          contextSummary = request.contextSummary;
+        } catch {
+          contextSummary = null;
+        }
+        const status = createLocalWorkflowStatus(config, {
+          validationResultCache: validationCache,
+          contextSummary,
+          validationHistoryCount: validationCache.size(),
+          launcherStatusCount: 1,
+          labStatusCount: 1,
+        });
+        result = {
+          ok: true,
+          commandId,
+          kind: "local-workflow-status",
+          status,
+        };
+        vscodeApi?.window?.showInformationMessage?.(
+          `Local workflow status: ${status.extensionMode}, validation ${status.recentValidation.latestStatus}.`,
           result,
         );
       } catch (error) {

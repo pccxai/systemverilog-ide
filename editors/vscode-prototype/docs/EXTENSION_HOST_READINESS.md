@@ -151,6 +151,9 @@ The pccx-lab command descriptor contract is data-only future-state
 preparation and does not execute pccx-lab.
 The launcher status contract is fixture-only future-state metadata and
 does not call pccx-llm-launcher or communicate with devices.
+`pccxSystemVerilog.showLocalWorkflowStatus` summarizes local/fixture
+workflow state without pccx-lab execution, launcher calls, provider calls,
+MCP, or LSP.
 
 `pccxSystemVerilog.proposeValidationCommand` currently proposes only
 allowlisted templates, including the VS Code adapter smoke, editor bridge

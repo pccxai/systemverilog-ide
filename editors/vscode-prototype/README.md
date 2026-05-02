@@ -143,6 +143,7 @@ The contributed commands are:
 - `pccxSystemVerilog.clearValidationResultCache`
 - `pccxSystemVerilog.showPatchProposalPreview`
 - `pccxSystemVerilog.clearPatchProposalPreview`
+- `pccxSystemVerilog.showLocalWorkflowStatus`
 - `pccxSystemVerilog.showPccxLabBackendStatus`
 
 The prototype-only settings are:
@@ -336,6 +337,14 @@ performance claims.  It does not call the launcher or communicate with a
 device.  The boundary notes are tracked in
 [`docs/launcher-integration-boundary.md`](./docs/launcher-integration-boundary.md).
 
+`src/local-workflow-status.mjs` summarizes local prototype state for
+`pccxSystemVerilog.showLocalWorkflowStatus`: extension mode, live workspace
+gate, validation runner state, recent validation cache status, pccx-lab
+descriptor state, launcher fixture state, and a bounded context item count.
+It uses local/fixture data only and does not execute pccx-lab, call the
+launcher, call providers, implement MCP, implement LSP, or package the
+extension.
+
 `pccxSystemVerilog.proposeValidationCommand` returns allowlisted
 validation command proposals as JSON data.  The proposal includes
 allowlisted proposal IDs, argument-array templates, reasons, risk levels, and
@@ -447,6 +456,7 @@ node editors/vscode-prototype/test/patch-proposal-preview.test.mjs
 node editors/vscode-prototype/test/validation-patch-handoff.test.mjs
 node editors/vscode-prototype/test/pccx-lab-command-descriptor.test.mjs
 node editors/vscode-prototype/test/launcher-status-contract.test.mjs
+node editors/vscode-prototype/test/local-workflow-status.test.mjs
 node editors/vscode-prototype/test/validation-result-summary.test.mjs
 node editors/vscode-prototype/test/validation-result-cache.test.mjs
 node editors/vscode-prototype/test/approved-validation-runner.test.mjs
