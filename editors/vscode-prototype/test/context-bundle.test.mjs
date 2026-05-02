@@ -169,19 +169,19 @@ function fixtureInput() {
       navigationItemCount: 0,
     },
     recentValidation: {
-      version: "pccx.validationResultSummary.v0",
+      version: "pccx.validationResultCacheEntry.v0",
       proposalId: "vscodeAdapterSmoke",
-      commandLabel: "VS Code adapter smoke",
+      label: "VS Code adapter smoke",
       status: "failed",
-      summary: "VS Code adapter smoke failed (exit 1)",
+      summaryText: "VS Code adapter smoke failed (exit 1)",
       exitCode: 1,
       durationMs: 55,
       startedAt: "2026-01-01T00:00:00.000Z",
       finishedAt: "2026-01-01T00:00:00.055Z",
+      commandKind: "allowlisted-validation-proposal",
+      workingDirectoryKind: "repo-root",
       command: "bash",
       args: ["scripts/vscode-adapter-smoke.sh"],
-      cwdKind: "repo-root",
-      cwdLabel: "repo-root",
       stdoutSummary: {
         lines: ["adapter ok", "API_KEY=abc123", "extra"],
         lineCount: 3,
@@ -192,6 +192,8 @@ function fixtureInput() {
         lineCount: 1,
         truncated: false,
       },
+      truncated: true,
+      redactionApplied: true,
       failureHints: ["failure: missing endmodule"],
       safety: {
         allowlisted: true,
@@ -204,6 +206,58 @@ function fixtureInput() {
         mcpServerCalls: false,
       },
     },
+    recentValidationHistory: [
+      {
+        version: "pccx.validationResultCacheEntry.v0",
+        proposalId: "vscodeAdapterSmoke",
+        label: "VS Code adapter smoke",
+        status: "failed",
+        summaryText: "VS Code adapter smoke failed (exit 1)",
+        exitCode: 1,
+        durationMs: 55,
+        startedAt: "2026-01-01T00:00:00.000Z",
+        finishedAt: "2026-01-01T00:00:00.055Z",
+        commandKind: "allowlisted-validation-proposal",
+        workingDirectoryKind: "repo-root",
+        stdoutSummary: {
+          lines: ["adapter ok"],
+          lineCount: 1,
+          truncated: false,
+        },
+        stderrSummary: {
+          lines: ["failure: missing endmodule"],
+          lineCount: 1,
+          truncated: false,
+        },
+        truncated: false,
+        redactionApplied: false,
+      },
+      {
+        version: "pccx.validationResultCacheEntry.v0",
+        proposalId: "editorBridgeSmoke",
+        label: "Editor bridge smoke",
+        status: "passed",
+        summaryText: "Editor bridge smoke passed",
+        exitCode: 0,
+        durationMs: 12,
+        startedAt: "2026-01-01T00:01:00.000Z",
+        finishedAt: "2026-01-01T00:01:00.012Z",
+        commandKind: "allowlisted-validation-proposal",
+        workingDirectoryKind: "repo-root",
+        stdoutSummary: {
+          lines: ["bridge ok"],
+          lineCount: 1,
+          truncated: false,
+        },
+        stderrSummary: {
+          lines: [],
+          lineCount: 0,
+          truncated: false,
+        },
+        truncated: false,
+        redactionApplied: false,
+      },
+    ],
     pccxLabOutputs: [
       {
         flow: "problems from-check",
@@ -248,11 +302,21 @@ function testStableBoundedShape() {
   assert.equal(bundle.validation.recent.status, "failed");
   assert.equal(bundle.validation.recent.proposalId, "vscodeAdapterSmoke");
   assert.equal(bundle.validation.recent.commandLabel, "VS Code adapter smoke");
+  assert.equal(bundle.validation.recent.label, "VS Code adapter smoke");
+  assert.equal(bundle.validation.recent.commandKind, "allowlisted-validation-proposal");
+  assert.equal(bundle.validation.recent.workingDirectoryKind, "repo-root");
   assert.equal(bundle.validation.recent.stdoutSummary.lines.length, 1);
   assert.deepEqual(bundle.validation.recent.stdoutSummary.lines, ["adapter ok"]);
   assert.deepEqual(bundle.validation.recent.stderrSummary.lines, ["failure: missing endmodule"]);
+  assert.equal(bundle.validation.recent.truncated, true);
+  assert.equal(bundle.validation.recent.redactionApplied, true);
   assert.equal(bundle.validation.recent.safety.allowlisted, true);
   assert.equal(bundle.validation.recent.safety.shell, false);
+  assert.equal(bundle.validation.recentHistory.length, 2);
+  assert.deepEqual(
+    bundle.validation.recentHistory.map((entry) => entry.proposalId),
+    ["vscodeAdapterSmoke", "editorBridgeSmoke"],
+  );
   assert.equal(bundle.recentCommand.commandId, "pccxSystemVerilog.publishCheckedExampleDiagnostics");
   assert.equal(bundle.recentCommand.facade.mode, "example");
   assert.equal(bundle.pccxLab.outputs.length, 1);
@@ -274,7 +338,8 @@ function testStableBoundedShape() {
     validation: {
       proposalId: "vscodeAdapterSmoke",
       status: "failed",
-      commandLabel: "VS Code adapter smoke",
+      label: "VS Code adapter smoke",
+      recentHistoryCount: 2,
     },
   });
 }
@@ -426,6 +491,68 @@ function testNoHugeFileOrRestrictedPathInclusion() {
   assert.deepEqual(bundle.diagnostics, []);
 }
 
+function testValidationHistoryIsSummaryOnlyAndBounded() {
+  const bundle = buildContextBundle(
+    {
+      workspaceRoot: "/repo",
+      recentValidationHistory: [
+        {
+          proposalId: "newest",
+          label: "Newest",
+          status: "failed",
+          summaryText: "failed without full logs",
+          exitCode: 1,
+          commandKind: "allowlisted-validation-proposal",
+          workingDirectoryKind: "repo-root",
+          command: "bash",
+          args: ["scripts/private.sh"],
+          fullStdout: "full log must not flow",
+          stdoutSummary: {
+            lines: [
+              "line one",
+              "TOKEN=hidden",
+              "/home/dev/private/path.sv",
+              "line four",
+            ],
+            lineCount: 4,
+            truncated: false,
+          },
+          stderrSummary: {
+            lines: ["failure"],
+            lineCount: 1,
+            truncated: false,
+          },
+        },
+        {
+          proposalId: "older",
+          label: "Older",
+          status: "passed",
+          stdoutSummary: { lines: ["ok"], lineCount: 1, truncated: false },
+          stderrSummary: { lines: [], lineCount: 0, truncated: false },
+        },
+      ],
+    },
+    {
+      workspaceRoot: "/repo",
+      limits: {
+        maxLogSummaryLines: 2,
+        maxRecentValidationResults: 1,
+      },
+    },
+  );
+  const serialized = JSON.stringify(bundle.validation);
+
+  assert.equal(bundle.validation.recent.proposalId, "newest");
+  assert.equal(bundle.validation.recentHistory.length, 1);
+  assert.deepEqual(bundle.validation.recentHistory[0].stdoutSummary.lines, ["line one", "[redacted]"]);
+  assert.equal(bundle.validation.recentHistory[0].stdoutSummary.truncated, true);
+  assert.doesNotMatch(serialized, /full log must not flow/);
+  assert.doesNotMatch(serialized, /scripts\/private\.sh/);
+  assert.doesNotMatch(serialized, /TOKEN=hidden/);
+  assert.doesNotMatch(serialized, /\/home\/dev/);
+  assert.doesNotMatch(serialized, /line four/);
+}
+
 function testNoSecretValuesOrSecretLikeKeys() {
   const bundle = buildContextBundle(fixtureInput(), { workspaceRoot: "/repo" });
   const serialized = JSON.stringify(bundle);
@@ -435,6 +562,7 @@ function testNoSecretValuesOrSecretLikeKeys() {
   assert.doesNotMatch(serialized, /API_KEY=/);
   assert.doesNotMatch(serialized, /token=hidden/);
   assert.doesNotMatch(serialized, /API_KEY=abc123/);
+  assert.doesNotMatch(serialized, /scripts\/vscode-adapter-smoke\.sh/);
   assert.doesNotMatch(serialized, /AGENTS\.md/);
   assert.doesNotMatch(serialized, /package-lock\.json/);
 }
@@ -481,6 +609,7 @@ testSelectedFileSnippetAndDiagnosticsArePrioritized();
 testInvalidSelectedSymbolAndRangesAreControlled();
 testLongSingleLineSnippetReportsTruncation();
 testNoHugeFileOrRestrictedPathInclusion();
+testValidationHistoryIsSummaryOnlyAndBounded();
 testNoSecretValuesOrSecretLikeKeys();
 testNoAbsoluteHomePathLeakage();
 testNoActiveEditorContextShape();

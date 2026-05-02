@@ -18,6 +18,8 @@ const COMMAND_IDS = [
   "pccxSystemVerilog.buildAIContextBundle",
   "pccxSystemVerilog.proposeValidationCommand",
   "pccxSystemVerilog.runApprovedValidationCommand",
+  "pccxSystemVerilog.showRecentValidationResults",
+  "pccxSystemVerilog.clearValidationResultCache",
   "pccxSystemVerilog.showPccxLabBackendStatus",
 ];
 

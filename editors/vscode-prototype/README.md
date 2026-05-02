@@ -138,6 +138,8 @@ The contributed commands are:
 - `pccxSystemVerilog.buildAIContextBundle`
 - `pccxSystemVerilog.proposeValidationCommand`
 - `pccxSystemVerilog.runApprovedValidationCommand`
+- `pccxSystemVerilog.showRecentValidationResults`
+- `pccxSystemVerilog.clearValidationResultCache`
 - `pccxSystemVerilog.showPccxLabBackendStatus`
 
 The prototype-only settings are:
@@ -242,8 +244,8 @@ command paths plus the provider smoke.  It checks the AI assistant status
 command, selected-symbol context bundle command, validation command
 proposal, disabled approved validation runner behavior, one explicit
 allowlisted validation run, validation summary handoff into the context
-bundle, and pccx-lab backend status command without provider/runtime
-calls.  It does not
+bundle, local validation-result cache command registration, and pccx-lab
+backend status command without provider/runtime calls.  It does not
 package the extension, add an LSP provider, or install through a
 marketplace flow.  Extension Host gates are
 tracked in
@@ -269,9 +271,13 @@ current file path, selected range, bounded lexical selected-symbol
 context, active diagnostics near the selection, recent navigation
 references, recent command status, current mode/configuration, and small
 bounded snippets only for explicit selections.  It can also include the
-latest approved validation runner summary: proposal ID, status, command
-label, exit code, duration/timestamps, bounded stdout/stderr summaries,
-failure hints, and safety metadata.  The selected-symbol
+latest approved validation runner cache summary and a small bounded
+recent validation history: proposal ID, status, allowlist label, exit
+code, duration/timestamps, working-directory kind, command kind, bounded
+stdout/stderr summaries, truncation/redaction flags, failure hints, and
+safety metadata.  It does not include full logs, raw shell command
+strings, raw absolute private paths, generated artifacts, or bulk file
+content.  The selected-symbol
 context extracts simple SystemVerilog-like lexical cues such as the symbol
 text, current line, and nearby module/package/interface/parameter/function
 or task declaration; it is not full semantic analysis.  The bundle
@@ -307,6 +313,17 @@ user-approved validation proposal.  It does not execute destructive
 commands, git write operations, release/tag/settings/secrets commands,
 patch proposals, AI provider calls, pccx-llm-launcher runtime calls, MCP
 server operations, or pccx-lab commands.
+
+Approved validation summaries are cached in memory only and kept brief.
+The cache stores summary-only, redacted entries for recent runner results;
+it does not persist to disk and does not store full stdout/stderr logs,
+secrets, tokens, private home paths, raw command strings, generated blobs,
+model paths, or pccx-lab outputs.  `pccxSystemVerilog.showRecentValidationResults`
+shows the small recent cache through VS Code-native surfaces, and
+`pccxSystemVerilog.clearValidationResultCache` clears the in-memory cache.
+This cache boundary does not add AI provider calls, MCP, LSP, marketplace
+packaging, pccx-llm-launcher calls, real pccx-lab execution, releases, or
+tags.
 
 ## Theme-Neutral Presentation Boundary
 
@@ -361,7 +378,7 @@ Later:
 3. Propose a validation command as data with `pccxSystemVerilog.proposeValidationCommand`.
 4. User approves an allowlisted validation proposal ID.
 5. Run `pccxSystemVerilog.runApprovedValidationCommand` only after the runner is explicitly enabled.
-6. Feed the bounded validation result summary back into the context bundle.
+6. Feed the bounded validation result cache summary back into the context bundle.
 7. Future local coding-assistant mode can propose a patch or next validation step, but does not execute either directly.
 
 ## Local Smoke
@@ -377,6 +394,7 @@ node editors/vscode-prototype/test/selected-symbol-context.test.mjs
 node editors/vscode-prototype/test/ai-assistant-boundary.test.mjs
 node editors/vscode-prototype/test/validation-proposals.test.mjs
 node editors/vscode-prototype/test/validation-result-summary.test.mjs
+node editors/vscode-prototype/test/validation-result-cache.test.mjs
 node editors/vscode-prototype/test/approved-validation-runner.test.mjs
 node editors/vscode-prototype/test/static-boundary.test.mjs
 node editors/vscode-prototype/test/extension-entrypoint.test.mjs

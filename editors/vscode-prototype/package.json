@@ -25,6 +25,8 @@
     "onCommand:pccxSystemVerilog.buildAIContextBundle",
     "onCommand:pccxSystemVerilog.proposeValidationCommand",
     "onCommand:pccxSystemVerilog.runApprovedValidationCommand",
+    "onCommand:pccxSystemVerilog.showRecentValidationResults",
+    "onCommand:pccxSystemVerilog.clearValidationResultCache",
     "onCommand:pccxSystemVerilog.showPccxLabBackendStatus"
   ],
   "contributes": {
@@ -76,6 +78,14 @@
       {
         "command": "pccxSystemVerilog.runApprovedValidationCommand",
         "title": "PCCX SystemVerilog: Run Approved Validation Command (Experimental, Opt-In)"
+      },
+      {
+        "command": "pccxSystemVerilog.showRecentValidationResults",
+        "title": "PCCX SystemVerilog: Show Recent Validation Results (Experimental)"
+      },
+      {
+        "command": "pccxSystemVerilog.clearValidationResultCache",
+        "title": "PCCX SystemVerilog: Clear Validation Result Cache (Experimental)"
       },
       {
         "command": "pccxSystemVerilog.showPccxLabBackendStatus",

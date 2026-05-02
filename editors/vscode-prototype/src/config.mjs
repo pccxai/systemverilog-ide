@@ -35,6 +35,8 @@ export const AI_COMMAND_IDS = Object.freeze([
   "pccxSystemVerilog.buildAIContextBundle",
   "pccxSystemVerilog.proposeValidationCommand",
   "pccxSystemVerilog.runApprovedValidationCommand",
+  "pccxSystemVerilog.showRecentValidationResults",
+  "pccxSystemVerilog.clearValidationResultCache",
 ]);
 
 export const PCCX_LAB_COMMAND_IDS = Object.freeze([
