@@ -15,6 +15,9 @@ import {
   createCommandExecutionPlan,
   runPrototypeCommand,
 } from "./command-handlers.mjs";
+import {
+  presentAction,
+} from "./presenter.mjs";
 
 const EXTENSION_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_FACADE_PATH = resolve(EXTENSION_ROOT, "bin/pccx-vscode-prototype.mjs");
@@ -26,6 +29,7 @@ export {
   createCommandExecutionPlan,
   defaultConfig,
   normalizeConfig,
+  presentAction,
   runPrototypeCommand,
 };
 
@@ -178,6 +182,40 @@ function facadeRunnerFromRuntime(runtime = {}) {
   };
 }
 
+export function createPresenterDeps(vscodeApi, runtime = {}) {
+  const diagnosticSeverity = {
+    Error: vscodeApi?.DiagnosticSeverity?.Error ?? "Error",
+    Warning: vscodeApi?.DiagnosticSeverity?.Warning ?? "Warning",
+    Information: vscodeApi?.DiagnosticSeverity?.Information ?? "Information",
+  };
+
+  return {
+    createUri(file) {
+      return vscodeApi?.Uri?.file ? vscodeApi.Uri.file(file) : { fsPath: file };
+    },
+    createRange(startLine, startCharacter, endLine, endCharacter) {
+      return typeof vscodeApi?.Range === "function"
+        ? new vscodeApi.Range(startLine, startCharacter, endLine, endCharacter)
+        : {
+            start: { line: startLine, character: startCharacter },
+            end: { line: endLine, character: endCharacter },
+          };
+    },
+    createDiagnostic(range, message, severity) {
+      return typeof vscodeApi?.Diagnostic === "function"
+        ? new vscodeApi.Diagnostic(range, message, severity)
+        : { range, message, severity };
+    },
+    diagnosticSeverity,
+    diagnosticsCollection: runtime.diagnosticsCollection,
+    showInformationMessage: vscodeApi?.window?.showInformationMessage?.bind(vscodeApi.window),
+    showWarningMessage: (
+      vscodeApi?.window?.showWarningMessage ?? vscodeApi?.window?.showErrorMessage
+    )?.bind(vscodeApi.window),
+    showQuickPick: vscodeApi?.window?.showQuickPick?.bind(vscodeApi.window),
+  };
+}
+
 export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
   createCommandExecutionPlan(commandId, defaultConfig());
   return async (input) => {
@@ -186,16 +224,19 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
     const request = commandId === "pccxSystemVerilog.runDiagnosticsLive" && explicitPath
       ? { ...rawConfig, defaultSource: explicitPath }
       : rawConfig;
+    const presenterDeps = {
+      ...createPresenterDeps(vscodeApi, runtime),
+      ...(runtime.presenterDeps ?? {}),
+    };
     const deps = {
       runFacade: runtime.runFacade ?? facadeRunnerFromRuntime(runtime),
-      showInformationMessage: vscodeApi?.window?.showInformationMessage?.bind(vscodeApi.window),
-      showWarningMessage: (
-        vscodeApi?.window?.showWarningMessage ?? vscodeApi?.window?.showErrorMessage
-      )?.bind(vscodeApi.window),
-      updateDiagnostics: runtime.updateDiagnostics,
-      showNavigationItems: runtime.showNavigationItems,
+      updateDiagnostics: (_diagnostics, action) => presentAction(action, presenterDeps),
+      showNavigationItems: (_items, action) => presentAction(action, presenterDeps),
     };
     const result = await runPrototypeCommand(commandId, request, deps);
+    if (!result.ok) {
+      presenterDeps.showWarningMessage?.(result.error, result);
+    }
     appendCommandOutput(runtime.outputChannel, commandId, result);
     return result;
   };
@@ -216,7 +257,9 @@ export async function activate(context, injectedVscodeApi = null, runtime = {}) 
   }
 
   const outputChannel = vscodeApi.window?.createOutputChannel?.(OUTPUT_CHANNEL_NAME);
-  const commandRuntime = { ...runtime, outputChannel };
+  const diagnosticsCollection = runtime.diagnosticsCollection
+    ?? vscodeApi.languages?.createDiagnosticCollection?.(OUTPUT_CHANNEL_NAME);
+  const commandRuntime = { ...runtime, diagnosticsCollection, outputChannel };
   const registered = [];
 
   for (const commandId of COMMAND_IDS) {
@@ -230,6 +273,9 @@ export async function activate(context, injectedVscodeApi = null, runtime = {}) 
 
   if (outputChannel) {
     context?.subscriptions?.push?.(outputChannel);
+  }
+  if (diagnosticsCollection && diagnosticsCollection !== runtime.diagnosticsCollection) {
+    context?.subscriptions?.push?.(diagnosticsCollection);
   }
   return { registered };
 }

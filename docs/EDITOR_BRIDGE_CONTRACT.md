@@ -86,6 +86,9 @@ validated before command wiring and route only into known facade flows.
 The command-handler scaffold converts facade JSON into testable UI action
 models for diagnostics and navigation behind injected VS Code-like
 dependencies.
+The presenter scaffold maps those UI action models to mockable
+DiagnosticCollection-like and QuickPick-like APIs without requiring real
+VS Code GUI tests.
 The scaffold is not published, is not marketplace-ready, has no LSP, and
 is not a stable ABI/API.  Current coverage is static/smoke tests, not VS
 Code GUI integration tests.
@@ -108,6 +111,7 @@ VS Code command
   -> local pccx-vscode-prototype facade
   -> JSON output
   -> testable diagnostics/navigation UI action
+  -> mockable VS Code-like presenter
   -> diagnostics/navigation records
 ```
 
