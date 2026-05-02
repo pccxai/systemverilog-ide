@@ -217,6 +217,11 @@ mode, validation runner settings, recent validation cache summary,
 pccx-lab descriptor state, launcher fixture status, and bounded context
 counts.  It does not execute pccx-lab or call the launcher.
 
+Context bundle audit reports local size and safety budget metadata:
+approximate character count, bounded item counts, redaction/truncation
+flags, and excluded categories.  It does not upload context or call a
+provider.
+
 ## Prototype Daily-Driver Loop
 
 1. Inspect diagnostics and navigation.
@@ -242,6 +247,7 @@ Now:
 - pccx-lab command descriptor contract
 - launcher status contract
 - local workflow status command
+- context bundle audit command
 - approved validation runner boundary
 - validation summary in the context bundle
 - validation cache status command

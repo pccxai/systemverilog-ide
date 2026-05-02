@@ -154,6 +154,8 @@ does not call pccx-llm-launcher or communicate with devices.
 `pccxSystemVerilog.showLocalWorkflowStatus` summarizes local/fixture
 workflow state without pccx-lab execution, launcher calls, provider calls,
 MCP, or LSP.
+`pccxSystemVerilog.showContextBundleAudit` reports local context bundle
+size and safety metadata without uploading context or calling providers.
 
 `pccxSystemVerilog.proposeValidationCommand` currently proposes only
 allowlisted templates, including the VS Code adapter smoke, editor bridge

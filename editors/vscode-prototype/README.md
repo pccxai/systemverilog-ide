@@ -144,6 +144,7 @@ The contributed commands are:
 - `pccxSystemVerilog.showPatchProposalPreview`
 - `pccxSystemVerilog.clearPatchProposalPreview`
 - `pccxSystemVerilog.showLocalWorkflowStatus`
+- `pccxSystemVerilog.showContextBundleAudit`
 - `pccxSystemVerilog.showPccxLabBackendStatus`
 
 The prototype-only settings are:
@@ -345,6 +346,12 @@ It uses local/fixture data only and does not execute pccx-lab, call the
 launcher, call providers, implement MCP, implement LSP, or package the
 extension.
 
+`src/context-bundle-audit.mjs` reports approximate context bundle size,
+diagnostic/snippet/validation summary counts, redaction/truncation flags,
+and excluded categories for `pccxSystemVerilog.showContextBundleAudit`.
+The audit is local-only, summary-only, and does not upload context or call
+providers.
+
 `pccxSystemVerilog.proposeValidationCommand` returns allowlisted
 validation command proposals as JSON data.  The proposal includes
 allowlisted proposal IDs, argument-array templates, reasons, risk levels, and
@@ -457,6 +464,7 @@ node editors/vscode-prototype/test/validation-patch-handoff.test.mjs
 node editors/vscode-prototype/test/pccx-lab-command-descriptor.test.mjs
 node editors/vscode-prototype/test/launcher-status-contract.test.mjs
 node editors/vscode-prototype/test/local-workflow-status.test.mjs
+node editors/vscode-prototype/test/context-bundle-audit.test.mjs
 node editors/vscode-prototype/test/validation-result-summary.test.mjs
 node editors/vscode-prototype/test/validation-result-cache.test.mjs
 node editors/vscode-prototype/test/approved-validation-runner.test.mjs

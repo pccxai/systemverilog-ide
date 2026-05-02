@@ -74,6 +74,7 @@ async function run() {
     "pccxSystemVerilog.showPatchProposalPreview",
     "pccxSystemVerilog.clearPatchProposalPreview",
     "pccxSystemVerilog.showLocalWorkflowStatus",
+    "pccxSystemVerilog.showContextBundleAudit",
     "pccxSystemVerilog.showPccxLabBackendStatus",
   ]);
 
@@ -410,6 +411,16 @@ async function run() {
   assert.equal(localWorkflowStatus.status.launcherBoundary.launcherCalls, false);
   assert.equal(localWorkflowStatus.status.safety.providerCalls, false);
   assert.equal(localWorkflowStatus.status.safety.pccxLabExecution, false);
+
+  const contextBundleAudit = await vscode.commands.executeCommand(
+    "pccxSystemVerilog.showContextBundleAudit",
+  );
+  assert.equal(contextBundleAudit.ok, true);
+  assert.equal(contextBundleAudit.kind, "context-bundle-audit");
+  assert.ok(contextBundleAudit.audit.approximateCharacterCount > 0);
+  assert.equal(contextBundleAudit.audit.safety.providerCalls, false);
+  assert.equal(contextBundleAudit.audit.safety.fullLogsExcluded, true);
+  assert.doesNotMatch(JSON.stringify(contextBundleAudit.audit), /\/home\//);
 
   const disabledValidationRun = await vscode.commands.executeCommand(
     "pccxSystemVerilog.runApprovedValidationCommand",
