@@ -122,6 +122,7 @@ async function testDocsKeepExperimentalScope() {
   assert.match(combined, /AI assistant status command/i);
   assert.match(combined, /validation command proposal/i);
   assert.match(combined, /patch proposal contract/i);
+  assert.match(combined, /validation-to-patch handoff/i);
   assert.match(combined, /approved validation runner/i);
   assert.match(combined, /allowlisted proposal IDs/i);
   assert.match(combined, /pccx-lab backend status/i);

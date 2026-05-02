@@ -20,6 +20,7 @@ node editors/vscode-prototype/test/ai-assistant-boundary.test.mjs
 node editors/vscode-prototype/test/validation-proposals.test.mjs
 node editors/vscode-prototype/test/patch-proposal-contract.test.mjs
 node editors/vscode-prototype/test/patch-proposal-preview.test.mjs
+node editors/vscode-prototype/test/validation-patch-handoff.test.mjs
 node editors/vscode-prototype/test/validation-result-summary.test.mjs
 node editors/vscode-prototype/test/validation-result-cache.test.mjs
 node editors/vscode-prototype/test/approved-validation-runner.test.mjs

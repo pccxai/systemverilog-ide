@@ -114,6 +114,7 @@ async function testReadinessDocsAndCiPolicy() {
   assert.match(`${readme}\n${readiness}`, /context bundle command/i);
   assert.match(`${readme}\n${readiness}`, /validation command proposal/i);
   assert.match(`${readme}\n${readiness}`, /patch proposal contract/i);
+  assert.match(`${readme}\n${readiness}`, /validation-to-patch handoff/i);
   assert.match(`${readme}\n${readiness}`, /pccx-lab backend status/i);
   assert.match(`${readme}\n${readiness}`, /AI assistant .*boundary/i);
   assert.match(`${readme}\n${readiness}`, /pccx-llm-launcher .*future local LLM\/chat backend/i);

@@ -151,6 +151,9 @@ editor/user-controlled executor accepts an allowlisted proposal ID.
 Patch proposals are also contract-only: they may describe reviewed edits
 with repository-relative paths and bounded hunk previews, but they do not
 apply changes or execute commands.
+Validation-to-patch handoff may create bounded context seeds from failed
+validation summaries and related diagnostics, but it does not create patch
+content for passing validation results and does not apply changes.
 Approved validation execution must use fixed argument arrays, bounded
 output, an explicit user-approved command invocation, and no shell
 interpolation.  pccx-lab command execution remains future/prepared in

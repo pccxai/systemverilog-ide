@@ -144,6 +144,9 @@ or committing changes.
 `pccxSystemVerilog.showPatchProposalPreview` previews checked proposal IDs
 only, and `pccxSystemVerilog.clearPatchProposalPreview` clears the
 in-memory preview state without file writes.
+The validation-to-patch handoff helper is a bounded context seed only; it
+does not generate a patch for passing validation results and does not
+apply changes.
 
 `pccxSystemVerilog.proposeValidationCommand` currently proposes only
 allowlisted templates, including the VS Code adapter smoke, editor bridge
