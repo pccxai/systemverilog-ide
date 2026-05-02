@@ -2,6 +2,10 @@ export const CONFIG_SECTION = "pccxSystemVerilog";
 
 export const CONFIG_KEYS = Object.freeze([
   "mode",
+  "liveWorkspace.enabled",
+  "pccxLab.command",
+  "aiAssistant.enabled",
+  "aiAssistant.backend",
   "pythonPath",
   "defaultSource",
   "defaultLog",
@@ -12,17 +16,36 @@ export const CONFIG_KEYS = Object.freeze([
 export const COMMAND_IDS = Object.freeze([
   "pccxSystemVerilog.publishCheckedExampleDiagnostics",
   "pccxSystemVerilog.showCheckedExampleNavigation",
+  "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
+  "pccxSystemVerilog.showLiveWorkspaceNavigation",
   "pccxSystemVerilog.showDiagnosticsExample",
   "pccxSystemVerilog.showNavigationExample",
   "pccxSystemVerilog.runDiagnosticsLive",
   "pccxSystemVerilog.runNavigationLive",
 ]);
 
-export const MODES = Object.freeze(["example", "live"]);
+export const MODES = Object.freeze(["checkedExample", "liveWorkspace"]);
+export const AI_ASSISTANT_BACKENDS = Object.freeze(["none", "pccx-llm-launcher", "mcp"]);
 export const DECLARATION_KINDS = Object.freeze(["module", "package", "interface", "any"]);
+export const LIVE_WORKSPACE_COMMAND_IDS = Object.freeze([
+  "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
+  "pccxSystemVerilog.showLiveWorkspaceNavigation",
+  "pccxSystemVerilog.runDiagnosticsLive",
+  "pccxSystemVerilog.runNavigationLive",
+]);
 
 const DEFAULT_CONFIG = Object.freeze({
-  mode: "example",
+  mode: "checkedExample",
+  liveWorkspace: Object.freeze({
+    enabled: false,
+  }),
+  pccxLab: Object.freeze({
+    command: "pccx_ide_cli",
+  }),
+  aiAssistant: Object.freeze({
+    enabled: false,
+    backend: "none",
+  }),
   pythonPath: "python3",
   defaultSource: "fixtures/missing_endmodule.sv",
   defaultLog: "fixtures/xsim/mixed.log",
@@ -37,7 +60,19 @@ function rawConfigValue(rawConfig, key) {
   if (rawConfig && typeof rawConfig.get === "function") {
     return rawConfig.get(key);
   }
-  return rawConfig?.[key];
+  if (rawConfig && Object.hasOwn(rawConfig, key)) {
+    return rawConfig[key];
+  }
+
+  const parts = key.split(".");
+  let value = rawConfig;
+  for (const part of parts) {
+    if (value == null || typeof value !== "object" || !Object.hasOwn(value, part)) {
+      return undefined;
+    }
+    value = value[part];
+  }
+  return value;
 }
 
 function stringSetting(rawConfig, key, fallback) {
@@ -57,6 +92,25 @@ function stringSetting(rawConfig, key, fallback) {
   return value;
 }
 
+function commandSetting(rawConfig, key, fallback) {
+  const value = stringSetting(rawConfig, key, fallback);
+  if (/\s/.test(value)) {
+    throw new Error(`${CONFIG_SECTION}.${key} must be a command name or path without arguments`);
+  }
+  return value;
+}
+
+function booleanSetting(rawConfig, key, fallback) {
+  const value = rawConfigValue(rawConfig, key);
+  if (value == null) {
+    return fallback;
+  }
+  if (typeof value !== "boolean") {
+    throw new Error(`${CONFIG_SECTION}.${key} must be a boolean`);
+  }
+  return value;
+}
+
 function enumSetting(rawConfig, key, fallback, allowedValues) {
   const value = stringSetting(rawConfig, key, fallback);
   if (!allowedValues.includes(value)) {
@@ -68,12 +122,40 @@ function enumSetting(rawConfig, key, fallback, allowedValues) {
 }
 
 export function defaultConfig() {
-  return { ...DEFAULT_CONFIG };
+  return {
+    ...DEFAULT_CONFIG,
+    liveWorkspace: { ...DEFAULT_CONFIG.liveWorkspace },
+    pccxLab: { ...DEFAULT_CONFIG.pccxLab },
+    aiAssistant: { ...DEFAULT_CONFIG.aiAssistant },
+  };
 }
 
 export function normalizeConfig(rawConfig = {}) {
   return {
     mode: enumSetting(rawConfig, "mode", DEFAULT_CONFIG.mode, MODES),
+    liveWorkspace: {
+      enabled: booleanSetting(
+        rawConfig,
+        "liveWorkspace.enabled",
+        DEFAULT_CONFIG.liveWorkspace.enabled,
+      ),
+    },
+    pccxLab: {
+      command: commandSetting(rawConfig, "pccxLab.command", DEFAULT_CONFIG.pccxLab.command),
+    },
+    aiAssistant: {
+      enabled: booleanSetting(
+        rawConfig,
+        "aiAssistant.enabled",
+        DEFAULT_CONFIG.aiAssistant.enabled,
+      ),
+      backend: enumSetting(
+        rawConfig,
+        "aiAssistant.backend",
+        DEFAULT_CONFIG.aiAssistant.backend,
+        AI_ASSISTANT_BACKENDS,
+      ),
+    },
     pythonPath: stringSetting(rawConfig, "pythonPath", DEFAULT_CONFIG.pythonPath),
     defaultSource: stringSetting(rawConfig, "defaultSource", DEFAULT_CONFIG.defaultSource),
     defaultLog: stringSetting(rawConfig, "defaultLog", DEFAULT_CONFIG.defaultLog),
@@ -87,7 +169,35 @@ export function normalizeConfig(rawConfig = {}) {
   };
 }
 
+export function isKnownCommandId(commandId) {
+  return COMMAND_IDS.includes(commandId);
+}
+
+export function assertKnownCommandId(commandId) {
+  if (!isKnownCommandId(commandId)) {
+    throw new Error(`unknown PCCX SystemVerilog command: ${commandId}`);
+  }
+}
+
+export function isLiveWorkspaceCommand(commandId) {
+  return LIVE_WORKSPACE_COMMAND_IDS.includes(commandId);
+}
+
+export function isLiveWorkspaceEnabled(config) {
+  return config?.mode === "liveWorkspace" && config?.liveWorkspace?.enabled === true;
+}
+
+export function assertLiveWorkspaceEnabled(config) {
+  if (!isLiveWorkspaceEnabled(config)) {
+    throw new Error(
+      "live workspace commands require pccxSystemVerilog.mode=liveWorkspace " +
+        "and pccxSystemVerilog.liveWorkspace.enabled=true",
+    );
+  }
+}
+
 export function buildFacadeArgsForCommand(commandId, rawConfig = {}) {
+  assertKnownCommandId(commandId);
   const config = normalizeConfig(rawConfig);
 
   if (
@@ -104,11 +214,19 @@ export function buildFacadeArgsForCommand(commandId, rawConfig = {}) {
     return ["navigation", "--mode", "example", "--source", "declarations"];
   }
 
-  if (commandId === "pccxSystemVerilog.runDiagnosticsLive") {
+  if (
+    commandId === "pccxSystemVerilog.publishLiveWorkspaceDiagnostics" ||
+    commandId === "pccxSystemVerilog.runDiagnosticsLive"
+  ) {
+    assertLiveWorkspaceEnabled(config);
     return ["diagnostics", "--mode", "live", "--from-check", config.defaultSource];
   }
 
-  if (commandId === "pccxSystemVerilog.runNavigationLive") {
+  if (
+    commandId === "pccxSystemVerilog.showLiveWorkspaceNavigation" ||
+    commandId === "pccxSystemVerilog.runNavigationLive"
+  ) {
+    assertLiveWorkspaceEnabled(config);
     return [
       "navigation",
       "--mode",
@@ -121,7 +239,7 @@ export function buildFacadeArgsForCommand(commandId, rawConfig = {}) {
     ];
   }
 
-  throw new Error(`unknown PCCX SystemVerilog command: ${commandId}`);
+  throw new Error(`unhandled PCCX SystemVerilog command: ${commandId}`);
 }
 
 export function isLiveFacadeArgs(args) {

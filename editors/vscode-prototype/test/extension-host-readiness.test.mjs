@@ -98,6 +98,9 @@ async function testReadinessDocsAndCiPolicy() {
   assert.match(`${readme}\n${readiness}`, /DefinitionProvider/);
   assert.match(`${readme}\n${readiness}`, /VS Code-native\s+provider smoke/i);
   assert.match(`${readme}\n${readiness}`, /command-first navigation/i);
+  assert.match(`${readme}\n${readiness}`, /live workspace .*opt-in/i);
+  assert.match(`${readme}\n${readiness}`, /AI assistant .*boundary/i);
+  assert.match(`${readme}\n${readiness}`, /pccx-llm-launcher .*future local LLM\/chat backend/i);
   assert.match(`${readme}\n${readiness}`, /no LSP provider/i);
   assert.match(`${readme}\n${readiness}`, /host theme first/i);
   assert.match(`${readme}\n${readiness}`, /not a completed\s+custom theme system/i);
@@ -132,6 +135,8 @@ async function testRuntimeRunnerIsPinnedAndBounded() {
   assert.match(suite, /getCommands/);
   assert.match(suite, /publishCheckedExampleDiagnostics/);
   assert.match(suite, /showCheckedExampleNavigation/);
+  assert.match(suite, /publishLiveWorkspaceDiagnostics/);
+  assert.match(suite, /live workspace commands require/);
   assert.match(suite, /getDiagnostics/);
   assert.match(suite, /DiagnosticSeverity\.Error/);
   assert.match(suite, /navigationResult\.locations/);

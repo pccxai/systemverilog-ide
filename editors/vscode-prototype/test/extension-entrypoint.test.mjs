@@ -33,6 +33,14 @@ const EXPECTED_ARGS = new Map([
     ["navigation", "--mode", "example", "--source", "declarations"],
   ],
   [
+    "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
+    ["diagnostics", "--mode", "live", "--from-check", "fixtures/missing_endmodule.sv"],
+  ],
+  [
+    "pccxSystemVerilog.showLiveWorkspaceNavigation",
+    ["navigation", "--mode", "live", "--locate", "fixtures/modules", "simple_mod", "--kind", "module"],
+  ],
+  [
     "pccxSystemVerilog.showNavigationExample",
     ["navigation", "--mode", "example", "--source", "declarations"],
   ],
@@ -47,11 +55,22 @@ const EXPECTED_ARGS = new Map([
 ]);
 
 function configFor(commandId) {
-  if (commandId === "pccxSystemVerilog.runDiagnosticsLive") {
-    return { defaultSource: "fixtures/missing_endmodule.sv" };
+  if (commandId === "pccxSystemVerilog.publishLiveWorkspaceDiagnostics" ||
+      commandId === "pccxSystemVerilog.runDiagnosticsLive") {
+    return {
+      mode: "liveWorkspace",
+      liveWorkspace: { enabled: true },
+      defaultSource: "fixtures/missing_endmodule.sv",
+    };
   }
-  if (commandId === "pccxSystemVerilog.runNavigationLive") {
-    return { defaultModule: "simple_mod", defaultDeclarationKind: "module" };
+  if (commandId === "pccxSystemVerilog.showLiveWorkspaceNavigation" ||
+      commandId === "pccxSystemVerilog.runNavigationLive") {
+    return {
+      mode: "liveWorkspace",
+      liveWorkspace: { enabled: true },
+      defaultModule: "simple_mod",
+      defaultDeclarationKind: "module",
+    };
   }
   return {};
 }
@@ -76,7 +95,12 @@ function testCheckedExampleDiagnosticsCommandStaysExampleMode() {
   assert.deepEqual(
     buildFacadeArgsForCommand(
       "pccxSystemVerilog.publishCheckedExampleDiagnostics",
-      { mode: "live", defaultSource: "configured.sv", pythonPath: "python-custom" },
+      {
+        mode: "liveWorkspace",
+        liveWorkspace: { enabled: true },
+        defaultSource: "configured.sv",
+        pythonPath: "python-custom",
+      },
     ),
     ["diagnostics", "--mode", "example", "--source", "check-missing-endmodule"],
   );
@@ -86,7 +110,12 @@ function testCheckedExampleNavigationCommandStaysExampleMode() {
   assert.deepEqual(
     buildFacadeArgsForCommand(
       "pccxSystemVerilog.showCheckedExampleNavigation",
-      { mode: "live", defaultModule: "pkg_defs", pythonPath: "python-custom" },
+      {
+        mode: "liveWorkspace",
+        liveWorkspace: { enabled: true },
+        defaultModule: "pkg_defs",
+        pythonPath: "python-custom",
+      },
     ),
     ["navigation", "--mode", "example", "--source", "declarations"],
   );
@@ -95,7 +124,12 @@ function testCheckedExampleNavigationCommandStaysExampleMode() {
 function testFacadeInvocationIsArgumentArray() {
   const invocation = buildFacadeInvocationForCommand(
     "pccxSystemVerilog.runDiagnosticsLive",
-    { defaultSource: "fixtures/missing_endmodule.sv", pythonPath: "python3" },
+    {
+      mode: "liveWorkspace",
+      liveWorkspace: { enabled: true },
+      defaultSource: "fixtures/missing_endmodule.sv",
+      pythonPath: "python3",
+    },
     { nodeExecutable: "node", facadePath: "editors/vscode-prototype/bin/pccx-vscode-prototype.mjs" },
   );
 
@@ -173,7 +207,11 @@ function testNavigationLocationMapping() {
 
 function testResolveCommandRequestUsesVsCodeSettings() {
   const settings = new Map([
-    ["mode", "live"],
+    ["mode", "liveWorkspace"],
+    ["liveWorkspace.enabled", true],
+    ["pccxLab.command", "pccx_ide_cli"],
+    ["aiAssistant.enabled", false],
+    ["aiAssistant.backend", "none"],
     ["pythonPath", "python-custom"],
     ["defaultSource", "configured.sv"],
     ["defaultLog", "configured.log"],
@@ -194,7 +232,17 @@ function testResolveCommandRequestUsesVsCodeSettings() {
   };
 
   assert.deepEqual(readExtensionConfig(vscodeApi), {
-    mode: "live",
+    mode: "liveWorkspace",
+    liveWorkspace: {
+      enabled: true,
+    },
+    pccxLab: {
+      command: "pccx_ide_cli",
+    },
+    aiAssistant: {
+      enabled: false,
+      backend: "none",
+    },
     pythonPath: "python-custom",
     defaultSource: "configured.sv",
     defaultLog: "configured.log",
@@ -204,7 +252,17 @@ function testResolveCommandRequestUsesVsCodeSettings() {
   assert.deepEqual(
     resolveCommandRequest("pccxSystemVerilog.runDiagnosticsLive", undefined, vscodeApi),
     {
-      mode: "live",
+      mode: "liveWorkspace",
+      liveWorkspace: {
+        enabled: true,
+      },
+      pccxLab: {
+        command: "pccx_ide_cli",
+      },
+      aiAssistant: {
+        enabled: false,
+        backend: "none",
+      },
       pythonPath: "python-custom",
       defaultSource: "configured.sv",
       defaultLog: "configured.log",
@@ -215,7 +273,17 @@ function testResolveCommandRequestUsesVsCodeSettings() {
   assert.deepEqual(
     resolveCommandRequest("pccxSystemVerilog.runNavigationLive", undefined, vscodeApi),
     {
-      mode: "live",
+      mode: "liveWorkspace",
+      liveWorkspace: {
+        enabled: true,
+      },
+      pccxLab: {
+        command: "pccx_ide_cli",
+      },
+      aiAssistant: {
+        enabled: false,
+        backend: "none",
+      },
       pythonPath: "python-custom",
       defaultSource: "configured.sv",
       defaultLog: "configured.log",
@@ -226,7 +294,17 @@ function testResolveCommandRequestUsesVsCodeSettings() {
   assert.deepEqual(
     resolveCommandRequest("pccxSystemVerilog.runDiagnosticsLive", { fsPath: "explicit.sv" }, vscodeApi),
     {
-      mode: "live",
+      mode: "liveWorkspace",
+      liveWorkspace: {
+        enabled: true,
+      },
+      pccxLab: {
+        command: "pccx_ide_cli",
+      },
+      aiAssistant: {
+        enabled: false,
+        backend: "none",
+      },
       pythonPath: "python-custom",
       defaultSource: "explicit.sv",
       defaultLog: "configured.log",

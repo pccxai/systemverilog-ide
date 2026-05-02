@@ -16,8 +16,13 @@ should earn CI promotion separately.
 ## Tested Today
 
 - Configuration helper defaults and validation.
+- Explicit live workspace configuration guard:
+  `checkedExample` remains the default, and live workspace commands
+  require both `mode=liveWorkspace` and `liveWorkspace.enabled=true`.
 - Known facade argument arrays.
 - Command handlers and UI action models.
+- AI assistant boundary and token-saving context bundle unit tests.  The
+  current AI assistant work is boundary/stub only.
 - Presenter behavior with mocked VS Code-like dependencies.
 - Real VS Code `DiagnosticCollection` population for the checked-example
   diagnostics command when the local runtime smoke is explicitly enabled.
@@ -43,6 +48,10 @@ should earn CI promotion separately.
 - Packaging.
 - `vsce`.
 - Marketplace install.
+- Enabled live workspace scanning, watchers, check-on-save, or arbitrary
+  project indexing.
+- AI provider calls, pccx-llm-launcher runtime calls, chat backend
+  calls, or MCP server implementation.
 
 The runtime smoke is limited coverage for the activation, command facade,
 and VS Code-native provider boundary only.  It is not a product claim and
@@ -65,9 +74,10 @@ PCCX_RUN_EXTENSION_HOST_SMOKE=1 bash scripts/vscode-extension-host-smoke.sh
 The runner lives under `editors/vscode-prototype/test/extension-host/`.
 It uses `@vscode/test-electron@2.5.2`, pins VS Code to `1.90.2`, creates
 a temporary workspace, loads the local extension package, verifies the
-expected command IDs, and executes only
-`pccxSystemVerilog.publishCheckedExampleDiagnostics` and
-`pccxSystemVerilog.showCheckedExampleNavigation`.  The diagnostics
+expected command IDs, checks that
+`pccxSystemVerilog.publishLiveWorkspaceDiagnostics` fails clearly while
+live workspace is disabled by default, and executes only the
+checked-example diagnostics/navigation command paths.  The diagnostics
 command uses checked example diagnostics by default, goes through the
 facade boundary, and verifies that VS Code receives at least one
 diagnostic with URI, range, severity, message, and source fields.  The
@@ -80,8 +90,17 @@ experimental VS Code-native `DefinitionProvider` returns at least one
 `Location` with sane URI and range fields.  The provider currently
 reuses the checked-example declaration result and does not complete
 semantic cursor/symbol resolution.  Live mode remains explicit and
-separate, and the runtime smoke does not execute live CLI commands by
-default.  This is not LSP, and there is no LSP provider yet.
+separate, and the runtime smoke does not execute enabled live CLI
+commands by default.  This is not LSP, and there is no LSP provider yet.
+
+## AI Assistant Boundary
+
+The prototype has a future AI-assisted SystemVerilog development workflow
+boundary, not a model integration.  pccx-llm-launcher is a future local LLM/chat backend candidate, and any later integration must use a reviewed
+contract.  The current extension code makes no AI provider calls, no
+pccx-llm-launcher runtime calls, and implements no MCP server.  AI
+actions are modeled as proposals, including command proposal and
+validation proposal shapes, rather than direct execution.
 
 The guarded script is not run by CI today.
 
@@ -125,3 +144,6 @@ system.
 6. Do not add `vsce`, publisher metadata, packaging scripts, LSP, or
    marketplace flow.
 7. Do not make a marketplace, published-extension, or stable API claim.
+8. Do not make live workspace mode the default.
+9. Do not add AI provider calls, pccx-llm-launcher runtime calls, or MCP
+   server implementation without a separate contract review.

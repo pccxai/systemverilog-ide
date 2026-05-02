@@ -6,6 +6,7 @@ import {
   COMMAND_IDS,
   CONFIG_KEYS,
   CONFIG_SECTION,
+  assertKnownCommandId,
   buildFacadeArgsForCommand,
   defaultConfig,
   isLiveFacadeArgs,
@@ -252,12 +253,15 @@ export function createPresenterDeps(vscodeApi, runtime = {}) {
 }
 
 export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
-  createCommandExecutionPlan(commandId, defaultConfig());
+  assertKnownCommandId(commandId);
   return async (input) => {
     const returnsNavigationLocations = commandId === CHECKED_EXAMPLE_NAVIGATION_COMMAND;
     const rawConfig = readRawExtensionConfig(vscodeApi);
     const explicitPath = pathFromCommandInput(input);
-    const request = commandId === "pccxSystemVerilog.runDiagnosticsLive" && explicitPath
+    const request = (
+      commandId === "pccxSystemVerilog.publishLiveWorkspaceDiagnostics" ||
+      commandId === "pccxSystemVerilog.runDiagnosticsLive"
+    ) && explicitPath
       ? { ...rawConfig, defaultSource: explicitPath }
       : rawConfig;
     const presenterDeps = {

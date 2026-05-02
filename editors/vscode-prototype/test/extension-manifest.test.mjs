@@ -8,6 +8,8 @@ const EXTENSION_ROOT = resolve(ROOT, "editors/vscode-prototype");
 const COMMAND_IDS = [
   "pccxSystemVerilog.publishCheckedExampleDiagnostics",
   "pccxSystemVerilog.showCheckedExampleNavigation",
+  "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
+  "pccxSystemVerilog.showLiveWorkspaceNavigation",
   "pccxSystemVerilog.showDiagnosticsExample",
   "pccxSystemVerilog.showNavigationExample",
   "pccxSystemVerilog.runDiagnosticsLive",
@@ -102,6 +104,12 @@ async function testDocsKeepExperimentalScope() {
   assert.match(combined, /static\/mock tests/i);
   assert.match(combined, /limited opt-in Extension Host runtime smoke/i);
   assert.match(combined, /not a product claim/i);
+  assert.match(combined, /checked-example remains the default/i);
+  assert.match(combined, /live workspace .*opt-in/i);
+  assert.match(combined, /AI-assisted SystemVerilog development workflow/i);
+  assert.match(combined, /boundary\/stub/i);
+  assert.match(combined, /no AI provider calls/i);
+  assert.match(combined, /no MCP server implementation/i);
 }
 
 await testPackageManifestShape();
