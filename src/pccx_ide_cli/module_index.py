@@ -17,6 +17,8 @@ _DECL_LINE_RE = re.compile(r"^(\s*)(module|package|interface)\s+(\w+)")
 
 _IGNORE_DIRS: frozenset[str] = frozenset({".git", "__pycache__", "build", "dist", "target"})
 _SV_SUFFIXES: frozenset[str] = frozenset({".sv", ".v"})
+DECLARATION_KINDS: tuple[str, ...] = ("module", "package", "interface")
+LOCATE_KINDS: tuple[str, ...] = (*DECLARATION_KINDS, "any")
 
 
 def _strip_block_comments(line: str, in_comment: bool) -> tuple[str, bool]:
@@ -117,6 +119,17 @@ def build_index(source: str, declarations: list[dict[str, Any]]) -> dict[str, An
     }
 
 
+def build_declarations_export(
+    source: str, declarations: list[dict[str, Any]]
+) -> dict[str, Any]:
+    return {
+        "declarations": declarations,
+        "kind": "declarations",
+        "source": source,
+        "tool": "pccx-ide-cli",
+    }
+
+
 def filter_declarations(
     entries: list[dict[str, Any]], query: str
 ) -> list[dict[str, Any]]:
@@ -131,25 +144,44 @@ def filter_modules(
     return filter_declarations(entries, query)
 
 
-def locate_module(path: Path, name: str) -> list[dict[str, Any]]:
-    """Scan path for exact case-sensitive module name matches.
+def _locate_record(declaration: dict[str, Any]) -> dict[str, Any]:
+    record = {
+        "kind": declaration["kind"],
+        "name": declaration["name"],
+        "file": declaration["file"],
+        "line": declaration["line"],
+        "column": declaration["column"],
+    }
+    if declaration["kind"] == "module":
+        record["module"] = declaration["name"]
+    return record
 
-    Returns a list of locate-shaped records:
-      {"module": <name>, "file": <path>, "line": N, "column": C}
 
-    Column is the same 1-based character offset as the index command.
-    Sorted deterministically by (file, line).
+def locate_declaration(
+    path: Path, name: str, declaration_kind: str = "module"
+) -> list[dict[str, Any]]:
+    """Scan path for exact case-sensitive declaration name matches.
+
+    declaration_kind may be module/package/interface/any.  Module matches keep
+    the legacy "module" field while also exposing generic kind/name fields.
     """
+    if declaration_kind not in LOCATE_KINDS:
+        raise ValueError(f"unsupported declaration kind: {declaration_kind}")
+
     raw = scan_path(path)
     matches = [
-        {
-            "module": m["name"],
-            "file": m["file"],
-            "line": m["line"],
-            "column": m["column"],
-        }
-        for m in raw
-        if m["kind"] == "module" and m["name"] == name
+        _locate_record(declaration)
+        for declaration in raw
+        if declaration["name"] == name
+        and (
+            declaration_kind == "any"
+            or declaration["kind"] == declaration_kind
+        )
     ]
-    matches.sort(key=lambda m: (m["file"], m["line"]))
+    matches.sort(key=lambda m: (m["file"], m["line"], m["column"], m["kind"], m["name"]))
     return matches
+
+
+def locate_module(path: Path, name: str) -> list[dict[str, Any]]:
+    """Backward-compatible module-only locate wrapper."""
+    return locate_declaration(path, name, "module")

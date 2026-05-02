@@ -14,7 +14,12 @@ FIXTURES = REPO_ROOT / "fixtures" / "modules"
 
 sys.path.insert(0, str(SRC))
 
-from pccx_ide_cli.module_index import build_index, scan_file, scan_path  # noqa: E402
+from pccx_ide_cli.module_index import (  # noqa: E402
+    build_declarations_export,
+    build_index,
+    scan_file,
+    scan_path,
+)
 from pccx_ide_cli.module_index import _strip_block_comments  # noqa: E402
 
 
@@ -241,6 +246,18 @@ def test_build_index_keeps_legacy_modules_shape():
     ]
 
 
+def test_build_declarations_export_shape():
+    declarations = scan_file(FIXTURES / "mixed_declarations.sv")
+    export = build_declarations_export(
+        "fixtures/modules/mixed_declarations.sv",
+        declarations,
+    )
+    assert export["tool"] == "pccx-ide-cli"
+    assert export["kind"] == "declarations"
+    assert export["source"] == "fixtures/modules/mixed_declarations.sv"
+    assert export["declarations"] == declarations
+
+
 # ── CLI helpers ───────────────────────────────────────────────────────────────
 
 def _run_cli(*args: str) -> subprocess.CompletedProcess:
@@ -352,6 +369,41 @@ def test_cli_index_text_format_has_path_line_col():
     assert diag_lines, "expected a diagnostic line containing 'module simple_mod'"
     # path:line:col: module name  →  at least 3 colons
     assert diag_lines[0].count(":") >= 3
+
+
+def test_cli_declarations_json_directory():
+    result = _run_cli("declarations", str(FIXTURES), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "declarations"
+    assert payload["tool"] == "pccx-ide-cli"
+    assert payload["source"] == str(FIXTURES)
+    kinds_names = {(d["kind"], d["name"]) for d in payload["declarations"]}
+    assert ("module", "simple_mod") in kinds_names
+    assert ("package", "pkg_defs") in kinds_names
+    assert ("interface", "bus_if") in kinds_names
+
+
+def test_cli_declarations_text_directory():
+    result = _run_cli("declarations", str(FIXTURES), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "source:" in result.stdout
+    assert "declarations" in result.stdout
+    assert "package pkg_defs" in result.stdout
+    assert "interface bus_if" in result.stdout
+    assert "module simple_mod" in result.stdout
+
+
+def test_cli_declarations_missing_path_exits_nonzero():
+    result = _run_cli("declarations", str(FIXTURES / "does_not_exist.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
+def test_cli_declarations_invalid_format_fails():
+    result = _run_cli("declarations", str(FIXTURES), "--format", "xml")
+    assert result.returncode != 0
+    assert "invalid choice" in result.stderr
 
 
 # ── CLI: error cases ──────────────────────────────────────────────────────────

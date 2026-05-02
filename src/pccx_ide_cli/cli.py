@@ -72,9 +72,25 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Filter results to modules with this exact name (case-sensitive).",
     )
 
+    declarations_cmd = sub.add_parser(
+        "declarations",
+        help="Export scanner-based module/package/interface declaration records.",
+    )
+    declarations_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    declarations_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     locate_cmd = sub.add_parser(
         "locate",
-        help="Locate a module by exact name in a .sv/.v file or directory.",
+        help="Locate a declaration by exact name in a .sv/.v file or directory.",
     )
     locate_cmd.add_argument(
         "path",
@@ -83,7 +99,13 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     locate_cmd.add_argument(
         "name",
-        help="Module name to locate (exact, case-sensitive).",
+        help="Declaration name to locate (exact, case-sensitive).",
+    )
+    locate_cmd.add_argument(
+        "--kind",
+        choices=("module", "package", "interface", "any"),
+        default="module",
+        help="Declaration kind to locate (default: module).",
     )
     locate_cmd.add_argument(
         "--format",
@@ -222,20 +244,46 @@ def main(argv: Sequence[str] | None = None) -> int:
                 sys.stdout.write(
                     f"{d['file']}:{d['line']}:{d['column']}: "
                     f"{d['kind']} {d['name']}\n"
-                )
+            )
         return 0
 
-    if args.command == "locate":
-        from .module_index import locate_module
+    if args.command == "declarations":
+        from .module_index import build_declarations_export, scan_path
 
         if not args.path.exists():
             sys.stderr.write(f"error: path does not exist: {args.path}\n")
             return 2
 
-        matches = locate_module(args.path, args.name)
+        declarations = scan_path(args.path)
+        export = build_declarations_export(str(args.path), declarations)
+
+        if args.format == "json":
+            json.dump(export, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            count = len(declarations)
+            plural = "s" if count != 1 else ""
+            sys.stdout.write(f"source: {export['source']}\n")
+            sys.stdout.write(f"{count} declaration{plural}\n")
+            for d in declarations:
+                sys.stdout.write(
+                    f"{d['file']}:{d['line']}:{d['column']}: "
+                    f"{d['kind']} {d['name']}\n"
+                )
+        return 0
+
+    if args.command == "locate":
+        from .module_index import locate_declaration
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        matches = locate_declaration(args.path, args.name, args.kind)
 
         if args.format == "json":
             envelope = {
+                "declaration_kind": args.kind,
                 "kind": "locate",
                 "matches": matches,
                 "query": args.name,
@@ -247,25 +295,35 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             count = len(matches)
             if count == 1:
-                sys.stdout.write(f"module {matches[0]['module']}\n")
+                sys.stdout.write(f"{matches[0]['kind']} {matches[0]['name']}\n")
                 sys.stdout.write(
                     f"{matches[0]['file']}:{matches[0]['line']}:{matches[0]['column']}\n"
                 )
             elif count == 0:
-                sys.stdout.write(f"module {args.name}: not found\n")
+                label = "declaration" if args.kind == "any" else args.kind
+                sys.stdout.write(f"{label} {args.name}: not found\n")
             else:
+                label = "declaration" if args.kind == "any" else args.kind
                 sys.stdout.write(
-                    f"module {args.name}: {count} matches (ambiguous)\n"
+                    f"{label} {args.name}: {count} matches (ambiguous)\n"
                 )
                 for m in matches:
-                    sys.stdout.write(f"{m['file']}:{m['line']}:{m['column']}\n")
+                    if args.kind == "module":
+                        sys.stdout.write(f"{m['file']}:{m['line']}:{m['column']}\n")
+                    else:
+                        sys.stdout.write(
+                            f"{m['file']}:{m['line']}:{m['column']}: "
+                            f"{m['kind']} {m['name']}\n"
+                        )
 
         if len(matches) == 0:
-            sys.stderr.write(f"error: module not found: {args.name}\n")
+            label = "declaration" if args.kind == "any" else args.kind
+            sys.stderr.write(f"error: {label} not found: {args.name}\n")
             return 1
         if len(matches) > 1:
+            label = "declaration" if args.kind == "any" else args.kind
             sys.stderr.write(
-                f"error: ambiguous: {len(matches)} matches for module {args.name}\n"
+                f"error: ambiguous: {len(matches)} matches for {label} {args.name}\n"
             )
             return 2
         return 0

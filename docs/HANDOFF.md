@@ -136,23 +136,30 @@ python -m pccx_ide_cli index fixtures/modules/ --format text
   built-in scaffold scanner.
 - `modules[]` remains for compatibility; `declarations[]` carries the
   declaration kind.
-- `locate` remains module-only.  Package/interface locate is future work.
+- `locate` defaults to module-only compatibility and can opt into
+  `--kind package`, `--kind interface`, or `--kind any`.
 - No stable ABI or API contract — the output shape may change before v1.
 
 ---
 
-## module locate scaffold (active, pre-stable)
+## declaration locate scaffold (active, pre-stable)
 
-`pccx-ide locate` scans `.sv` and `.v` files for a single module declaration
-by exact name.  This is an early navigation scaffold — not semantic navigation,
-not an LSP implementation, and not a stable API.  A future editor bridge can
-consume this output, but the shape may change before v1.
+`pccx-ide locate` scans `.sv` and `.v` files for a single declaration by
+exact name.  The default remains module-only for compatibility; callers can
+opt into `--kind module|package|interface|any`.  This is an early navigation
+scaffold — not semantic navigation, not an LSP implementation, and not a
+stable API.  A future editor bridge can consume this output, but the shape may
+change before v1.
 
 ### Usage
 
 ```bash
 # Locate a module — JSON output (default)
 python -m pccx_ide_cli locate fixtures/modules/ simple_mod
+
+# Locate a package or interface
+python -m pccx_ide_cli locate fixtures/modules/ pkg_defs --kind package
+python -m pccx_ide_cli locate fixtures/modules/ bus_if --kind interface
 
 # Locate — human-readable text output
 python -m pccx_ide_cli locate fixtures/modules/ simple_mod --format text
@@ -166,8 +173,9 @@ python -m pccx_ide_cli locate fixtures/modules/ simple_mod --format text
   "tool": "pccx-ide-cli",
   "source": "line-scanner",
   "query": "simple_mod",
+  "declaration_kind": "module",
   "matches": [
-    { "module": "simple_mod", "file": "<path>", "line": 1, "column": 0 }
+    { "kind": "module", "name": "simple_mod", "module": "simple_mod", "file": "<path>", "line": 1, "column": 1 }
   ]
 }
 ```
@@ -184,10 +192,38 @@ python -m pccx_ide_cli locate fixtures/modules/ simple_mod --format text
 
 - Exact case-sensitive name match only.
 - Uses the same line scanner as `index` — same parser limitations apply
-  (no block comment handling, no semantic analysis).
-- `column` is always 0 in locate output (column position not resolved at
-  this stage).
+  (scanner-based block comment handling, no semantic analysis).
+- `column` is the same 1-indexed keyword column emitted by `index`.
 - Output shape is pre-stable; not a committed API contract.
+
+---
+
+## declaration export scaffold (active, pre-stable)
+
+`pccx-ide declarations` exposes the scanner declaration records directly for
+editor bridge consumers.  It is a thin wrapper over the `index`
+`declarations[]` data and keeps legacy module-only `modules[]` out of the
+result.
+
+```bash
+python -m pccx_ide_cli declarations fixtures/modules/ --format json
+python -m pccx_ide_cli declarations fixtures/modules/ --format text
+```
+
+JSON output uses:
+
+```json
+{
+  "kind": "declarations",
+  "tool": "pccx-ide-cli",
+  "source": "<path passed on CLI>",
+  "declarations": [
+    { "kind": "package", "name": "pkg_defs", "file": "<path>", "line": 1, "column": 1 }
+  ]
+}
+```
+
+The output is pre-stable, scanner-based, and not semantic resolution.
 
 ---
 

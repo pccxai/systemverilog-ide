@@ -145,6 +145,12 @@ jobs:
           PYTHONPATH=src python -m pccx_ide_cli index fixtures/modules \
               | python -c "import json,sys; d=json.load(sys.stdin); assert len(d['modules'])>0"
           echo "index directory smoke ok"
+      - name: cli smoke (declarations directory exits zero)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli declarations fixtures/modules \
+              | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='declarations'; assert len(d['declarations'])>0"
+          echo "declarations directory smoke ok"
       - name: cli smoke (index missing path exits non-zero)
         run: |
           set -e

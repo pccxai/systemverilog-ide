@@ -29,8 +29,14 @@ python -m pccx_ide_cli problems from-xsim-log <log-file> --format json
 # Declaration index for project/file navigation
 python -m pccx_ide_cli index <path> --format json
 
-# Locate one module by exact name
-python -m pccx_ide_cli locate <path> <module-name> --format json
+# Direct declaration export for editor navigation
+python -m pccx_ide_cli declarations <path> --format json
+
+# Locate one declaration by exact name
+python -m pccx_ide_cli locate <path> <name> --kind module --format json
+python -m pccx_ide_cli locate <path> <name> --kind package --format json
+python -m pccx_ide_cli locate <path> <name> --kind interface --format json
+python -m pccx_ide_cli locate <path> <name> --kind any --format json
 
 # Opt-in pccx-lab diagnostics backend
 python -m pccx_ide_cli check <sv-file> --backend pccx-lab --format json
@@ -58,10 +64,10 @@ SystemVerilog source or existing log file
   -> editor problem list or navigation entry
 ```
 
-`problems` converts local diagnostics and log records into
-editor-friendly problem records.  `index` provides scanner-based
-module/package/interface declaration records.  `locate` remains
-module-oriented.
+`problems` converts local diagnostics and log records into editor-friendly
+problem records.  `index` provides scanner-based module/package/interface
+declaration records.  `declarations` exports those records directly, and
+`locate` resolves exact declaration names by requested kind.
 
 ## Limitations
 
