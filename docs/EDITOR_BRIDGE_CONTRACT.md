@@ -156,6 +156,9 @@ validation summaries and related diagnostics, but it does not create patch
 content for passing validation results and does not apply changes.
 pccx-lab command descriptors are data-only preparation for a future
 CLI/core boundary and do not execute pccx-lab.
+Launcher status contracts are also status-only and do not call
+pccx-llm-launcher, include model paths, include board logs, or make device
+performance claims.
 Approved validation execution must use fixed argument arrays, bounded
 output, an explicit user-approved command invocation, and no shell
 interpolation.  pccx-lab command execution remains future/prepared in

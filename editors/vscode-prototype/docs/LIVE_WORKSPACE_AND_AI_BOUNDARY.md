@@ -207,6 +207,11 @@ pccx-lab command descriptors are data-only.  The checked status descriptor
 is future-state preparation for a reviewed CLI/core boundary; it has no
 executable field and does not run pccx-lab.
 
+Launcher status is fixture-only in this prototype.  The contract can carry
+bounded future-state metadata, but it does not call pccx-llm-launcher,
+communicate with devices, include model paths, include board logs, or make
+device performance claims.
+
 ## Prototype Daily-Driver Loop
 
 1. Inspect diagnostics and navigation.
@@ -230,6 +235,7 @@ Now:
 - patch proposal contract
 - validation-to-patch handoff contract
 - pccx-lab command descriptor contract
+- launcher status contract
 - approved validation runner boundary
 - validation summary in the context bundle
 - validation cache status command
