@@ -133,6 +133,19 @@ summary }` actions, and navigation facade payloads become
 mocked VS Code-like dependencies such as `runFacade`, `updateDiagnostics`,
 and `showNavigationItems` for static coverage.
 
+`src/definition-provider.mjs` is the first experimental VS Code-native
+provider smoke.  It registers a minimal `DefinitionProvider` for
+SystemVerilog-like file documents and reuses the same checked-example
+navigation facade boundary used by
+`pccxSystemVerilog.showCheckedExampleNavigation`.  The provider returns
+VS Code `Location` results mapped from
+`navigation --mode example --source declarations`; it does not implement
+LSP, does not scan the live workspace by default, and does not silently
+switch modes.  Semantic cursor and symbol resolution are not complete in
+this phase, so the provider may ignore the cursor position and return
+the checked-example declaration location.  Live navigation remains an
+explicit and separate command path.
+
 `src/presenter.mjs` is the experimental local presenter scaffold.  It
 consumes command-handler UI actions and maps diagnostics/navigation
 actions to mocked VS Code-like APIs.  Diagnostics presentation groups
@@ -143,15 +156,20 @@ checked-example diagnostics command publishes at least one real VS Code
 diagnostic with URI, range, severity, message, and source fields through
 a `DiagnosticCollection`, and that the checked-example navigation
 command returns at least one Location-style record with URI, range,
-symbol, target kind, and source fields.  A guarded local-only Extension
-Host runtime smoke now exists at
+symbol, target kind, and source fields.  The same opt-in smoke also
+opens a temporary SystemVerilog-like document and executes
+`vscode.executeDefinitionProvider` to verify that the experimental
+VS Code-native `DefinitionProvider` returns at least one `Location` with
+sane URI and range fields.  A guarded local-only Extension Host runtime
+smoke now exists at
 `scripts/vscode-extension-host-smoke.sh`, but it exits 2 by default and
 only runs when `PCCX_RUN_EXTENSION_HOST_SMOKE=1` is set.  The runtime
 smoke loads the local extension package, verifies activation/command
 registration, and executes the checked-example diagnostics publishing
-command plus the checked-example navigation command.  It does not run
-the live CLI path, package the extension, add an LSP provider, or install
-from the marketplace.  Extension Host gates are tracked in
+command plus the checked-example navigation command and provider smoke.
+It does not run the live CLI path, package the extension, add an LSP
+provider, or install from the marketplace.  Extension Host gates are
+tracked in
 [`docs/EXTENSION_HOST_READINESS.md`](./docs/EXTENSION_HOST_READINESS.md).
 
 ## Theme-Neutral Presentation Boundary

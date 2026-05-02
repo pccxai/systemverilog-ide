@@ -80,6 +80,7 @@ async function testReadinessDocsAndCiPolicy() {
   const ci = await readText(resolve(ROOT, ".github/workflows/ci.yml"));
   const extensionEntrypoint = await readText(resolve(EXTENSION_ROOT, "src/extension.mjs"));
   const extensionWrapper = await readText(resolve(EXTENSION_ROOT, "src/extension.cjs"));
+  const definitionProvider = await readText(resolve(EXTENSION_ROOT, "src/definition-provider.mjs"));
 
   assert.match(readme, /experimental local VS Code prototype/i);
   assert.match(readme, /mostly static\/mock tests/i);
@@ -94,6 +95,8 @@ async function testReadinessDocsAndCiPolicy() {
   assert.match(readiness, /facade boundary/i);
   assert.match(`${readme}\n${readiness}`, /DiagnosticCollection/);
   assert.match(`${readme}\n${readiness}`, /showCheckedExampleNavigation/);
+  assert.match(`${readme}\n${readiness}`, /DefinitionProvider/);
+  assert.match(`${readme}\n${readiness}`, /VS Code-native\s+provider smoke/i);
   assert.match(`${readme}\n${readiness}`, /command-first navigation/i);
   assert.match(`${readme}\n${readiness}`, /no LSP provider/i);
   assert.match(`${readme}\n${readiness}`, /host theme first/i);
@@ -102,6 +105,10 @@ async function testReadinessDocsAndCiPolicy() {
   assert.doesNotMatch(ci, /PCCX_RUN_EXTENSION_HOST_SMOKE/);
   assert.doesNotMatch(extensionEntrypoint, /pccx_ide_cli/);
   assert.doesNotMatch(extensionWrapper, /pccx_ide_cli/);
+  assert.doesNotMatch(definitionProvider, /pccx_ide_cli/);
+  assert.doesNotMatch(`${extensionEntrypoint}\n${definitionProvider}`, /LanguageClient|vscode-languageclient/);
+  assert.match(definitionProvider, /checkedExampleDefinitionProvider/);
+  assert.match(extensionEntrypoint, /registerCheckedExampleDefinitionProvider/);
   assert.match(extensionWrapper, /require\("vscode"\)/);
   assert.match(extensionWrapper, /import\("\.\/extension\.mjs"\)/);
 }
@@ -129,6 +136,9 @@ async function testRuntimeRunnerIsPinnedAndBounded() {
   assert.match(suite, /DiagnosticSeverity\.Error/);
   assert.match(suite, /navigationResult\.locations/);
   assert.match(suite, /vscode\.Location/);
+  assert.match(suite, /vscode\.executeDefinitionProvider/);
+  assert.match(suite, /definitionProviders/);
+  assert.match(suite, /definitionProvider\.checkedExample/);
   assert.doesNotMatch(suite, /executeCommand\(\s*"pccxSystemVerilog\.runDiagnosticsLive"/);
   assert.doesNotMatch(suite, /executeCommand\(\s*"pccxSystemVerilog\.runNavigationLive"/);
 }
