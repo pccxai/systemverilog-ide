@@ -32,8 +32,13 @@ async function testPackageConfigurationSchema() {
   const configuration = manifest.contributes?.configuration;
   assert.ok(configuration);
   assert.equal(configuration.title, "PCCX SystemVerilog IDE Prototype");
+  assert.deepEqual(
+    Object.keys(configuration.properties ?? {}).sort(),
+    Array.from(REQUIRED_SETTINGS.keys()).sort(),
+  );
 
   for (const [setting, expected] of REQUIRED_SETTINGS) {
+    assert.ok(setting.startsWith("pccxSystemVerilog."), `${setting} is not prototype-scoped`);
     const property = configuration.properties?.[setting];
     assert.ok(property, `${setting} missing`);
     assert.equal(property.type, "string");

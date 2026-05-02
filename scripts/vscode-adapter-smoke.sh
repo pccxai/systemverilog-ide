@@ -17,6 +17,7 @@ node editors/vscode-prototype/test/extension-config.test.mjs
 node editors/vscode-prototype/test/extension-entrypoint.test.mjs
 node editors/vscode-prototype/test/command-handlers.test.mjs
 node editors/vscode-prototype/test/presenter.test.mjs
+node editors/vscode-prototype/test/extension-host-readiness.test.mjs
 node editors/vscode-prototype/src/adapter.mjs diagnostics \
   docs/examples/editor-bridge/problems-xsim-mixed.example.json \
   | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const d=JSON.parse(s);if(!Array.isArray(d)||d.length===0)process.exit(1);})"

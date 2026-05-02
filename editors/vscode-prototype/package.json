@@ -1,7 +1,7 @@
 {
   "name": "pccx-systemverilog-ide-prototype",
   "displayName": "PCCX SystemVerilog IDE Prototype",
-  "description": "Experimental local VS Code extension scaffold for the PCCX SystemVerilog IDE prototype; not published and not marketplace-ready.",
+  "description": "Experimental local VS Code extension scaffold for the PCCX SystemVerilog IDE prototype; not published.",
   "version": "0.0.0",
   "private": true,
   "type": "module",

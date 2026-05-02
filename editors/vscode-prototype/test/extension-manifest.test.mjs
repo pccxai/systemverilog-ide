@@ -43,6 +43,7 @@ async function testPackageManifestShape() {
   assert.equal(manifest.displayName, "PCCX SystemVerilog IDE Prototype");
   assert.match(manifest.description, /experimental local VS Code extension scaffold/i);
   assert.match(manifest.description, /not published/i);
+  assert.doesNotMatch(manifest.description, /marketplace/i);
   assert.ok(manifest.engines?.vscode);
   assert.equal(manifest.main, "./src/extension.mjs");
 }
@@ -54,6 +55,7 @@ async function testNoMarketplacePublishingShape() {
   assert.equal(Object.hasOwn(manifest, "publisher"), false);
   assert.equal(Object.hasOwn(manifest, "galleryBanner"), false);
   assert.doesNotMatch(manifestStrings, /\bvsce\b/i);
+  assert.equal(manifest.scripts, undefined);
   assert.equal(manifest.scripts?.publish, undefined);
   assert.equal(manifest.scripts?.package, undefined);
   assert.equal(manifest.dependencies, undefined);
@@ -66,7 +68,13 @@ async function testCommandContributions() {
     manifest.contributes?.commands?.map((command) => command.command),
   );
   const activationEvents = new Set(manifest.activationEvents);
+  const commandIds = manifest.contributes?.commands?.map((command) => command.command);
 
+  assert.deepEqual(commandIds, COMMAND_IDS);
+  assert.deepEqual(
+    manifest.activationEvents,
+    COMMAND_IDS.map((commandId) => `onCommand:${commandId}`),
+  );
   for (const commandId of COMMAND_IDS) {
     assert.ok(contributedCommands.has(commandId), `${commandId} missing from contributes.commands`);
     assert.ok(
@@ -87,7 +95,8 @@ async function testDocsKeepExperimentalScope() {
   assert.match(combined, /not marketplace-ready/i);
   assert.match(combined, /no LSP/i);
   assert.match(combined, /not a stable ABI\/API/i);
-  assert.match(combined, /static\/smoke tests/i);
+  assert.match(combined, /static\/mock tests/i);
+  assert.match(combined, /no real VS Code Extension Host coverage is claimed/i);
 }
 
 await testPackageManifestShape();
