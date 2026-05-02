@@ -328,6 +328,14 @@ or drop private paths.  It does not execute pccx-lab.  The boundary notes
 are tracked in
 [`docs/pccx-lab-command-boundary.md`](./docs/pccx-lab-command-boundary.md).
 
+`src/launcher-status-contract.mjs` defines a status-only launcher
+integration contract for future pccx-llm-launcher work.  The default
+status is fixture-only and future-state, uses a deterministic timestamp,
+and rejects secrets, private paths, model artifacts, board logs, and board
+performance claims.  It does not call the launcher or communicate with a
+device.  The boundary notes are tracked in
+[`docs/launcher-integration-boundary.md`](./docs/launcher-integration-boundary.md).
+
 `pccxSystemVerilog.proposeValidationCommand` returns allowlisted
 validation command proposals as JSON data.  The proposal includes
 allowlisted proposal IDs, argument-array templates, reasons, risk levels, and
@@ -438,6 +446,7 @@ node editors/vscode-prototype/test/patch-proposal-contract.test.mjs
 node editors/vscode-prototype/test/patch-proposal-preview.test.mjs
 node editors/vscode-prototype/test/validation-patch-handoff.test.mjs
 node editors/vscode-prototype/test/pccx-lab-command-descriptor.test.mjs
+node editors/vscode-prototype/test/launcher-status-contract.test.mjs
 node editors/vscode-prototype/test/validation-result-summary.test.mjs
 node editors/vscode-prototype/test/validation-result-cache.test.mjs
 node editors/vscode-prototype/test/approved-validation-runner.test.mjs
