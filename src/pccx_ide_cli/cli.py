@@ -108,6 +108,44 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    problems = sub.add_parser(
+        "problems",
+        help="Export editor-friendly problems from existing local outputs.",
+    )
+    problems_sub = problems.add_subparsers(dest="problems_source", required=True)
+
+    problems_check = problems_sub.add_parser(
+        "from-check",
+        help="Export problems from the built-in scaffold diagnostics check.",
+    )
+    problems_check.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv / .svh file.",
+    )
+    problems_check.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
+    problems_xsim = problems_sub.add_parser(
+        "from-xsim-log",
+        help="Export problems from an existing xsim-style log file.",
+    )
+    problems_xsim.add_argument(
+        "log_file",
+        type=Path,
+        help="Path to an existing xsim-style log file.",
+    )
+    problems_xsim.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     sub.add_parser(
         "schema",
         help="Print the diagnostics envelope JSON schema.",
@@ -245,6 +283,53 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_text(envelope))
+        return 0
+
+    if args.command == "problems":
+        from .problem_export import (
+            build_export,
+            format_text,
+            from_check_envelope,
+            from_xsim_log_envelope,
+        )
+
+        if args.problems_source == "from-check":
+            if not args.path.exists():
+                sys.stderr.write(f"error: input file does not exist: {args.path}\n")
+                return 2
+            if not args.path.is_file():
+                sys.stderr.write(f"error: input path is not a file: {args.path}\n")
+                return 2
+            check_envelope = scan_file(args.path)
+            export = build_export(
+                "check",
+                str(args.path),
+                from_check_envelope(check_envelope),
+            )
+        elif args.problems_source == "from-xsim-log":
+            from .xsim_log import parse_log_file
+
+            if not args.log_file.exists():
+                sys.stderr.write(f"error: log file does not exist: {args.log_file}\n")
+                return 2
+            if not args.log_file.is_file():
+                sys.stderr.write(f"error: log path is not a file: {args.log_file}\n")
+                return 2
+            xsim_envelope = parse_log_file(args.log_file)
+            export = build_export(
+                "xsim-log",
+                str(args.log_file),
+                from_xsim_log_envelope(xsim_envelope),
+            )
+        else:
+            parser.error(f"unknown problems source: {args.problems_source}")
+            return 2
+
+        if args.format == "json":
+            json.dump(export, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_text(export))
         return 0
 
     parser.error(f"unknown command: {args.command}")

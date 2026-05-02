@@ -168,3 +168,17 @@ jobs:
               fixtures/xsim/mixed.log --format text \
               | grep -q "5 diagnostics"
           echo "xsim-log mixed text smoke ok"
+      - name: cli smoke (problems from-check JSON)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli problems from-check \
+              fixtures/ok_module.sv --format json \
+              | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='editor-problems'; assert d['problems']==[]"
+          echo "problems from-check JSON smoke ok"
+      - name: cli smoke (problems from-xsim-log text)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli problems from-xsim-log \
+              fixtures/xsim/mixed.log --format text \
+              | grep -q "5 problems"
+          echo "problems from-xsim-log text smoke ok"
