@@ -26,7 +26,7 @@ python -m pccx_ide_cli problems from-check <sv-file> --format json
 # Existing xsim-style log diagnostics as editor problems
 python -m pccx_ide_cli problems from-xsim-log <log-file> --format json
 
-# Module index for project/file navigation
+# Declaration index for project/file navigation
 python -m pccx_ide_cli index <path> --format json
 
 # Locate one module by exact name
@@ -59,8 +59,9 @@ SystemVerilog source or existing log file
 ```
 
 `problems` converts local diagnostics and log records into
-editor-friendly problem records.  `index` and `locate` provide
-navigation-oriented records.
+editor-friendly problem records.  `index` provides scanner-based
+module/package/interface declaration records.  `locate` remains
+module-oriented.
 
 ## Limitations
 

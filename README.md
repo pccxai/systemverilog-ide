@@ -63,7 +63,7 @@ python -m pccx_ide_cli check fixtures/missing_endmodule.sv --format text
 PCCX_LAB_BIN=/path/to/pccx-lab \
     python -m pccx_ide_cli check fixtures/ok_module.sv --backend pccx-lab --format text
 
-# Module index (early scaffold — not a full parser)
+# Module/declaration index (early scaffold — not a full parser)
 python -m pccx_ide_cli index fixtures/modules/simple_module.sv
 python -m pccx_ide_cli index fixtures/modules/ --format text
 
@@ -103,6 +103,10 @@ fixtures/modules/simple_module.sv:1:1: module simple_mod
 fixtures/modules/two_modules.sv:1:1: module mod_a
 fixtures/modules/two_modules.sv:3:1: module mod_b
 ```
+
+`index` also emits a pre-stable `declarations[]` JSON list for simple
+`module`, `package`, and `interface` declarations.  This is scanner-based
+navigation support, not semantic resolution or a full parser.
 
 Module locate text output format (one match, exit 0):
 ```

@@ -88,10 +88,10 @@ exit 2 with a message on stderr.
 
 ## module index scaffold (active, pre-stable)
 
-`pccx-ide index` scans `.sv` and `.v` files for `module` declarations and
-emits a lightweight index.  This is an early scaffold intended to support
-future navigation and editor-bridge work — it is not a full SystemVerilog
-parser.
+`pccx-ide index` scans `.sv` and `.v` files for simple `module`,
+`package`, and `interface` declarations and emits a lightweight index.
+This is an early scaffold intended to support future navigation and
+editor-bridge work — it is not a full SystemVerilog parser.
 
 ### Usage
 
@@ -110,6 +110,9 @@ python -m pccx_ide_cli index fixtures/modules/ --format text
   "kind": "module-index",
   "tool": "pccx-ide-scaffold",
   "source": "<path passed on CLI>",
+  "declarations": [
+    { "kind": "module", "name": "simple_mod", "file": "<abs-path>", "line": 1, "column": 1 }
+  ],
   "modules": [
     { "name": "simple_mod", "file": "<abs-path>", "line": 1, "column": 1 }
   ]
@@ -119,16 +122,21 @@ python -m pccx_ide_cli index fixtures/modules/ --format text
 ### Parser limitations
 
 - Single-line `//` comments are skipped.
-- Block comments (`/* ... */`) are **not** parsed — a `module` keyword
-  inside a block comment will be reported as a false positive.
-- `package`, `interface`, and `class` declarations are ignored.
-- No semantic analysis.  Column is the 1-indexed position of the `module`
-  keyword.
+- Non-nested block comments (`/* ... */`) are stripped by the scanner;
+  nested block comments are not supported.
+- `package` and `interface` support is scanner-based: simple declaration
+  lines only, no imports, modports, macro expansion, or semantic resolution.
+- `class`, `program`, and `checker` declarations are ignored.
+- No semantic analysis.  Column is the 1-indexed position of the
+  `module`, `package`, or `interface` keyword.
 
 ### Scope
 
 - pccx-lab backend is diagnostics-only for now.  `index` always uses the
   built-in scaffold scanner.
+- `modules[]` remains for compatibility; `declarations[]` carries the
+  declaration kind.
+- `locate` remains module-only.  Package/interface locate is future work.
 - No stable ABI or API contract — the output shape may change before v1.
 
 ---
