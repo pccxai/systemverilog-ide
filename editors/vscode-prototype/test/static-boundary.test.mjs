@@ -133,6 +133,7 @@ async function testProposalAndStatusModulesAreDataOnly() {
   const proposalAndStatusSource = await readCombined([
     resolve(EXTENSION_ROOT, "src/validation-proposals.mjs"),
     resolve(EXTENSION_ROOT, "src/patch-proposal-contract.mjs"),
+    resolve(EXTENSION_ROOT, "src/patch-proposal-preview.mjs"),
     resolve(EXTENSION_ROOT, "src/pccx-lab-status.mjs"),
   ]);
 

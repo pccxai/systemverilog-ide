@@ -71,6 +71,8 @@ async function run() {
     "pccxSystemVerilog.showRecentValidationResults",
     "pccxSystemVerilog.showValidationCacheStatus",
     "pccxSystemVerilog.clearValidationResultCache",
+    "pccxSystemVerilog.showPatchProposalPreview",
+    "pccxSystemVerilog.clearPatchProposalPreview",
     "pccxSystemVerilog.showPccxLabBackendStatus",
   ]);
 
@@ -373,6 +375,27 @@ async function run() {
   assert.ok(validationProposal.proposals.some((proposal) => (
     proposal.command?.env?.PCCX_RUN_EXTENSION_HOST_SMOKE === "1"
   )));
+
+  const patchPreview = await vscode.commands.executeCommand(
+    "pccxSystemVerilog.showPatchProposalPreview",
+    "missingEndmodulePreview",
+  );
+  assert.equal(patchPreview.ok, true);
+  assert.equal(patchPreview.kind, "patch-proposal-preview");
+  assert.equal(patchPreview.summary.proposalId, "missingEndmodulePreview");
+  assert.equal(patchPreview.proposalOnly, true);
+  assert.equal(patchPreview.appliesPatches, false);
+  assert.equal(patchPreview.writesFiles, false);
+  assert.equal(patchPreview.providerCalls, false);
+  assert.equal(patchPreview.runtimeCalls, false);
+  assert.doesNotMatch(JSON.stringify(patchPreview), /\/home\//);
+
+  const clearPatchPreview = await vscode.commands.executeCommand(
+    "pccxSystemVerilog.clearPatchProposalPreview",
+  );
+  assert.equal(clearPatchPreview.ok, true);
+  assert.equal(clearPatchPreview.kind, "patch-proposal-preview-clear");
+  assert.equal(clearPatchPreview.cleared, true);
 
   const disabledValidationRun = await vscode.commands.executeCommand(
     "pccxSystemVerilog.runApprovedValidationCommand",

@@ -72,3 +72,10 @@ call an AI provider, implement MCP, or implement LSP.
 The contract is implemented in `src/patch-proposal-contract.mjs` and tested
 by `test/patch-proposal-contract.test.mjs`.  The module is data-only and
 safe to use as a future handoff shape for user-reviewed patch previews.
+
+`pccxSystemVerilog.showPatchProposalPreview` previews checked proposal IDs
+through VS Code-native output without applying patches or writing files.
+`pccxSystemVerilog.clearPatchProposalPreview` clears only the in-memory
+preview result.  The preview path is implemented in
+`src/patch-proposal-preview.mjs` and tested by
+`test/patch-proposal-preview.test.mjs`.

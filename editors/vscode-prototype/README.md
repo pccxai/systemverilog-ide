@@ -141,6 +141,8 @@ The contributed commands are:
 - `pccxSystemVerilog.showRecentValidationResults`
 - `pccxSystemVerilog.showValidationCacheStatus`
 - `pccxSystemVerilog.clearValidationResultCache`
+- `pccxSystemVerilog.showPatchProposalPreview`
+- `pccxSystemVerilog.clearPatchProposalPreview`
 - `pccxSystemVerilog.showPccxLabBackendStatus`
 
 The prototype-only settings are:
@@ -303,6 +305,10 @@ execute validation, call pccx-lab, call pccx-llm-launcher, call an AI
 provider, implement MCP, implement LSP, package the extension, create a
 release, or create a tag.  The contract notes are tracked in
 [`docs/patch-proposal-contract.md`](./docs/patch-proposal-contract.md).
+`pccxSystemVerilog.showPatchProposalPreview` previews checked patch
+proposals through VS Code-native output without applying changes, and
+`pccxSystemVerilog.clearPatchProposalPreview` clears only the in-memory
+preview state.
 
 `pccxSystemVerilog.proposeValidationCommand` returns allowlisted
 validation command proposals as JSON data.  The proposal includes
@@ -411,6 +417,7 @@ node editors/vscode-prototype/test/selected-symbol-context.test.mjs
 node editors/vscode-prototype/test/ai-assistant-boundary.test.mjs
 node editors/vscode-prototype/test/validation-proposals.test.mjs
 node editors/vscode-prototype/test/patch-proposal-contract.test.mjs
+node editors/vscode-prototype/test/patch-proposal-preview.test.mjs
 node editors/vscode-prototype/test/validation-result-summary.test.mjs
 node editors/vscode-prototype/test/validation-result-cache.test.mjs
 node editors/vscode-prototype/test/approved-validation-runner.test.mjs
