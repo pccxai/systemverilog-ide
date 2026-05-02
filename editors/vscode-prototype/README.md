@@ -319,6 +319,15 @@ generated artifacts, shell commands, patch generation, or patch
 application.  The handoff notes are tracked in
 [`docs/validation-patch-handoff.md`](./docs/validation-patch-handoff.md).
 
+`src/pccx-lab-command-descriptor.mjs` defines a data-only pccx-lab command
+descriptor contract.  The checked descriptor is `labStatus` with
+`executionState: "future"`, fixed empty args, explicit approval required,
+and bounded output policy.  The contract rejects raw command strings,
+unsafe args, private paths, secrets, and output policies that do not redact
+or drop private paths.  It does not execute pccx-lab.  The boundary notes
+are tracked in
+[`docs/pccx-lab-command-boundary.md`](./docs/pccx-lab-command-boundary.md).
+
 `pccxSystemVerilog.proposeValidationCommand` returns allowlisted
 validation command proposals as JSON data.  The proposal includes
 allowlisted proposal IDs, argument-array templates, reasons, risk levels, and
@@ -428,6 +437,7 @@ node editors/vscode-prototype/test/validation-proposals.test.mjs
 node editors/vscode-prototype/test/patch-proposal-contract.test.mjs
 node editors/vscode-prototype/test/patch-proposal-preview.test.mjs
 node editors/vscode-prototype/test/validation-patch-handoff.test.mjs
+node editors/vscode-prototype/test/pccx-lab-command-descriptor.test.mjs
 node editors/vscode-prototype/test/validation-result-summary.test.mjs
 node editors/vscode-prototype/test/validation-result-cache.test.mjs
 node editors/vscode-prototype/test/approved-validation-runner.test.mjs
