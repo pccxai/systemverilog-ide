@@ -169,14 +169,10 @@ async function testEntrypointExportsAndActivation() {
     { subscriptions },
     vscodeApi,
     {
-      async runFacadeForCommand(commandId) {
+      async runFacade() {
         return {
           ok: true,
-          exitCode: 0,
-          stdout: JSON.stringify({ kind: "vscode-diagnostics", diagnostics: [] }),
-          stderr: "",
           json: { kind: "vscode-diagnostics", diagnostics: [] },
-          commandId,
         };
       },
     },
@@ -201,14 +197,10 @@ async function testCommandHandlerCanBeUsedWithoutRealVsCode() {
     "pccxSystemVerilog.showNavigationExample",
     null,
     {
-      async runFacadeForCommand(commandId) {
+      async runFacade() {
         return {
           ok: true,
-          exitCode: 0,
-          stdout: JSON.stringify({ kind: "vscode-navigation", items: [] }),
-          stderr: "",
           json: { kind: "vscode-navigation", items: [] },
-          commandId,
         };
       },
     },

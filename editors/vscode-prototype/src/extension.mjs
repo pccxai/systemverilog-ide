@@ -11,6 +11,10 @@ import {
   isLiveFacadeArgs,
   normalizeConfig,
 } from "./config.mjs";
+import {
+  createCommandExecutionPlan,
+  runPrototypeCommand,
+} from "./command-handlers.mjs";
 
 const EXTENSION_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_FACADE_PATH = resolve(EXTENSION_ROOT, "bin/pccx-vscode-prototype.mjs");
@@ -19,8 +23,10 @@ const OUTPUT_CHANNEL_NAME = "PCCX SystemVerilog IDE Prototype";
 export {
   COMMAND_IDS,
   buildFacadeArgsForCommand,
+  createCommandExecutionPlan,
   defaultConfig,
   normalizeConfig,
+  runPrototypeCommand,
 };
 
 function pathFromCommandInput(input) {
@@ -109,14 +115,18 @@ export async function runFacadeInvocation(invocation, runtime = {}) {
 }
 
 export function readExtensionConfig(vscodeApi) {
+  return normalizeConfig(readRawExtensionConfig(vscodeApi));
+}
+
+function readRawExtensionConfig(vscodeApi) {
   const settings = vscodeApi?.workspace?.getConfiguration?.(CONFIG_SECTION);
   if (!settings?.get) {
     return defaultConfig();
   }
 
-  return normalizeConfig(Object.fromEntries(
+  return Object.fromEntries(
     CONFIG_KEYS.map((key) => [key, settings.get(key)]),
-  ));
+  );
 }
 
 export function resolveCommandRequest(commandId, input, vscodeApi, rawConfig = readExtensionConfig(vscodeApi)) {
@@ -135,31 +145,17 @@ export async function runFacadeForCommand(commandId, options = {}, runtime = {})
   return runFacadeInvocation(invocation, runtime);
 }
 
-export function summarizeFacadeResult(commandId, result) {
-  if (!result.ok) {
-    return `PCCX facade command failed for ${commandId}`;
-  }
-
-  if (Array.isArray(result.json?.diagnostics)) {
-    return `PCCX facade returned ${result.json.diagnostics.length} diagnostics`;
-  }
-  if (Array.isArray(result.json?.items)) {
-    return `PCCX facade returned ${result.json.items.length} navigation items`;
-  }
-  return "PCCX facade command completed";
-}
-
-function appendFacadeOutput(outputChannel, commandId, result) {
+function appendCommandOutput(outputChannel, commandId, result) {
   if (!outputChannel?.appendLine) {
     return;
   }
 
   outputChannel.appendLine(`[${commandId}]`);
-  if (result.stdout) {
-    outputChannel.appendLine(result.stdout.trimEnd());
+  if (result.action?.summary) {
+    outputChannel.appendLine(result.action.summary);
   }
-  if (result.stderr) {
-    outputChannel.appendLine(result.stderr.trimEnd());
+  if (result.action) {
+    outputChannel.appendLine(JSON.stringify(result.action, null, 2));
   }
   if (result.error) {
     outputChannel.appendLine(result.error);
@@ -167,31 +163,40 @@ function appendFacadeOutput(outputChannel, commandId, result) {
   outputChannel.show?.(true);
 }
 
-export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
-  buildFacadeArgsForCommand(commandId, defaultConfig());
-  return async (input) => {
-    let result;
-    try {
-      const request = resolveCommandRequest(commandId, input, vscodeApi);
-      const run = runtime.runFacadeForCommand ?? runFacadeForCommand;
-      result = await run(commandId, request, runtime);
-    } catch (error) {
-      result = {
-        ok: false,
-        exitCode: null,
-        stdout: "",
-        stderr: "",
-        error: error.message,
-      };
-    }
-    appendFacadeOutput(runtime.outputChannel, commandId, result);
+function facadeRunnerFromRuntime(runtime = {}) {
+  return async (facadeArgs, env = {}) => {
+    const invocation = {
+      executable: runtime.nodeExecutable ?? process.execPath,
+      args: [
+        runtime.facadePath ?? DEFAULT_FACADE_PATH,
+        ...facadeArgs,
+      ],
+      shell: false,
+      env,
+    };
+    return runFacadeInvocation(invocation, runtime);
+  };
+}
 
-    const message = summarizeFacadeResult(commandId, result);
-    if (result.ok) {
-      vscodeApi?.window?.showInformationMessage?.(message);
-    } else {
-      vscodeApi?.window?.showErrorMessage?.(message);
-    }
+export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
+  createCommandExecutionPlan(commandId, defaultConfig());
+  return async (input) => {
+    const rawConfig = readRawExtensionConfig(vscodeApi);
+    const explicitPath = pathFromCommandInput(input);
+    const request = commandId === "pccxSystemVerilog.runDiagnosticsLive" && explicitPath
+      ? { ...rawConfig, defaultSource: explicitPath }
+      : rawConfig;
+    const deps = {
+      runFacade: runtime.runFacade ?? facadeRunnerFromRuntime(runtime),
+      showInformationMessage: vscodeApi?.window?.showInformationMessage?.bind(vscodeApi.window),
+      showWarningMessage: (
+        vscodeApi?.window?.showWarningMessage ?? vscodeApi?.window?.showErrorMessage
+      )?.bind(vscodeApi.window),
+      updateDiagnostics: runtime.updateDiagnostics,
+      showNavigationItems: runtime.showNavigationItems,
+    };
+    const result = await runPrototypeCommand(commandId, request, deps);
+    appendCommandOutput(runtime.outputChannel, commandId, result);
     return result;
   };
 }
