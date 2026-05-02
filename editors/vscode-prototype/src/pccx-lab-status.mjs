@@ -26,6 +26,13 @@ export function createPccxLabBackendStatus(rawConfig = {}) {
     backendCommandExecuted: false,
     integration: "commandPalettePreparation",
     futureControlledOperations: [...FUTURE_PCCX_LAB_OPERATIONS],
+    futureSafetyRequirements: [
+      "fixed args",
+      "no shell interpolation",
+      "explicit user approval",
+      "bounded output",
+      "context bundle summary",
+    ],
     note: "pccx-lab remains the CLI-first backend; this status command does not execute it.",
   };
 }

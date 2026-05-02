@@ -151,6 +151,13 @@ function fixtureInput() {
       liveWorkspace: { enabled: false },
       aiAssistant: { enabled: false, backend: "none" },
       pccxLab: { commandBoundary: "pccx_ide_cli" },
+      validationRunner: {
+        enabled: false,
+        mode: "disabled",
+        defaultWorkingDirectory: "repo-root",
+        maxOutputLines: 120,
+        timeoutMs: 30000,
+      },
     },
     recentCommandStatus: {
       commandId: "pccxSystemVerilog.publishCheckedExampleDiagnostics",
@@ -162,9 +169,40 @@ function fixtureInput() {
       navigationItemCount: 0,
     },
     recentValidation: {
+      version: "pccx.validationResultSummary.v0",
+      proposalId: "vscodeAdapterSmoke",
+      commandLabel: "VS Code adapter smoke",
       status: "failed",
-      summary: "1 diagnostic",
+      summary: "VS Code adapter smoke failed (exit 1)",
       exitCode: 1,
+      durationMs: 55,
+      startedAt: "2026-01-01T00:00:00.000Z",
+      finishedAt: "2026-01-01T00:00:00.055Z",
+      command: "bash",
+      args: ["scripts/vscode-adapter-smoke.sh"],
+      cwdKind: "repo-root",
+      cwdLabel: "repo-root",
+      stdoutSummary: {
+        lines: ["adapter ok", "API_KEY=abc123", "extra"],
+        lineCount: 3,
+        truncated: true,
+      },
+      stderrSummary: {
+        lines: ["failure: missing endmodule"],
+        lineCount: 1,
+        truncated: false,
+      },
+      failureHints: ["failure: missing endmodule"],
+      safety: {
+        allowlisted: true,
+        shell: false,
+        fixedArgs: true,
+        userProvidedCommand: false,
+        writesFiles: false,
+        providerCalls: false,
+        launcherCalls: false,
+        mcpServerCalls: false,
+      },
     },
     pccxLabOutputs: [
       {
@@ -208,6 +246,13 @@ function testStableBoundedShape() {
   assert.deepEqual(bundle.snippets.map((snippet) => snippet.path), ["rtl/a.sv", "rtl/z.sv"]);
   assert.ok(bundle.snippets.every((snippet) => snippet.lines.length <= 2));
   assert.equal(bundle.validation.recent.status, "failed");
+  assert.equal(bundle.validation.recent.proposalId, "vscodeAdapterSmoke");
+  assert.equal(bundle.validation.recent.commandLabel, "VS Code adapter smoke");
+  assert.equal(bundle.validation.recent.stdoutSummary.lines.length, 1);
+  assert.deepEqual(bundle.validation.recent.stdoutSummary.lines, ["adapter ok"]);
+  assert.deepEqual(bundle.validation.recent.stderrSummary.lines, ["failure: missing endmodule"]);
+  assert.equal(bundle.validation.recent.safety.allowlisted, true);
+  assert.equal(bundle.validation.recent.safety.shell, false);
   assert.equal(bundle.recentCommand.commandId, "pccxSystemVerilog.publishCheckedExampleDiagnostics");
   assert.equal(bundle.recentCommand.facade.mode, "example");
   assert.equal(bundle.pccxLab.outputs.length, 1);
@@ -226,6 +271,11 @@ function testStableBoundedShape() {
     snippetCount: 2,
     declarationCount: 2,
     pccxLabOutputCount: 1,
+    validation: {
+      proposalId: "vscodeAdapterSmoke",
+      status: "failed",
+      commandLabel: "VS Code adapter smoke",
+    },
   });
 }
 
@@ -351,10 +401,17 @@ function testNoHugeFileOrRestrictedPathInclusion() {
         { path: "/repo/.vscode-test/ignored.sv", text: hugeText },
         { path: "/repo/AGENTS.md", text: hugeText },
         { path: "/repo/package-lock.json", text: hugeText },
+        { path: "/repo/.git/config", text: hugeText },
+        { path: "/repo/.codex/notes.md", text: hugeText },
+        { path: "/repo/private-worker/notes.md", text: hugeText },
+        { path: "/repo/worker-instruction/notes.md", text: hugeText },
+        { path: "/repo/subagent-instruction/notes.md", text: hugeText },
+        { path: "/repo/rtl/api-token.sv", text: hugeText },
       ],
       activeDiagnostics: [
         { file: "/repo/node_modules/pkg/ignored.sv", message: "ignored" },
         { file: "/repo/.vscode-test/ignored.sv", message: "ignored" },
+        { file: "/repo/rtl/client_secret.sv", message: "ignored" },
       ],
     },
     {
@@ -377,6 +434,7 @@ function testNoSecretValuesOrSecretLikeKeys() {
   assert.doesNotMatch(serialized, /abc123/);
   assert.doesNotMatch(serialized, /API_KEY=/);
   assert.doesNotMatch(serialized, /token=hidden/);
+  assert.doesNotMatch(serialized, /API_KEY=abc123/);
   assert.doesNotMatch(serialized, /AGENTS\.md/);
   assert.doesNotMatch(serialized, /package-lock\.json/);
 }

@@ -92,7 +92,8 @@ commands fail clearly instead of falling back to examples.  The current
 AI-assisted SystemVerilog development workflow work is boundary-only:
 AI assistant status and context bundle commands expose local status,
 bounded context, selected-symbol context, validation command proposal
-data, and proposal actions, with no AI provider calls, no
+data, disabled-by-default approved validation runner status/result data,
+and proposal actions, with no AI provider calls, no
 pccx-llm-launcher runtime calls yet, and no MCP server implementation.
 
 The same directory now includes an experimental local VS Code extension
@@ -144,9 +145,12 @@ path.  Context bundle records should carry selected file/range,
 bounded lexical selected-symbol context, diagnostics, declaration
 references, recent command status, current mode, validation summaries, and
 bounded snippets by path/range instead of whole workspaces.  Any command
-proposal or validation proposal must route through the facade or pccx-lab
-CLI/core boundary and remain a proposal until an editor/user-controlled
-executor accepts it.
+proposal or validation proposal must remain proposal-only until an
+editor/user-controlled executor accepts an allowlisted proposal ID.
+Approved validation execution must use fixed argument arrays, bounded
+output, an explicit user-approved command invocation, and no shell
+interpolation.  pccx-lab command execution remains future/prepared in
+this prototype.
 
 `problems` converts local diagnostics and log records into editor-friendly
 problem records.  `index` provides scanner-based module/package/interface

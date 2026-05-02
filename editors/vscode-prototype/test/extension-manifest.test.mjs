@@ -17,6 +17,7 @@ const COMMAND_IDS = [
   "pccxSystemVerilog.showAIAssistantStatus",
   "pccxSystemVerilog.buildAIContextBundle",
   "pccxSystemVerilog.proposeValidationCommand",
+  "pccxSystemVerilog.runApprovedValidationCommand",
   "pccxSystemVerilog.showPccxLabBackendStatus",
 ];
 
@@ -115,6 +116,8 @@ async function testDocsKeepExperimentalScope() {
   assert.match(combined, /context bundle command/i);
   assert.match(combined, /AI assistant status command/i);
   assert.match(combined, /validation command proposal/i);
+  assert.match(combined, /approved validation runner/i);
+  assert.match(combined, /allowlisted proposal IDs/i);
   assert.match(combined, /pccx-lab backend status/i);
   assert.match(combined, /no AI provider calls/i);
   assert.match(combined, /no MCP server implementation/i);

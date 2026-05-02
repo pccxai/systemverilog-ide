@@ -18,6 +18,11 @@ AI assistant behavior is disabled by default:
 - `pccxSystemVerilog.aiAssistant.enabled=false`
 - `pccxSystemVerilog.aiAssistant.backend=none`
 
+Approved validation execution is disabled by default:
+
+- `pccxSystemVerilog.validationRunner.enabled=false`
+- `pccxSystemVerilog.validationRunner.mode=disabled`
+
 ## Roles
 
 ```text
@@ -79,6 +84,9 @@ proposal boundaries.  `pccxSystemVerilog.buildAIContextBundle` returns a
 bounded context bundle for the active editor state.
 `pccxSystemVerilog.proposeValidationCommand` returns allowlisted
 validation command proposals as data and does not execute them.
+`pccxSystemVerilog.runApprovedValidationCommand` is a separate approved
+validation runner command.  It only runs after explicit configuration and
+only accepts allowlisted proposal IDs, not raw command strings.
 `pccxSystemVerilog.showPccxLabBackendStatus` reports the configured
 pccx-lab command boundary and future controlled operations without
 running pccx-lab.  There are no AI provider calls, no external API keys,
@@ -117,7 +125,7 @@ The context bundle is a token-saving JSON contract.  It prefers:
 - active diagnostics around the selected range
 - current mode/configuration
 - recent command status
-- recent validation status
+- recent validation result summary
 - pccx-lab command output summaries
 - bounded snippets for explicit selections with path/range references
 - summarized logs, not full logs
@@ -151,6 +159,34 @@ and a required user approval marker.  The command returns JSON data only:
 it does not spawn a process, call pccx-lab, call an AI provider, write
 files, or run git commands.
 
+The approved validation runner re-resolves proposal IDs through an
+internal allowlist.  Runnable initial IDs are `vscodeAdapterSmoke`,
+`editorBridgeSmoke`, `exampleDriftCheck`, and `pytestBaseline`.
+`extensionHostSmokeOptIn` stays proposal-only inside the runner.  Runner
+execution uses fixed executable/argument arrays, `shell=false`, bounded
+stdout/stderr, a timeout, and JSON-serializable status.  It blocks
+unknown IDs, raw command strings, destructive command patterns, git write
+operations, release/tag/settings/secrets commands, patch proposals,
+provider calls, pccx-llm-launcher runtime calls, MCP server operations,
+and pccx-lab execution.  The runner does not add a UI approval prompt in
+this prototype; callers should invoke it only after a user-approved
+validation proposal.
+
+When a validation run is attempted, the context bundle can carry a recent
+validation summary with proposal ID, status, command label, exit code,
+duration/timestamps, bounded stdout/stderr summaries, short failure
+hints, and safety metadata.  It does not include full logs.
+
+## Prototype Daily-Driver Loop
+
+1. Inspect diagnostics and navigation.
+2. Build a selected-symbol AI context bundle.
+3. Propose a validation command.
+4. User approves an allowlisted validation command.
+5. The runner executes bounded validation after explicit enablement.
+6. The validation summary flows back into the context bundle.
+7. Future AI-assisted SystemVerilog development workflow can propose a patch or next validation, but does not execute directly.
+
 ## Daily-Driver Roadmap
 
 Now:
@@ -161,15 +197,16 @@ Now:
 - context bundle command
 - selected-symbol context
 - validation command proposal
+- approved validation runner boundary
+- validation summary in the context bundle
 - pccx-lab backend status
 
 Next:
 
-- pccx-lab command palette execution with allowlisted commands
 - selected-symbol to declaration context through live navigation
 - diagnostics-aware prompt builder
-- validation result cache
 - patch proposal format
+- pccx-lab command palette execution with allowlisted commands
 
 Later:
 

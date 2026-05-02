@@ -18,6 +18,8 @@ node editors/vscode-prototype/test/context-bundle.test.mjs
 node editors/vscode-prototype/test/selected-symbol-context.test.mjs
 node editors/vscode-prototype/test/ai-assistant-boundary.test.mjs
 node editors/vscode-prototype/test/validation-proposals.test.mjs
+node editors/vscode-prototype/test/validation-result-summary.test.mjs
+node editors/vscode-prototype/test/approved-validation-runner.test.mjs
 node editors/vscode-prototype/test/static-boundary.test.mjs
 node editors/vscode-prototype/test/extension-entrypoint.test.mjs
 node editors/vscode-prototype/test/command-handlers.test.mjs

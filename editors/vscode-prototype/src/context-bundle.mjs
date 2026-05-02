@@ -284,10 +284,11 @@ function normalizeConfiguration(configuration) {
     return {
       mode: "unknown",
       liveWorkspace: { enabled: false },
-      aiAssistant: { enabled: false, backend: "none" },
-      pccxLab: { commandBoundary: "pccx_ide_cli" },
-    };
-  }
+    aiAssistant: { enabled: false, backend: "none" },
+    pccxLab: { commandBoundary: "pccx_ide_cli" },
+    validationRunner: { enabled: false, mode: "disabled" },
+  };
+}
   return {
     mode: scrubText(configuration.mode ?? "unknown", 80),
     liveWorkspace: {
@@ -299,6 +300,18 @@ function normalizeConfiguration(configuration) {
     },
     pccxLab: {
       commandBoundary: scrubText(configuration.pccxLab?.commandBoundary ?? "pccx_ide_cli", 120),
+    },
+    validationRunner: {
+      enabled: configuration.validationRunner?.enabled === true,
+      mode: scrubText(configuration.validationRunner?.mode ?? "disabled", 80),
+      defaultWorkingDirectory: scrubText(
+        configuration.validationRunner?.defaultWorkingDirectory ?? "repo-root",
+        80,
+      ),
+      maxOutputLines: Math.max(0, Math.floor(clampNumber(
+        configuration.validationRunner?.maxOutputLines,
+      ))),
+      timeoutMs: Math.max(0, Math.floor(clampNumber(configuration.validationRunner?.timeoutMs))),
     },
   };
 }
@@ -416,6 +429,67 @@ function normalizeRecentCommandStatus(status, limits) {
   };
 }
 
+function normalizeOutputSummary(summary, limits) {
+  const lines = Array.isArray(summary?.lines)
+    ? summary.lines
+      .map((line) => scrubText(String(line ?? ""), limits.maxTextCharacters))
+      .slice(0, limits.maxLogSummaryLines)
+    : [];
+  return {
+    lines,
+    lineCount: Math.max(0, Math.floor(clampNumber(summary?.lineCount, lines.length))),
+    truncated: summary?.truncated === true || (
+      Array.isArray(summary?.lines) && summary.lines.length > lines.length
+    ),
+  };
+}
+
+function normalizeRecentValidation(validation, limits) {
+  if (!validation || typeof validation !== "object") {
+    return null;
+  }
+  return {
+    version: scrubText(validation.version ?? "", 80),
+    proposalId: scrubText(validation.proposalId ?? "", 120),
+    commandLabel: scrubText(validation.commandLabel ?? "", 160),
+    status: scrubText(validation.status ?? "unknown", 80),
+    summary: scrubText(validation.summary ?? "", 800),
+    exitCode: validation.exitCode == null
+      ? null
+      : Math.floor(clampNumber(validation.exitCode)),
+    durationMs: validation.durationMs == null
+      ? null
+      : Math.max(0, Math.floor(clampNumber(validation.durationMs))),
+    startedAt: scrubText(validation.startedAt ?? "", 80),
+    finishedAt: scrubText(validation.finishedAt ?? "", 80),
+    command: scrubText(validation.command ?? "", 120),
+    args: Array.isArray(validation.args)
+      ? validation.args
+        .map((arg) => scrubText(String(arg ?? ""), 300))
+        .slice(0, 12)
+      : [],
+    cwdKind: scrubText(validation.cwdKind ?? "", 80),
+    cwdLabel: scrubText(validation.cwdLabel ?? "", 80),
+    stdoutSummary: normalizeOutputSummary(validation.stdoutSummary, limits),
+    stderrSummary: normalizeOutputSummary(validation.stderrSummary, limits),
+    failureHints: Array.isArray(validation.failureHints)
+      ? validation.failureHints
+        .map((hint) => scrubText(String(hint ?? ""), 500))
+        .slice(0, 3)
+      : [],
+    safety: {
+      allowlisted: validation.safety?.allowlisted === true,
+      shell: validation.safety?.shell === true,
+      fixedArgs: validation.safety?.fixedArgs === true,
+      userProvidedCommand: validation.safety?.userProvidedCommand === true,
+      writesFiles: validation.safety?.writesFiles === true,
+      providerCalls: validation.safety?.providerCalls === true,
+      launcherCalls: validation.safety?.launcherCalls === true,
+      mcpServerCalls: validation.safety?.mcpServerCalls === true,
+    },
+  };
+}
+
 export function buildContextBundle(input = {}, options = {}) {
   const limits = mergeLimits(options.limits);
   const workspaceRoot = options.workspaceRoot ?? input.workspaceRoot ?? null;
@@ -461,15 +535,7 @@ export function buildContextBundle(input = {}, options = {}) {
     },
     snippets,
     validation: {
-      recent: input.recentValidation
-        ? {
-            status: scrubText(input.recentValidation.status ?? "unknown", 80),
-            summary: scrubText(input.recentValidation.summary ?? "", 800),
-            exitCode: input.recentValidation.exitCode == null
-              ? null
-              : Math.floor(clampNumber(input.recentValidation.exitCode)),
-          }
-        : null,
+      recent: normalizeRecentValidation(input.recentValidation, limits),
     },
     recentCommand: normalizeRecentCommandStatus(input.recentCommandStatus, limits),
     pccxLab: {
@@ -507,5 +573,12 @@ export function summarizeContextBundle(bundle) {
     pccxLabOutputCount: Array.isArray(bundle?.pccxLab?.outputs)
       ? bundle.pccxLab.outputs.length
       : 0,
+    validation: bundle?.validation?.recent
+      ? {
+          proposalId: bundle.validation.recent.proposalId,
+          status: bundle.validation.recent.status,
+          commandLabel: bundle.validation.recent.commandLabel,
+        }
+      : null,
   };
 }

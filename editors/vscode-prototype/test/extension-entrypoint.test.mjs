@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   AI_CONTEXT_BUNDLE_COMMAND,
   AI_ASSISTANT_STATUS_COMMAND,
+  APPROVED_VALIDATION_RUNNER_COMMAND,
   COMMAND_IDS,
   CHECKED_EXAMPLE_NAVIGATION_COMMAND,
   FACADE_COMMAND_IDS,
@@ -218,6 +219,11 @@ function testResolveCommandRequestUsesVsCodeSettings() {
     ["pccxLab.command", "pccx_ide_cli"],
     ["aiAssistant.enabled", false],
     ["aiAssistant.backend", "none"],
+    ["validationRunner.enabled", false],
+    ["validationRunner.mode", "disabled"],
+    ["validationRunner.defaultWorkingDirectory", "repo-root"],
+    ["validationRunner.maxOutputLines", 120],
+    ["validationRunner.timeoutMs", 30000],
     ["pythonPath", "python-custom"],
     ["defaultSource", "configured.sv"],
     ["defaultLog", "configured.log"],
@@ -250,6 +256,13 @@ function testResolveCommandRequestUsesVsCodeSettings() {
       enabled: false,
       backend: "none",
     },
+    validationRunner: {
+      enabled: false,
+      mode: "disabled",
+      defaultWorkingDirectory: "repo-root",
+      maxOutputLines: 120,
+      timeoutMs: 30000,
+    },
     pythonPath: "python-custom",
     defaultSource: "configured.sv",
     defaultLog: "configured.log",
@@ -270,6 +283,13 @@ function testResolveCommandRequestUsesVsCodeSettings() {
       aiAssistant: {
         enabled: false,
         backend: "none",
+      },
+      validationRunner: {
+        enabled: false,
+        mode: "disabled",
+        defaultWorkingDirectory: "repo-root",
+        maxOutputLines: 120,
+        timeoutMs: 30000,
       },
       pythonPath: "python-custom",
       defaultSource: "configured.sv",
@@ -293,6 +313,13 @@ function testResolveCommandRequestUsesVsCodeSettings() {
         enabled: false,
         backend: "none",
       },
+      validationRunner: {
+        enabled: false,
+        mode: "disabled",
+        defaultWorkingDirectory: "repo-root",
+        maxOutputLines: 120,
+        timeoutMs: 30000,
+      },
       pythonPath: "python-custom",
       defaultSource: "configured.sv",
       defaultLog: "configured.log",
@@ -314,6 +341,13 @@ function testResolveCommandRequestUsesVsCodeSettings() {
       aiAssistant: {
         enabled: false,
         backend: "none",
+      },
+      validationRunner: {
+        enabled: false,
+        mode: "disabled",
+        defaultWorkingDirectory: "repo-root",
+        maxOutputLines: 120,
+        timeoutMs: 30000,
       },
       pythonPath: "python-custom",
       defaultSource: "explicit.sv",
@@ -468,6 +502,11 @@ async function testLiveWorkspaceNavigationCommandReturnsLocationsWithoutQuickPic
     ["pccxLab.command", "pccx_ide_cli"],
     ["aiAssistant.enabled", false],
     ["aiAssistant.backend", "none"],
+    ["validationRunner.enabled", false],
+    ["validationRunner.mode", "disabled"],
+    ["validationRunner.defaultWorkingDirectory", "repo-root"],
+    ["validationRunner.maxOutputLines", 120],
+    ["validationRunner.timeoutMs", 30000],
     ["pythonPath", "python3"],
     ["defaultSource", "ignored.sv"],
     ["defaultLog", "ignored.log"],
@@ -857,6 +896,8 @@ async function testAIContextBundleCommandUsesActiveEditorSelectionAndDiagnostics
   assert.equal(result.contextBundle.selectedRange.start.line, 0);
   assert.equal(result.contextBundle.configuration.mode, "checkedExample");
   assert.equal(result.contextBundle.configuration.aiAssistant.enabled, false);
+  assert.equal(result.contextBundle.configuration.validationRunner.enabled, false);
+  assert.equal(result.contextBundle.configuration.validationRunner.mode, "disabled");
   assert.equal(result.contextBundle.diagnostics.length, 1);
   assert.equal(result.contextBundle.diagnostics[0].path, "rtl/top.sv");
   assert.equal(result.contextBundle.snippets.length, 1);
@@ -891,6 +932,158 @@ async function testValidationProposalCommandReturnsDataOnly() {
   assert.doesNotMatch(JSON.stringify(result), /git push/);
 }
 
+async function testApprovedValidationRunnerBlocksByDefaultAndUpdatesContext() {
+  const settings = new Map([
+    ["mode", "checkedExample"],
+    ["liveWorkspace.enabled", false],
+    ["pccxLab.command", "pccx_ide_cli"],
+    ["aiAssistant.enabled", false],
+    ["aiAssistant.backend", "none"],
+    ["validationRunner.enabled", false],
+    ["validationRunner.mode", "disabled"],
+    ["validationRunner.defaultWorkingDirectory", "repo-root"],
+    ["validationRunner.maxOutputLines", 2],
+    ["validationRunner.timeoutMs", 30000],
+    ["pythonPath", "python3"],
+    ["defaultSource", "fixtures/missing_endmodule.sv"],
+    ["defaultLog", "fixtures/xsim/mixed.log"],
+    ["defaultNavigationRoot", "fixtures/modules"],
+    ["defaultModule", "simple_mod"],
+    ["defaultDeclarationKind", "module"],
+  ]);
+  const runtime = {};
+  const vscodeApi = {
+    workspace: {
+      workspaceFolders: [{ uri: { fsPath: "/repo" } }],
+      getConfiguration() {
+        return {
+          get(key) {
+            return settings.get(key);
+          },
+        };
+      },
+    },
+  };
+  const handler = createCommandHandler(APPROVED_VALIDATION_RUNNER_COMMAND, vscodeApi, runtime);
+
+  const result = await handler("vscodeAdapterSmoke");
+
+  assert.equal(result.ok, false);
+  assert.equal(result.commandId, APPROVED_VALIDATION_RUNNER_COMMAND);
+  assert.equal(result.kind, "approved-validation-result");
+  assert.equal(result.proposalId, "vscodeAdapterSmoke");
+  assert.equal(result.status, "blocked");
+  assert.match(result.blockedReason, /runner is disabled/);
+  assert.equal(result.safety.allowlisted, true);
+  assert.equal(result.safety.shell, false);
+  assert.equal(runtime.recentValidationSummary.proposalId, "vscodeAdapterSmoke");
+  assert.equal(runtime.recentValidationSummary.status, "blocked");
+}
+
+async function testApprovedValidationRunnerRequiresProposalIdWhenEnabled() {
+  const settings = new Map([
+    ["mode", "checkedExample"],
+    ["liveWorkspace.enabled", false],
+    ["pccxLab.command", "pccx_ide_cli"],
+    ["aiAssistant.enabled", false],
+    ["aiAssistant.backend", "none"],
+    ["validationRunner.enabled", true],
+    ["validationRunner.mode", "allowlisted"],
+    ["validationRunner.defaultWorkingDirectory", "repo-root"],
+    ["validationRunner.maxOutputLines", 2],
+    ["validationRunner.timeoutMs", 30000],
+    ["pythonPath", "python3"],
+    ["defaultSource", "fixtures/missing_endmodule.sv"],
+    ["defaultLog", "fixtures/xsim/mixed.log"],
+    ["defaultNavigationRoot", "fixtures/modules"],
+    ["defaultModule", "simple_mod"],
+    ["defaultDeclarationKind", "module"],
+  ]);
+  const calls = [];
+  const handler = createCommandHandler(
+    APPROVED_VALIDATION_RUNNER_COMMAND,
+    {
+      workspace: {
+        workspaceFolders: [{ uri: { fsPath: "/repo/workspace" } }],
+        getConfiguration() {
+          return {
+            get(key) {
+              return settings.get(key);
+            },
+          };
+        },
+      },
+    },
+    {
+      repoRoot: "/repo",
+      validationExecFile(...args) {
+        calls.push(args);
+      },
+    },
+  );
+
+  const result = await handler();
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "blocked");
+  assert.match(result.blockedReason, /proposal ID only/);
+  assert.equal(calls.length, 0);
+}
+
+async function testApprovedValidationRunnerExecutesAllowlistedProposalWhenEnabled() {
+  const settings = new Map([
+    ["mode", "checkedExample"],
+    ["liveWorkspace.enabled", false],
+    ["pccxLab.command", "pccx_ide_cli"],
+    ["aiAssistant.enabled", false],
+    ["aiAssistant.backend", "none"],
+    ["validationRunner.enabled", true],
+    ["validationRunner.mode", "allowlisted"],
+    ["validationRunner.defaultWorkingDirectory", "repo-root"],
+    ["validationRunner.maxOutputLines", 2],
+    ["validationRunner.timeoutMs", 30000],
+    ["pythonPath", "python3"],
+    ["defaultSource", "fixtures/missing_endmodule.sv"],
+    ["defaultLog", "fixtures/xsim/mixed.log"],
+    ["defaultNavigationRoot", "fixtures/modules"],
+    ["defaultModule", "simple_mod"],
+    ["defaultDeclarationKind", "module"],
+  ]);
+  const calls = [];
+  const vscodeApi = {
+    workspace: {
+      workspaceFolders: [{ uri: { fsPath: "/repo/workspace" } }],
+      getConfiguration() {
+        return {
+          get(key) {
+            return settings.get(key);
+          },
+        };
+      },
+    },
+  };
+  const handler = createCommandHandler(APPROVED_VALIDATION_RUNNER_COMMAND, vscodeApi, {
+    repoRoot: "/repo",
+    validationExecFile(executable, args, options, done) {
+      calls.push({ executable, args, options });
+      done(null, "ok\n", "");
+    },
+  });
+
+  const result = await handler({ proposalId: "vscodeAdapterSmoke" });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.status, "passed");
+  assert.equal(result.command, "bash");
+  assert.deepEqual(result.args, ["scripts/vscode-adapter-smoke.sh"]);
+  assert.equal(result.stdoutSummary.lines[0], "ok");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].executable, "bash");
+  assert.deepEqual(calls[0].args, ["scripts/vscode-adapter-smoke.sh"]);
+  assert.equal(calls[0].options.shell, false);
+  assert.equal(calls[0].options.cwd, "/repo");
+}
+
 async function testPccxLabBackendStatusCommandReturnsStatusOnly() {
   const settings = new Map([
     ["mode", "checkedExample"],
@@ -898,6 +1091,11 @@ async function testPccxLabBackendStatusCommandReturnsStatusOnly() {
     ["pccxLab.command", "custom-lab"],
     ["aiAssistant.enabled", false],
     ["aiAssistant.backend", "none"],
+    ["validationRunner.enabled", false],
+    ["validationRunner.mode", "disabled"],
+    ["validationRunner.defaultWorkingDirectory", "repo-root"],
+    ["validationRunner.maxOutputLines", 120],
+    ["validationRunner.timeoutMs", 30000],
     ["pythonPath", "python3"],
     ["defaultSource", "fixtures/missing_endmodule.sv"],
     ["defaultLog", "fixtures/xsim/mixed.log"],
@@ -930,6 +1128,8 @@ async function testPccxLabBackendStatusCommandReturnsStatusOnly() {
   assert.equal(result.status.executes, false);
   assert.equal(result.status.backendCommandExecuted, false);
   assert.ok(result.status.futureControlledOperations.includes("declarations"));
+  assert.ok(result.status.futureControlledOperations.includes("validation summary"));
+  assert.ok(result.status.futureSafetyRequirements.includes("fixed args"));
 }
 
 testKnownFacadeArgs();
@@ -950,6 +1150,9 @@ await testCommandHandlerCanBeUsedWithoutRealVsCode();
 await testAIStatusCommandReturnsDisabledBackendNone();
 await testAIContextBundleCommandUsesActiveEditorSelectionAndDiagnostics();
 await testValidationProposalCommandReturnsDataOnly();
+await testApprovedValidationRunnerBlocksByDefaultAndUpdatesContext();
+await testApprovedValidationRunnerRequiresProposalIdWhenEnabled();
+await testApprovedValidationRunnerExecutesAllowlistedProposalWhenEnabled();
 await testPccxLabBackendStatusCommandReturnsStatusOnly();
 
 console.log("vscode extension entrypoint tests ok");
