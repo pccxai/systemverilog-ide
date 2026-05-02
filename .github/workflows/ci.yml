@@ -192,3 +192,5 @@ jobs:
         run: bash scripts/editor-bridge-smoke.sh
       - name: editor bridge example drift check
         run: bash scripts/check-editor-bridge-examples.sh
+      - name: VS Code adapter prototype smoke
+        run: bash scripts/vscode-adapter-smoke.sh

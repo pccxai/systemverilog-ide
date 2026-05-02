@@ -68,6 +68,16 @@ The module locate example uses the single-file fixture so the sample is
 unambiguous; the full fixture directory intentionally contains duplicate
 module names for ambiguity tests.
 
+## Experimental Adapter Prototype
+
+`editors/vscode-prototype` contains a local VS Code-style adapter
+prototype that consumes the checked JSON examples and translates them
+into diagnostic and navigation records.  It is not a VS Code extension,
+is not published, does not implement LSP, and does not make the JSON
+shape a stable ABI/API.  The prototype documents the 1-based CLI
+position to 0-based editor position conversion expected by editor
+adapters.
+
 ## Data Movement
 
 The intended data path is explicit:
