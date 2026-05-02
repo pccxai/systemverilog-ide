@@ -119,13 +119,15 @@ checked-example symbols.  It executes
 `pccxSystemVerilog.showAIAssistantStatus`,
 `pccxSystemVerilog.buildAIContextBundle`,
 `pccxSystemVerilog.proposeValidationCommand`, and
-`pccxSystemVerilog.runApprovedValidationCommand`, and
+`pccxSystemVerilog.runApprovedValidationCommand`,
+`pccxSystemVerilog.showRecentValidationResults`,
+`pccxSystemVerilog.clearValidationResultCache`, and
 `pccxSystemVerilog.showPccxLabBackendStatus`, verifying disabled/backend
 `none` status, proposal-only actions, disabled runner blocking behavior,
 one explicitly enabled allowlisted validation run, bounded active-file
-and selected-symbol context, bounded validation summary handoff,
-status-only pccx-lab boundary data, and no provider/runtime calls.  This
-is not LSP, and there is no LSP provider yet.
+and selected-symbol context, bounded validation-result cache summary
+handoff, status-only pccx-lab boundary data, and no provider/runtime
+calls.  This is not LSP, and there is no LSP provider yet.
 
 ## AI Assistant Boundary
 
@@ -149,12 +151,19 @@ validation runner.  It is disabled unless
 `validationRunner.enabled=true` and `validationRunner.mode=allowlisted`
 are set.  It accepts proposal IDs only and executes only fixed
 allowlisted command/argument arrays.  Output is bounded and summarized
-for token-saving context bundles.  It does not execute raw command
+for a small in-memory validation-result cache and token-saving context
+bundles.  `pccxSystemVerilog.showRecentValidationResults` shows cached
+summary-only entries through VS Code-native surfaces, and
+`pccxSystemVerilog.clearValidationResultCache` clears that local cache.
+The cache does not persist to disk and does not store full logs, raw
+shell command strings, secrets, tokens, private home paths, generated
+blobs, model paths, or pccx-lab outputs.  It does not execute raw command
 strings, destructive commands, git write operations,
 release/tag/settings/secrets commands, pccx-lab commands, AI provider calls,
-pccx-llm-launcher runtime calls, or MCP server operations.  It does not
-add a UI approval prompt in this prototype; callers should invoke it only
-after a user-approved validation proposal.
+pccx-llm-launcher runtime calls, MCP server operations, LSP, marketplace
+packaging, releases, or tags.  It does not add a UI approval prompt in
+this prototype; callers should invoke it only after a user-approved
+validation proposal.
 
 `pccxSystemVerilog.showPccxLabBackendStatus` is preparation for future
 command palette integration.  It reports the configured

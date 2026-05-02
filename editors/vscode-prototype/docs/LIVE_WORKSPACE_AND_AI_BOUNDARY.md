@@ -172,10 +172,21 @@ and pccx-lab execution.  The runner does not add a UI approval prompt in
 this prototype; callers should invoke it only after a user-approved
 validation proposal.
 
-When a validation run is attempted, the context bundle can carry a recent
-validation summary with proposal ID, status, command label, exit code,
-duration/timestamps, bounded stdout/stderr summaries, short failure
-hints, and safety metadata.  It does not include full logs.
+When a validation run is attempted, the extension keeps a small
+in-memory validation-result cache.  The cache is local-only,
+summary-only, and newest-first; it stores bounded/redacted summaries with
+proposal ID, status, allowlist label, exit code, duration/timestamps,
+working-directory kind, command kind, bounded stdout/stderr summaries,
+truncation/redaction flags, and safety metadata.  It does not persist to
+disk and does not store full logs, raw shell command strings, secrets,
+tokens, private home paths, generated blobs, model paths, or pccx-lab
+outputs.
+
+The context bundle can carry the latest cached validation summary and a
+small bounded recent validation history.  It does not include full logs,
+raw absolute private paths, generated artifacts, launcher calls, AI
+provider calls, MCP, LSP, marketplace packaging, release/tag flow, or
+real pccx-lab execution.
 
 ## Prototype Daily-Driver Loop
 
@@ -184,7 +195,7 @@ hints, and safety metadata.  It does not include full logs.
 3. Propose a validation command.
 4. User approves an allowlisted validation command.
 5. The runner executes bounded validation after explicit enablement.
-6. The validation summary flows back into the context bundle.
+6. The validation-result cache summary flows back into the context bundle.
 7. Future AI-assisted SystemVerilog development workflow can propose a patch or next validation, but does not execute directly.
 
 ## Daily-Driver Roadmap

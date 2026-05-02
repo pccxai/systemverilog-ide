@@ -9,6 +9,7 @@ export const DEFAULT_CONTEXT_BUNDLE_LIMITS = Object.freeze({
   maxDeclarations: 12,
   maxSnippetLines: 40,
   maxLogSummaryLines: 20,
+  maxRecentValidationResults: 5,
   maxTextCharacters: 4000,
 });
 
@@ -39,6 +40,7 @@ const SECRET_LIKE_PATTERN =
   /\b(?:api[_-]?key|authorization|bearer|client[_-]?secret|password|private[_-]?key|secret|token)\b/i;
 const SECRET_ASSIGNMENT_PATTERN =
   /\b(?:api[_-]?key|authorization|bearer|client[_-]?secret|password|private[_-]?key|secret|token)\b\s*[:=]/i;
+const HOME_PATH_PATTERN = /(?:\/home\/[^/\s]+|\/Users\/[^/\s]+)/g;
 const PRIVATE_INSTRUCTION_PATH_PATTERN =
   /(?:^|[/\\])(?:\.codex|private[-_ ]?worker|worker[-_ ]?instruction|subagent[-_ ]?instruction)(?:[/\\]|$)/i;
 
@@ -146,7 +148,9 @@ function scrubText(value, maxCharacters) {
   if (typeof value !== "string" || value.length === 0 || maxCharacters === 0) {
     return "";
   }
-  return redactSecretAssignments(value).slice(0, maxCharacters);
+  return redactSecretAssignments(value)
+    .replace(HOME_PATH_PATTERN, "[home]")
+    .slice(0, maxCharacters);
 }
 
 function isBinaryLike(text) {
@@ -448,12 +452,17 @@ function normalizeRecentValidation(validation, limits) {
   if (!validation || typeof validation !== "object") {
     return null;
   }
+  const stdoutSummary = normalizeOutputSummary(validation.stdoutSummary, limits);
+  const stderrSummary = normalizeOutputSummary(validation.stderrSummary, limits);
+  const label = scrubText(validation.label ?? validation.commandLabel ?? "", 160);
+  const summaryText = scrubText(validation.summaryText ?? validation.summary ?? "", 800);
   return {
     version: scrubText(validation.version ?? "", 80),
     proposalId: scrubText(validation.proposalId ?? "", 120),
-    commandLabel: scrubText(validation.commandLabel ?? "", 160),
+    label,
+    commandLabel: scrubText(validation.commandLabel ?? label, 160),
     status: scrubText(validation.status ?? "unknown", 80),
-    summary: scrubText(validation.summary ?? "", 800),
+    summaryText,
     exitCode: validation.exitCode == null
       ? null
       : Math.floor(clampNumber(validation.exitCode)),
@@ -462,16 +471,19 @@ function normalizeRecentValidation(validation, limits) {
       : Math.max(0, Math.floor(clampNumber(validation.durationMs))),
     startedAt: scrubText(validation.startedAt ?? "", 80),
     finishedAt: scrubText(validation.finishedAt ?? "", 80),
-    command: scrubText(validation.command ?? "", 120),
-    args: Array.isArray(validation.args)
-      ? validation.args
-        .map((arg) => scrubText(String(arg ?? ""), 300))
-        .slice(0, 12)
-      : [],
-    cwdKind: scrubText(validation.cwdKind ?? "", 80),
-    cwdLabel: scrubText(validation.cwdLabel ?? "", 80),
-    stdoutSummary: normalizeOutputSummary(validation.stdoutSummary, limits),
-    stderrSummary: normalizeOutputSummary(validation.stderrSummary, limits),
+    commandKind: scrubText(validation.commandKind ?? "", 120),
+    workingDirectoryKind: scrubText(
+      validation.workingDirectoryKind ?? validation.cwdKind ?? "",
+      80,
+    ),
+    stdoutSummary,
+    stderrSummary,
+    truncated: validation.truncated === true ||
+      stdoutSummary.truncated === true ||
+      stderrSummary.truncated === true,
+    redactionApplied: validation.redactionApplied === true ||
+      stdoutSummary.lines.some((line) => line.includes("[redacted]") || line.includes("[home]")) ||
+      stderrSummary.lines.some((line) => line.includes("[redacted]") || line.includes("[home]")),
     failureHints: Array.isArray(validation.failureHints)
       ? validation.failureHints
         .map((hint) => scrubText(String(hint ?? ""), 500))
@@ -490,6 +502,16 @@ function normalizeRecentValidation(validation, limits) {
   };
 }
 
+function normalizeRecentValidationHistory(history, limits) {
+  if (!Array.isArray(history)) {
+    return [];
+  }
+  return history
+    .map((entry) => normalizeRecentValidation(entry, limits))
+    .filter(Boolean)
+    .slice(0, limits.maxRecentValidationResults);
+}
+
 export function buildContextBundle(input = {}, options = {}) {
   const limits = mergeLimits(options.limits);
   const workspaceRoot = options.workspaceRoot ?? input.workspaceRoot ?? null;
@@ -501,6 +523,13 @@ export function buildContextBundle(input = {}, options = {}) {
   const pccxLabOutputs = Array.isArray(input.pccxLabOutputs) ? input.pccxLabOutputs : [];
   const selectedPath = normalizePathRef(input.selectedFilePath, workspaceRoot);
   const selectedRange = normalizeRange(input.selectedRange);
+  const recentValidationHistory = normalizeRecentValidationHistory(
+    input.recentValidationHistory,
+    limits,
+  );
+  const recentValidation = normalizeRecentValidation(input.recentValidation, limits) ??
+    recentValidationHistory[0] ??
+    null;
 
   const snippets = sortedSnippets(
     files
@@ -535,7 +564,8 @@ export function buildContextBundle(input = {}, options = {}) {
     },
     snippets,
     validation: {
-      recent: normalizeRecentValidation(input.recentValidation, limits),
+      recent: recentValidation,
+      recentHistory: recentValidationHistory,
     },
     recentCommand: normalizeRecentCommandStatus(input.recentCommandStatus, limits),
     pccxLab: {
@@ -577,7 +607,10 @@ export function summarizeContextBundle(bundle) {
       ? {
           proposalId: bundle.validation.recent.proposalId,
           status: bundle.validation.recent.status,
-          commandLabel: bundle.validation.recent.commandLabel,
+          label: bundle.validation.recent.label,
+          recentHistoryCount: Array.isArray(bundle.validation.recentHistory)
+            ? bundle.validation.recentHistory.length
+            : 0,
         }
       : null,
   };

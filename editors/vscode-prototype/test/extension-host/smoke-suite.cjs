@@ -68,6 +68,8 @@ async function run() {
     "pccxSystemVerilog.buildAIContextBundle",
     "pccxSystemVerilog.proposeValidationCommand",
     "pccxSystemVerilog.runApprovedValidationCommand",
+    "pccxSystemVerilog.showRecentValidationResults",
+    "pccxSystemVerilog.clearValidationResultCache",
     "pccxSystemVerilog.showPccxLabBackendStatus",
   ]);
 

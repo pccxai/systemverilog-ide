@@ -4,11 +4,13 @@ import {
   AI_CONTEXT_BUNDLE_COMMAND,
   AI_ASSISTANT_STATUS_COMMAND,
   APPROVED_VALIDATION_RUNNER_COMMAND,
+  CLEAR_VALIDATION_RESULT_CACHE_COMMAND,
   COMMAND_IDS,
   CHECKED_EXAMPLE_NAVIGATION_COMMAND,
   FACADE_COMMAND_IDS,
   LIVE_WORKSPACE_NAVIGATION_COMMAND,
   PCCX_LAB_BACKEND_STATUS_COMMAND,
+  SHOW_RECENT_VALIDATION_RESULTS_COMMAND,
   VALIDATION_PROPOSAL_COMMAND,
   activate,
   buildFacadeArgsForCommand,
@@ -978,6 +980,9 @@ async function testApprovedValidationRunnerBlocksByDefaultAndUpdatesContext() {
   assert.equal(result.safety.shell, false);
   assert.equal(runtime.recentValidationSummary.proposalId, "vscodeAdapterSmoke");
   assert.equal(runtime.recentValidationSummary.status, "blocked");
+  assert.equal(runtime.recentValidationSummary.commandKind, "allowlisted-validation-proposal");
+  assert.equal(runtime.validationResultCache.size(), 1);
+  assert.equal(runtime.validationResultCache.latest().proposalId, "vscodeAdapterSmoke");
 }
 
 async function testApprovedValidationRunnerRequiresProposalIdWhenEnabled() {
@@ -1084,6 +1089,84 @@ async function testApprovedValidationRunnerExecutesAllowlistedProposalWhenEnable
   assert.equal(calls[0].options.cwd, "/repo");
 }
 
+async function testValidationResultCacheCommandsShowAndClear() {
+  const settings = new Map([
+    ["mode", "checkedExample"],
+    ["liveWorkspace.enabled", false],
+    ["pccxLab.command", "pccx_ide_cli"],
+    ["aiAssistant.enabled", false],
+    ["aiAssistant.backend", "none"],
+    ["validationRunner.enabled", true],
+    ["validationRunner.mode", "allowlisted"],
+    ["validationRunner.defaultWorkingDirectory", "repo-root"],
+    ["validationRunner.maxOutputLines", 3],
+    ["validationRunner.timeoutMs", 30000],
+    ["pythonPath", "python3"],
+    ["defaultSource", "fixtures/missing_endmodule.sv"],
+    ["defaultLog", "fixtures/xsim/mixed.log"],
+    ["defaultNavigationRoot", "fixtures/modules"],
+    ["defaultModule", "simple_mod"],
+    ["defaultDeclarationKind", "module"],
+  ]);
+  const quickPickCalls = [];
+  const informationMessages = [];
+  const vscodeApi = {
+    workspace: {
+      workspaceFolders: [{ uri: { fsPath: "/repo/workspace" } }],
+      getConfiguration() {
+        return {
+          get(key) {
+            return settings.get(key);
+          },
+        };
+      },
+    },
+    window: {
+      showInformationMessage(...args) {
+        informationMessages.push(args);
+      },
+      showQuickPick(items, options) {
+        quickPickCalls.push({ items, options });
+        return items[0];
+      },
+    },
+  };
+  const runtime = {
+    repoRoot: "/repo",
+    validationExecFile(_executable, _args, _options, done) {
+      done(null, "ok\nTOKEN=hidden\n/home/dev/repo/file.sv\n", "");
+    },
+  };
+  const runHandler = createCommandHandler(APPROVED_VALIDATION_RUNNER_COMMAND, vscodeApi, runtime);
+  const showHandler = createCommandHandler(SHOW_RECENT_VALIDATION_RESULTS_COMMAND, vscodeApi, runtime);
+  const clearHandler = createCommandHandler(CLEAR_VALIDATION_RESULT_CACHE_COMMAND, vscodeApi, runtime);
+
+  await runHandler({ proposalId: "vscodeAdapterSmoke" });
+  const shown = await showHandler();
+
+  assert.equal(shown.ok, true);
+  assert.equal(shown.kind, "validation-result-cache");
+  assert.equal(shown.entries.length, 1);
+  assert.equal(shown.entries[0].proposalId, "vscodeAdapterSmoke");
+  assert.equal(shown.entries[0].commandKind, "allowlisted-validation-proposal");
+  assert.equal(shown.entries[0].redactionApplied, true);
+  assert.equal(shown.selected.proposalId, "vscodeAdapterSmoke");
+  assert.equal(quickPickCalls.length, 1);
+  assert.equal(quickPickCalls[0].options.title, "Recent Validation Results");
+  assert.doesNotMatch(JSON.stringify(shown.entries), /TOKEN=hidden/);
+  assert.doesNotMatch(JSON.stringify(shown.entries), /\/home\/dev/);
+  assert.doesNotMatch(JSON.stringify(shown.entries), /scripts\/vscode-adapter-smoke\.sh/);
+
+  const cleared = await clearHandler();
+
+  assert.equal(cleared.ok, true);
+  assert.equal(cleared.kind, "validation-result-cache-clear");
+  assert.equal(cleared.clearedCount, 1);
+  assert.equal(runtime.validationResultCache.size(), 0);
+  assert.equal(runtime.recentValidationSummary, null);
+  assert.match(informationMessages[0][0], /Cleared 1 cached validation result/);
+}
+
 async function testPccxLabBackendStatusCommandReturnsStatusOnly() {
   const settings = new Map([
     ["mode", "checkedExample"],
@@ -1153,6 +1236,7 @@ await testValidationProposalCommandReturnsDataOnly();
 await testApprovedValidationRunnerBlocksByDefaultAndUpdatesContext();
 await testApprovedValidationRunnerRequiresProposalIdWhenEnabled();
 await testApprovedValidationRunnerExecutesAllowlistedProposalWhenEnabled();
+await testValidationResultCacheCommandsShowAndClear();
 await testPccxLabBackendStatusCommandReturnsStatusOnly();
 
 console.log("vscode extension entrypoint tests ok");

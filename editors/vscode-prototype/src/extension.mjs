@@ -41,6 +41,9 @@ import {
   runApprovedValidationProposal,
 } from "./approved-validation-runner.mjs";
 import {
+  createValidationResultCache,
+} from "./validation-result-cache.mjs";
+import {
   createPccxLabBackendStatus,
 } from "./pccx-lab-status.mjs";
 
@@ -63,6 +66,10 @@ export const VALIDATION_PROPOSAL_COMMAND =
   "pccxSystemVerilog.proposeValidationCommand";
 export const APPROVED_VALIDATION_RUNNER_COMMAND =
   "pccxSystemVerilog.runApprovedValidationCommand";
+export const SHOW_RECENT_VALIDATION_RESULTS_COMMAND =
+  "pccxSystemVerilog.showRecentValidationResults";
+export const CLEAR_VALIDATION_RESULT_CACHE_COMMAND =
+  "pccxSystemVerilog.clearValidationResultCache";
 export const PCCX_LAB_BACKEND_STATUS_COMMAND =
   "pccxSystemVerilog.showPccxLabBackendStatus";
 
@@ -218,6 +225,31 @@ export async function runCheckedExampleNavigationLocations(rawConfig = {}, deps 
   return runNavigationCommandLocations(CHECKED_EXAMPLE_NAVIGATION_COMMAND, rawConfig, deps);
 }
 
+function validationResultCacheFromRuntime(runtime = {}) {
+  if (!runtime.validationResultCache) {
+    runtime.validationResultCache = createValidationResultCache(runtime.validationResultCacheOptions);
+  }
+  return runtime.validationResultCache;
+}
+
+function shortValidationEntryLabel(entry) {
+  const label = entry?.label || entry?.proposalId || "validation";
+  const status = entry?.status || "unknown";
+  const exitText = entry?.exitCode == null ? "" : ` exit ${entry.exitCode}`;
+  return `${label}: ${status}${exitText}`;
+}
+
+function validationEntryQuickPickItems(entries) {
+  return entries.map((entry) => ({
+    label: entry.status === "passed" ? "$(check) " + entry.label : "$(warning) " + entry.label,
+    description: [entry.status, entry.exitCode == null ? "" : `exit ${entry.exitCode}`]
+      .filter(Boolean)
+      .join(" "),
+    detail: entry.summaryText,
+    entry,
+  }));
+}
+
 function appendCommandOutput(outputChannel, commandId, result) {
   if (!outputChannel?.appendLine) {
     return;
@@ -244,6 +276,29 @@ function appendCommandOutput(outputChannel, commandId, result) {
       status: result.status,
       exitCode: result.exitCode,
       durationMs: result.durationMs,
+    }, null, 2));
+  }
+  if (result.kind === "validation-result-cache") {
+    outputChannel.appendLine(JSON.stringify({
+      kind: result.kind,
+      count: result.entries?.length ?? 0,
+      entries: (result.entries ?? []).map((entry) => ({
+        proposalId: entry.proposalId,
+        label: entry.label,
+        status: entry.status,
+        exitCode: entry.exitCode,
+        durationMs: entry.durationMs,
+        commandKind: entry.commandKind,
+        workingDirectoryKind: entry.workingDirectoryKind,
+        truncated: entry.truncated,
+        redactionApplied: entry.redactionApplied,
+      })),
+    }, null, 2));
+  }
+  if (result.kind === "validation-result-cache-clear") {
+    outputChannel.appendLine(JSON.stringify({
+      kind: result.kind,
+      clearedCount: result.clearedCount,
     }, null, 2));
   }
   if (result.status?.kind === "pccx-lab-backend-status") {
@@ -463,6 +518,8 @@ function collectActiveDocumentContext(vscodeApi, runtime, config) {
   const workspaceRoot = workspaceRootForDocument(vscodeApi, document);
   const selectionRange = plainRange(editor?.selection);
   const activeDiagnostics = collectActiveDiagnostics(vscodeApi, runtime, document);
+  const validationCache = validationResultCacheFromRuntime(runtime);
+  const recentValidationHistory = validationCache.list();
   const selectedText = (
     document?.uri?.fsPath &&
     editor?.selection &&
@@ -524,7 +581,8 @@ function collectActiveDocumentContext(vscodeApi, runtime, config) {
       files,
       configuration: contextConfiguration(config),
       recentCommandStatus: runtime.recentCommandStatus ?? null,
-      recentValidation: runtime.recentValidationSummary ?? null,
+      recentValidation: recentValidationHistory[0] ?? runtime.recentValidationSummary ?? null,
+      recentValidationHistory,
     },
   };
 }
@@ -613,6 +671,66 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
       return result;
     }
 
+    if (commandId === SHOW_RECENT_VALIDATION_RESULTS_COMMAND) {
+      let result;
+      try {
+        const entries = validationResultCacheFromRuntime(runtime).list();
+        result = {
+          ok: true,
+          commandId,
+          kind: "validation-result-cache",
+          entries,
+          selected: null,
+        };
+        if (entries.length === 0) {
+          vscodeApi?.window?.showInformationMessage?.(
+            "No recent validation results are cached.",
+            result,
+          );
+        } else if (typeof vscodeApi?.window?.showQuickPick === "function") {
+          const selected = await vscodeApi.window.showQuickPick(
+            validationEntryQuickPickItems(entries),
+            { title: "Recent Validation Results", placeHolder: "Select a cached validation summary" },
+          );
+          result.selected = selected?.entry ?? null;
+        } else {
+          vscodeApi?.window?.showInformationMessage?.(
+            `${entries.length} recent validation result(s) cached. ${shortValidationEntryLabel(entries[0])}`,
+            result,
+          );
+        }
+      } catch (error) {
+        result = { ok: false, commandId, error: error.message };
+        vscodeApi?.window?.showWarningMessage?.(result.error, result);
+      }
+      appendCommandOutput(runtime.outputChannel, commandId, result);
+      return result;
+    }
+
+    if (commandId === CLEAR_VALIDATION_RESULT_CACHE_COMMAND) {
+      let result;
+      try {
+        const cache = validationResultCacheFromRuntime(runtime);
+        const clearedCount = cache.clear();
+        runtime.recentValidationSummary = null;
+        result = {
+          ok: true,
+          commandId,
+          kind: "validation-result-cache-clear",
+          clearedCount,
+        };
+        vscodeApi?.window?.showInformationMessage?.(
+          `Cleared ${clearedCount} cached validation result(s).`,
+          result,
+        );
+      } catch (error) {
+        result = { ok: false, commandId, error: error.message };
+        vscodeApi?.window?.showWarningMessage?.(result.error, result);
+      }
+      appendCommandOutput(runtime.outputChannel, commandId, result);
+      return result;
+    }
+
     if (commandId === APPROVED_VALIDATION_RUNNER_COMMAND) {
       let result;
       try {
@@ -627,7 +745,9 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
             env: runtime.env,
           },
         );
-        runtime.recentValidationSummary = result.resultSummary ?? null;
+        runtime.recentValidationSummary = result.resultSummary
+          ? validationResultCacheFromRuntime(runtime).add(result.resultSummary)
+          : null;
       } catch (error) {
         result = { ok: false, commandId, error: error.message };
         vscodeApi?.window?.showWarningMessage?.(result.error, result);
