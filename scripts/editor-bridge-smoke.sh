@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 pccxai
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -28,6 +30,7 @@ run_json editor-problems problems from-xsim-log fixtures/xsim/mixed.log --format
 run_json module-index index fixtures/modules --format json
 run_json declarations declarations fixtures/modules --format json
 run_json locate locate fixtures/modules/simple_module.sv simple_mod --format json
+run_json module-refactor-proposal refactor-plan fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 
 bash scripts/check-editor-bridge-examples.sh
 

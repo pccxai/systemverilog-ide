@@ -441,6 +441,7 @@ the same local scanner used by `index`, `declarations`, and `locate`.
 ```bash
 python -m pccx_ide_cli organization fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli organization fixtures/organization/hierarchy_top.sv --format text
+python -m pccx_ide_cli refactor-plan fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 ```
 
 JSON output uses:
@@ -472,9 +473,11 @@ JSON output uses:
 ```
 
 The refactoring section is proposal-only and reports `writes_files: false`.
-This command does not apply refactors, move files, execute validation, invoke
-`pccx-lab`, invoke the launcher, run xsim or Vivado, access hardware, upload
-telemetry, or write back state. The full scope and limitations are tracked in
+`refactor-plan` emits a separate proposal-only envelope for rename-module,
+extract-port, and move-module requests. These commands do not apply
+refactors, move files, execute validation, invoke `pccx-lab`, invoke the
+launcher, run xsim or Vivado, access hardware, upload telemetry, or write back
+state. The full scope and limitations are tracked in
 [`MODULE_ORGANIZATION_WORKFLOW.md`](./MODULE_ORGANIZATION_WORKFLOW.md).
 
 ---

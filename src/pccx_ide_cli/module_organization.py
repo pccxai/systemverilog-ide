@@ -53,6 +53,46 @@ LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+REFACTOR_ACTIONS: tuple[str, ...] = (
+    "rename-module",
+    "extract-port",
+    "move-module",
+)
+
+PROPOSAL_LIMITATIONS: tuple[str, ...] = (
+    "proposal-only refactoring metadata",
+    "scanner-based module boundary lookup only",
+    "no symbol rewrite, port rewrite, file move, validation run, or patch generation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
+_REFACTOR_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
+    "rename-module": ("new_name",),
+    "extract-port": ("port_name", "direction"),
+    "move-module": ("destination",),
+}
+
+
+def _safe_identifier(value: str | None) -> bool:
+    return bool(value and re.fullmatch(r"[A-Za-z_]\w*", value))
+
+
+def _refactor_safety_flags() -> dict[str, bool]:
+    return {
+        "applies_patch": False,
+        "writes_files": False,
+        "moves_files": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
 
 def _visible_lines(path: Path) -> list[tuple[int, str]]:
     text = path.read_text(encoding="utf-8", errors="replace")
@@ -219,6 +259,176 @@ def build_module_organization_export(
         "source": source,
         "tool": "pccx-ide-cli",
     }
+
+
+def _module_lookup(modules: list[dict[str, Any]], name: str) -> list[dict[str, Any]]:
+    return [
+        module
+        for module in modules
+        if module["name"] == name
+    ]
+
+
+def _requested_change(
+    action: str,
+    module_name: str,
+    *,
+    new_name: str | None,
+    port_name: str | None,
+    direction: str | None,
+    width: str | None,
+    destination: str | None,
+) -> dict[str, Any]:
+    return {
+        "action": action,
+        "module": module_name,
+        "new_name": new_name,
+        "port_name": port_name,
+        "direction": direction,
+        "width": width,
+        "destination": destination,
+    }
+
+
+def _planned_steps(action: str, module: dict[str, Any] | None) -> list[str]:
+    if module is None:
+        return []
+    if action == "rename-module":
+        return [
+            "review scanner-detected module declaration span",
+            "prepare module declaration rename proposal",
+            "prepare same-file instantiation type review list",
+            "require explicit approval before any file edit",
+        ]
+    if action == "extract-port":
+        return [
+            "review scanner-detected module declaration span",
+            "prepare port declaration insertion proposal",
+            "prepare instance connection review list",
+            "require explicit approval before any file edit",
+        ]
+    if action == "move-module":
+        return [
+            "review scanner-detected module declaration span",
+            "prepare destination file review note",
+            "prepare source-file removal review note",
+            "require explicit approval before any file move or edit",
+        ]
+    return []
+
+
+def _preflight(
+    action: str,
+    module_name: str,
+    matches: list[dict[str, Any]],
+    requested: dict[str, Any],
+) -> dict[str, Any]:
+    reasons: list[str] = []
+    required = _REFACTOR_REQUIRED_FIELDS[action]
+    for field in required:
+        if not requested[field]:
+            reasons.append(f"missing required {field.replace('_', '-')}")
+
+    if len(matches) == 0:
+        reasons.append(f"module not found: {module_name}")
+    elif len(matches) > 1:
+        reasons.append(f"ambiguous module name: {module_name}")
+    elif not matches[0]["complete"]:
+        reasons.append(f"module boundary is incomplete: {module_name}")
+
+    if action == "rename-module" and requested["new_name"]:
+        if not _safe_identifier(requested["new_name"]):
+            reasons.append("new-name must be a SystemVerilog-style identifier")
+        if requested["new_name"] == module_name:
+            reasons.append("new-name matches the current module name")
+
+    if action == "extract-port" and requested["port_name"]:
+        if not _safe_identifier(requested["port_name"]):
+            reasons.append("port-name must be a SystemVerilog-style identifier")
+
+    if action == "move-module" and requested["destination"]:
+        destination = str(requested["destination"])
+        if destination.startswith("/") or ".." in Path(destination).parts:
+            reasons.append("destination must be a relative path inside the workspace")
+        if not destination.endswith((".sv", ".v")):
+            reasons.append("destination should end with .sv or .v")
+
+    return {
+        "reasons": reasons,
+        "requires_approval_before_write": True,
+        "status": "blocked" if reasons else "ready-for-review",
+    }
+
+
+def build_refactor_proposal(
+    source: str,
+    path: Path,
+    action: str,
+    module_name: str,
+    *,
+    new_name: str | None = None,
+    port_name: str | None = None,
+    direction: str | None = None,
+    width: str | None = None,
+    destination: str | None = None,
+) -> dict[str, Any]:
+    if action not in REFACTOR_ACTIONS:
+        raise ValueError(f"unknown refactor action: {action}")
+
+    organization = build_module_organization_export(source, path)
+    matches = _module_lookup(organization["modules"], module_name)
+    requested = _requested_change(
+        action,
+        module_name,
+        new_name=new_name,
+        port_name=port_name,
+        direction=direction,
+        width=width,
+        destination=destination,
+    )
+    preflight = _preflight(action, module_name, matches, requested)
+    selected_module = matches[0] if len(matches) == 1 else None
+
+    return {
+        "action": action,
+        "kind": "module-refactor-proposal",
+        "limitations": list(PROPOSAL_LIMITATIONS),
+        "module": selected_module,
+        "planned_steps": _planned_steps(action, selected_module),
+        "preflight": preflight,
+        "proposal_state": "proposal-only",
+        "requested_change": requested,
+        "safety": _refactor_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "writes_files": False,
+    }
+
+
+def format_refactor_proposal_text(proposal: dict[str, Any]) -> str:
+    lines = [
+        f"source: {proposal['source']}",
+        f"action: {proposal['action']}",
+        f"module: {proposal['requested_change']['module']}",
+        f"proposal: {proposal['proposal_state']}",
+        f"preflight: {proposal['preflight']['status']}",
+        "writes files: no",
+    ]
+    module = proposal["module"]
+    if module is not None:
+        lines.append(
+            f"boundary: {module['file']}:{module['start_line']}:"
+            f"{module['start_column']}-{module['end_line']}:{module['end_column']}"
+        )
+    if proposal["preflight"]["reasons"]:
+        for reason in proposal["preflight"]["reasons"]:
+            lines.append(f"blocked: {reason}")
+    else:
+        for step in proposal["planned_steps"]:
+            lines.append(f"plan: {step}")
+    lines.append("no patch, validation, lab, launcher, provider, or hardware execution")
+    return "\n".join(lines) + "\n"
 
 
 def format_module_organization_text(export: dict[str, Any]) -> str:

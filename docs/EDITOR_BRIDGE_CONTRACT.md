@@ -185,6 +185,11 @@ adds scanner-based module boundary spans, hierarchy edges, root candidates,
 and proposal-only refactoring metadata for project tree and reviewed
 refactoring workflows. The organization surface is documented in
 [`MODULE_ORGANIZATION_WORKFLOW.md`](./MODULE_ORGANIZATION_WORKFLOW.md).
+`refactor-plan` extends the same boundary with proposal-only
+rename-module, extract-port, and move-module planning envelopes. It emits
+preflight metadata and review steps only; it does not apply edits, move
+files, run validation, invoke pccx-lab or the launcher, call providers, touch
+hardware, or perform automatic repository actions.
 
 For existing xsim logs, the VS Code prototype can consume the checked
 `problems from-xsim-log` JSON as a read-only status/context summary.  The
@@ -201,8 +206,8 @@ xsim path, and text surface sketches is documented in
 ## Limitations
 
 - Scanner-based scaffolds, not full SystemVerilog parsing.
-- Module organization is scanner-based; it is not semantic elaboration and
-  does not apply refactors.
+- Module organization and refactor planning are scanner-based; they are not
+  semantic elaboration and do not apply refactors.
 - No LSP server in this repository today.
 - No published editor extension or marketplace packaging is implemented
   here.
