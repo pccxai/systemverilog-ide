@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 
 import {
+  CONTEXT_BUNDLE_DEVICE_SESSION_STATUS_VERSION,
   CONTEXT_BUNDLE_DIAGNOSTICS_HANDOFF_VERSION,
   CONTEXT_BUNDLE_RUNTIME_READINESS_VERSION,
   CONTEXT_BUNDLE_VERSION,
@@ -14,6 +15,10 @@ import {
   cloneDefaultDiagnosticsHandoffConsumerSummary,
   createDiagnosticsHandoffStatusSurface,
 } from "../src/diagnostics-handoff-status-surface.mjs";
+import {
+  cloneDefaultDeviceSessionStatusConsumerSummary,
+  createDeviceSessionStatusSurface,
+} from "../src/device-session-status-surface.mjs";
 import {
   cloneDefaultRuntimeReadinessConsumerSummary,
   createRuntimeReadinessStatusSurface,
@@ -273,6 +278,7 @@ function fixtureInput() {
     ],
     diagnosticsHandoffSummary: cloneDefaultDiagnosticsHandoffConsumerSummary(),
     runtimeReadinessSummary: cloneDefaultRuntimeReadinessConsumerSummary(),
+    deviceSessionStatusSummary: cloneDefaultDeviceSessionStatusConsumerSummary(),
     pccxLabOutputs: [
       {
         flow: "problems from-check",
@@ -392,6 +398,51 @@ function testStableBoundedShape() {
   assert.equal(bundle.runtimeReadiness.safety.providerCalls, false);
   assert.equal(bundle.runtimeReadiness.safety.mcpCalls, false);
   assert.equal(bundle.runtimeReadiness.safety.lspImplemented, false);
+  assert.equal(bundle.deviceSessionStatus.version, CONTEXT_BUNDLE_DEVICE_SESSION_STATUS_VERSION);
+  assert.equal(bundle.deviceSessionStatus.kind, "device-session-status-context");
+  assert.equal(bundle.deviceSessionStatus.status, "available");
+  assert.equal(bundle.deviceSessionStatus.summaryAvailable, true);
+  assert.equal(bundle.deviceSessionStatus.source.adapterOutput, true);
+  assert.equal(bundle.deviceSessionStatus.source.rawStatusParsedByUi, false);
+  assert.equal(bundle.deviceSessionStatus.fixture.schemaVersion, "pccx.deviceSessionStatus.v0");
+  assert.equal(
+    bundle.deviceSessionStatus.deviceSession.statusAnswer,
+    "device_session_status_placeholder_blocked",
+  );
+  assert.equal(bundle.deviceSessionStatus.states.connection, "not_configured");
+  assert.equal(bundle.deviceSessionStatus.states.discovery, "not_started");
+  assert.equal(bundle.deviceSessionStatus.states.authentication, "not_configured");
+  assert.equal(bundle.deviceSessionStatus.states.runtime, "planned");
+  assert.equal(bundle.deviceSessionStatus.states.modelLoad, "not_loaded");
+  assert.equal(bundle.deviceSessionStatus.states.session, "inactive");
+  assert.equal(bundle.deviceSessionStatus.states.logStream, "not_started");
+  assert.equal(bundle.deviceSessionStatus.states.readiness, "blocked");
+  assert.equal(bundle.deviceSessionStatus.target.model, "gemma3n-e4b");
+  assert.equal(bundle.deviceSessionStatus.target.device, "kv260");
+  assert.equal(bundle.deviceSessionStatus.statusPanel.rowCount, 5);
+  assert.equal(bundle.deviceSessionStatus.statusPanel.rows.length, 5);
+  assert.equal(bundle.deviceSessionStatus.counts.discoveryPaths, 3);
+  assert.equal(bundle.deviceSessionStatus.counts.flowSteps, 8);
+  assert.equal(bundle.deviceSessionStatus.counts.errors, 9);
+  assert.equal(bundle.deviceSessionStatus.counts.errorsBySeverity.blocked, 6);
+  assert.equal(bundle.deviceSessionStatus.pccxLabDiagnostics.executesPccxLab, false);
+  assert.equal(bundle.deviceSessionStatus.safety.dataOnly, true);
+  assert.equal(bundle.deviceSessionStatus.safety.readOnly, true);
+  assert.equal(bundle.deviceSessionStatus.safety.launcherExecution, false);
+  assert.equal(bundle.deviceSessionStatus.safety.pccxLabExecution, false);
+  assert.equal(bundle.deviceSessionStatus.safety.pccxLabValidatorInvocation, false);
+  assert.equal(bundle.deviceSessionStatus.safety.touchesHardware, false);
+  assert.equal(bundle.deviceSessionStatus.safety.kv260Access, false);
+  assert.equal(bundle.deviceSessionStatus.safety.opensSerialPort, false);
+  assert.equal(bundle.deviceSessionStatus.safety.networkCalls, false);
+  assert.equal(bundle.deviceSessionStatus.safety.networkScan, false);
+  assert.equal(bundle.deviceSessionStatus.safety.sshExecution, false);
+  assert.equal(bundle.deviceSessionStatus.safety.runtimeExecution, false);
+  assert.equal(bundle.deviceSessionStatus.safety.modelLoaded, false);
+  assert.equal(bundle.deviceSessionStatus.safety.modelExecution, false);
+  assert.equal(bundle.deviceSessionStatus.safety.providerCalls, false);
+  assert.equal(bundle.deviceSessionStatus.safety.mcpCalls, false);
+  assert.equal(bundle.deviceSessionStatus.safety.lspImplemented, false);
   assert.ok(bundle.excludedPathPatterns.includes("agent-instruction-files"));
   assert.equal(bundle.redaction.assignmentPolicy, "secret-like-lines-redacted");
   assert.deepEqual(summarizeContextBundle(bundle), {
@@ -426,6 +477,17 @@ function testStableBoundedShape() {
       evidenceState: "blocked",
       targetDevice: "kv260",
       blockerCount: 6,
+      readOnly: true,
+    },
+    deviceSessionStatus: {
+      status: "available",
+      statusAnswer: "device_session_status_placeholder_blocked",
+      connectionState: "not_configured",
+      sessionState: "inactive",
+      readinessState: "blocked",
+      targetDevice: "kv260",
+      statusRowCount: 5,
+      errorCount: 9,
       readOnly: true,
     },
   });
@@ -697,6 +759,12 @@ function testNoActiveEditorContextShape() {
   assert.equal(bundle.runtimeReadiness.safety.readOnly, true);
   assert.equal(bundle.runtimeReadiness.safety.launcherExecution, false);
   assert.equal(bundle.runtimeReadiness.safety.fpgaRepoAccess, false);
+  assert.equal(bundle.deviceSessionStatus.status, "notAvailable");
+  assert.equal(bundle.deviceSessionStatus.summaryAvailable, false);
+  assert.equal(bundle.deviceSessionStatus.safety.readOnly, true);
+  assert.equal(bundle.deviceSessionStatus.safety.launcherExecution, false);
+  assert.equal(bundle.deviceSessionStatus.safety.kv260Access, false);
+  assert.equal(bundle.deviceSessionStatus.safety.opensSerialPort, false);
 }
 
 function testDiagnosticsHandoffStatusSurfaceInputIsAccepted() {
@@ -781,6 +849,54 @@ function testInvalidRuntimeReadinessDataIsSafeAndBounded() {
   assert.match(bundle.runtimeReadiness.reason, /data-only and read-only/);
 }
 
+function testDeviceSessionStatusSurfaceInputIsAccepted() {
+  const surface = createDeviceSessionStatusSurface(
+    cloneDefaultDeviceSessionStatusConsumerSummary(),
+  );
+  const bundle = buildContextBundle({ deviceSessionStatus: surface }, {});
+
+  assert.equal(bundle.deviceSessionStatus.status, "available");
+  assert.equal(bundle.deviceSessionStatus.source.adapterOutput, true);
+  assert.equal(bundle.deviceSessionStatus.source.rawStatusParsedByUi, false);
+  assert.equal(
+    bundle.deviceSessionStatus.deviceSession.statusAnswer,
+    "device_session_status_placeholder_blocked",
+  );
+  assert.equal(bundle.deviceSessionStatus.statusPanel.rowCount, 5);
+  assert.deepEqual(summarizeContextBundle(bundle).deviceSessionStatus, {
+    status: "available",
+    statusAnswer: "device_session_status_placeholder_blocked",
+    connectionState: "not_configured",
+    sessionState: "inactive",
+    readinessState: "blocked",
+    targetDevice: "kv260",
+    statusRowCount: 5,
+    errorCount: 9,
+    readOnly: true,
+  });
+}
+
+function testInvalidDeviceSessionStatusDataIsSafeAndBounded() {
+  const unsafeSurface = createDeviceSessionStatusSurface(
+    cloneDefaultDeviceSessionStatusConsumerSummary(),
+  );
+  unsafeSurface.safety.kv260Access = true;
+  unsafeSurface.statusPanel.rows[0].summary = "/home/user/private.log";
+  const bundle = buildContextBundle(
+    { deviceSessionStatus: unsafeSurface },
+    { limits: { maxTextCharacters: 80 } },
+  );
+  const serialized = JSON.stringify(bundle.deviceSessionStatus);
+
+  assert.equal(bundle.deviceSessionStatus.status, "invalid");
+  assert.equal(bundle.deviceSessionStatus.summaryAvailable, false);
+  assert.equal(bundle.deviceSessionStatus.source.rawStatusParsedByUi, false);
+  assert.equal(bundle.deviceSessionStatus.safety.kv260Access, false);
+  assert.equal(bundle.deviceSessionStatus.safety.runtimeExecution, false);
+  assert.doesNotMatch(serialized, /\/home\/user/);
+  assert.match(bundle.deviceSessionStatus.reason, /data-only and read-only/);
+}
+
 testStableBoundedShape();
 testDeterministicOrdering();
 testSelectedFileSnippetAndDiagnosticsArePrioritized();
@@ -795,5 +911,7 @@ testDiagnosticsHandoffStatusSurfaceInputIsAccepted();
 testInvalidDiagnosticsHandoffDataIsSafeAndBounded();
 testRuntimeReadinessStatusSurfaceInputIsAccepted();
 testInvalidRuntimeReadinessDataIsSafeAndBounded();
+testDeviceSessionStatusSurfaceInputIsAccepted();
+testInvalidDeviceSessionStatusDataIsSafeAndBounded();
 
 console.log("vscode context bundle tests ok");

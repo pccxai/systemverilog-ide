@@ -11,6 +11,12 @@ import {
   createDiagnosticsHandoffStatusSurface,
 } from "./diagnostics-handoff-status-surface.mjs";
 import {
+  DEVICE_SESSION_ERROR_SEVERITIES,
+} from "./device-session-status-consumer.mjs";
+import {
+  createDeviceSessionStatusSurface,
+} from "./device-session-status-surface.mjs";
+import {
   createRuntimeReadinessStatusSurface,
 } from "./runtime-readiness-status-surface.mjs";
 
@@ -31,6 +37,8 @@ export const CONTEXT_BUNDLE_DIAGNOSTICS_HANDOFF_VERSION =
   "pccx.contextBundleDiagnosticsHandoff.v0";
 export const CONTEXT_BUNDLE_RUNTIME_READINESS_VERSION =
   "pccx.contextBundleRuntimeReadiness.v0";
+export const CONTEXT_BUNDLE_DEVICE_SESSION_STATUS_VERSION =
+  "pccx.contextBundleDeviceSessionStatus.v0";
 
 const EXCLUDED_PATH_SEGMENTS = new Set([
   ".git",
@@ -908,6 +916,267 @@ function normalizeRuntimeReadinessContext(input, limits) {
   }
 }
 
+function deviceSessionStatusSafetyBase() {
+  return {
+    dataOnly: true,
+    readOnly: true,
+    localOnly: true,
+    launcherExecution: false,
+    pccxLabExecution: false,
+    pccxLabValidatorInvocation: false,
+    systemverilogIdeExecution: false,
+    shellExecution: false,
+    touchesHardware: false,
+    kv260Access: false,
+    opensSerialPort: false,
+    serialWrites: false,
+    networkCalls: false,
+    networkScan: false,
+    sshExecution: false,
+    authenticationAttempt: false,
+    kv260RuntimeExecution: false,
+    runtimeExecution: false,
+    modelLoaded: false,
+    modelExecution: false,
+    modelWeightPathsIncluded: false,
+    privatePathsIncluded: false,
+    credentialDataIncluded: false,
+    generatedBlobsIncluded: false,
+    hardwareDumpsIncluded: false,
+    providerCalls: false,
+    mcpCalls: false,
+    lspImplemented: false,
+    marketplaceFlow: false,
+    telemetry: false,
+    automaticUpload: false,
+    writeBack: false,
+    writesArtifacts: false,
+    firmwareFlashing: false,
+    packageInstallation: false,
+    stableApiAbiClaim: false,
+  };
+}
+
+function missingDeviceSessionStatusContext(status = "notAvailable", reason = "") {
+  return {
+    version: CONTEXT_BUNDLE_DEVICE_SESSION_STATUS_VERSION,
+    kind: "device-session-status-context",
+    status,
+    summaryAvailable: false,
+    source: {
+      adapterOutput: false,
+      rawStatusParsedByUi: false,
+    },
+    fixture: null,
+    target: null,
+    deviceSession: null,
+    states: null,
+    statusPanel: {
+      rowCount: 0,
+      rows: [],
+    },
+    counts: {
+      discoveryPaths: 0,
+      flowSteps: 0,
+      errors: 0,
+      errorsBySeverity: {},
+    },
+    pccxLabDiagnostics: null,
+    safety: deviceSessionStatusSafetyBase(),
+    reason,
+  };
+}
+
+function normalizeDeviceSessionStatusSurface(surface, limits) {
+  return {
+    version: CONTEXT_BUNDLE_DEVICE_SESSION_STATUS_VERSION,
+    kind: "device-session-status-context",
+    status: scrubText(surface.deviceSession?.status ?? "available", 80),
+    summaryAvailable: surface.deviceSession?.summaryAvailable === true,
+    source: {
+      adapterOutput: surface.source?.adapterOutput === true,
+      rawStatusParsedByUi: surface.source?.rawStatusParsedByUi === true,
+    },
+    fixture: surface.fixture
+      ? {
+          schemaVersion: scrubText(surface.fixture.schemaVersion ?? "", 120),
+          statusId: scrubText(surface.fixture.statusId ?? "", 160),
+          fixtureVersion: scrubText(surface.fixture.fixtureVersion ?? "", 160),
+          lastUpdatedSource: scrubText(surface.fixture.lastUpdatedSource ?? "", 160),
+        }
+      : null,
+    target: surface.target
+      ? {
+          device: scrubText(surface.target.device ?? "", 80),
+          board: scrubText(surface.target.board ?? "", 160),
+          model: scrubText(surface.target.model ?? "", 160),
+        }
+      : null,
+    deviceSession: {
+      statusAnswer: scrubText(surface.deviceSession?.statusAnswer ?? "", 120),
+      readinessState: scrubText(surface.deviceSession?.readinessState ?? "", 80),
+    },
+    states: surface.states
+      ? {
+          connection: scrubText(surface.states.connection ?? "", 80),
+          discovery: scrubText(surface.states.discovery ?? "", 80),
+          authentication: scrubText(surface.states.authentication ?? "", 80),
+          runtime: scrubText(surface.states.runtime ?? "", 80),
+          modelLoad: scrubText(surface.states.modelLoad ?? "", 80),
+          session: scrubText(surface.states.session ?? "", 80),
+          logStream: scrubText(surface.states.logStream ?? "", 80),
+          diagnostics: scrubText(surface.states.diagnostics ?? "", 80),
+          readiness: scrubText(surface.states.readiness ?? "", 80),
+        }
+      : null,
+    statusPanel: {
+      rowCount: Math.max(0, Math.floor(clampNumber(surface.statusPanel?.rowCount))),
+      rows: Array.isArray(surface.statusPanel?.rows)
+        ? surface.statusPanel.rows.map((row) => ({
+            rowId: scrubText(row.rowId ?? "", 160),
+            label: scrubText(row.label ?? "", 160),
+            state: scrubText(row.state ?? "", 80),
+            summary: scrubText(row.summary ?? "", 500),
+            nextAction: scrubText(row.nextAction ?? "", 500),
+          })).slice(0, 8)
+        : [],
+    },
+    counts: {
+      discoveryPaths: Math.max(0, Math.floor(clampNumber(surface.counts?.discoveryPaths))),
+      flowSteps: Math.max(0, Math.floor(clampNumber(surface.counts?.flowSteps))),
+      errors: Math.max(0, Math.floor(clampNumber(surface.counts?.errors))),
+      errorsBySeverity: normalizeCountMap(
+        surface.counts?.errorsBySeverity,
+        DEVICE_SESSION_ERROR_SEVERITIES,
+      ),
+    },
+    pccxLabDiagnostics: surface.pccxLabDiagnostics
+      ? {
+          state: scrubText(surface.pccxLabDiagnostics.state ?? "", 80),
+          mode: scrubText(surface.pccxLabDiagnostics.mode ?? "", 120),
+          lowerBoundary: scrubText(surface.pccxLabDiagnostics.lowerBoundary ?? "", 160),
+          automaticUpload: surface.pccxLabDiagnostics.automaticUpload === true,
+          writeBack: surface.pccxLabDiagnostics.writeBack === true,
+          executesPccxLab: surface.pccxLabDiagnostics.executesPccxLab === true,
+        }
+      : null,
+    safety: {
+      ...deviceSessionStatusSafetyBase(),
+      dataOnly: surface.safety?.dataOnly === true,
+      readOnly: surface.safety?.readOnly === true,
+      localOnly: surface.safety?.localOnly === true,
+      launcherExecution: surface.safety?.launcherExecution === true,
+      pccxLabExecution: surface.safety?.pccxLabExecution === true,
+      pccxLabValidatorInvocation: surface.safety?.pccxLabValidatorInvocation === true,
+      systemverilogIdeExecution: surface.safety?.systemverilogIdeExecution === true,
+      shellExecution: surface.safety?.shellExecution === true,
+      touchesHardware: surface.safety?.touchesHardware === true,
+      kv260Access: surface.safety?.kv260Access === true,
+      opensSerialPort: surface.safety?.opensSerialPort === true,
+      serialWrites: surface.safety?.serialWrites === true,
+      networkCalls: surface.safety?.networkCalls === true,
+      networkScan: surface.safety?.networkScan === true,
+      sshExecution: surface.safety?.sshExecution === true,
+      authenticationAttempt: surface.safety?.authenticationAttempt === true,
+      kv260RuntimeExecution: surface.safety?.kv260RuntimeExecution === true,
+      runtimeExecution: surface.safety?.runtimeExecution === true,
+      modelLoaded: surface.safety?.modelLoaded === true,
+      modelExecution: surface.safety?.modelExecution === true,
+      modelWeightPathsIncluded: surface.safety?.modelWeightPathsIncluded === true,
+      privatePathsIncluded: surface.safety?.privatePathsIncluded === true,
+      credentialDataIncluded: surface.safety?.secretsIncluded === true ||
+        surface.safety?.tokensIncluded === true,
+      generatedBlobsIncluded: surface.safety?.generatedBlobsIncluded === true,
+      hardwareDumpsIncluded: surface.safety?.hardwareDumpsIncluded === true,
+      providerCalls: surface.safety?.providerCalls === true,
+      mcpCalls: surface.safety?.mcpCalls === true,
+      lspImplemented: surface.safety?.lspImplemented === true,
+      marketplaceFlow: surface.safety?.marketplaceFlow === true,
+      telemetry: surface.safety?.telemetry === true,
+      automaticUpload: surface.safety?.automaticUpload === true,
+      writeBack: surface.safety?.writeBack === true,
+      writesArtifacts: surface.safety?.writesArtifacts === true,
+      firmwareFlashing: surface.safety?.firmwareFlashing === true,
+      packageInstallation: surface.safety?.packageInstallation === true,
+      stableApiAbiClaim: surface.safety?.stableApiAbiClaim === true,
+    },
+  };
+}
+
+function assertDeviceSessionStatusContextSafety(context) {
+  const safety = context.safety ?? {};
+  if (
+    safety.dataOnly !== true ||
+    safety.readOnly !== true ||
+    safety.launcherExecution === true ||
+    safety.pccxLabExecution === true ||
+    safety.pccxLabValidatorInvocation === true ||
+    safety.systemverilogIdeExecution === true ||
+    safety.shellExecution === true ||
+    safety.touchesHardware === true ||
+    safety.kv260Access === true ||
+    safety.opensSerialPort === true ||
+    safety.serialWrites === true ||
+    safety.networkCalls === true ||
+    safety.networkScan === true ||
+    safety.sshExecution === true ||
+    safety.authenticationAttempt === true ||
+    safety.kv260RuntimeExecution === true ||
+    safety.runtimeExecution === true ||
+    safety.modelLoaded === true ||
+    safety.modelExecution === true ||
+    safety.modelWeightPathsIncluded === true ||
+    safety.privatePathsIncluded === true ||
+    safety.credentialDataIncluded === true ||
+    safety.generatedBlobsIncluded === true ||
+    safety.hardwareDumpsIncluded === true ||
+    safety.providerCalls === true ||
+    safety.mcpCalls === true ||
+    safety.lspImplemented === true ||
+    safety.marketplaceFlow === true ||
+    safety.telemetry === true ||
+    safety.automaticUpload === true ||
+    safety.writeBack === true ||
+    safety.writesArtifacts === true ||
+    safety.firmwareFlashing === true ||
+    safety.packageInstallation === true ||
+    safety.stableApiAbiClaim === true ||
+    context.source?.rawStatusParsedByUi === true ||
+    context.pccxLabDiagnostics?.executesPccxLab === true ||
+    context.pccxLabDiagnostics?.automaticUpload === true ||
+    context.pccxLabDiagnostics?.writeBack === true
+  ) {
+    throw new Error("device/session status context must remain data-only and read-only");
+  }
+}
+
+function normalizeDeviceSessionStatusContext(input, limits) {
+  const suppliedSurface = input?.deviceSessionStatus ??
+    input?.deviceSession?.statusSurface ??
+    null;
+  const suppliedSummary = input?.deviceSessionStatusSummary ??
+    input?.deviceSession?.consumerSummary ??
+    null;
+
+  if (!suppliedSurface && !suppliedSummary) {
+    return missingDeviceSessionStatusContext();
+  }
+
+  try {
+    const surface = suppliedSurface?.kind === "device-session-status-surface"
+      ? suppliedSurface
+      : createDeviceSessionStatusSurface(suppliedSummary);
+    const context = normalizeDeviceSessionStatusSurface(surface, limits);
+    assertDeviceSessionStatusContextSafety(context);
+    return context;
+  } catch (error) {
+    return missingDeviceSessionStatusContext(
+      "invalid",
+      scrubText(error.message, limits.maxTextCharacters),
+    );
+  }
+}
+
 export function buildContextBundle(input = {}, options = {}) {
   const limits = mergeLimits(options.limits);
   const workspaceRoot = options.workspaceRoot ?? input.workspaceRoot ?? null;
@@ -977,6 +1246,7 @@ export function buildContextBundle(input = {}, options = {}) {
     },
     diagnosticsHandoff: normalizeDiagnosticsHandoffContext(input, limits),
     runtimeReadiness: normalizeRuntimeReadinessContext(input, limits),
+    deviceSessionStatus: normalizeDeviceSessionStatusContext(input, limits),
     excludedPathSegments: [...EXCLUDED_PATH_SEGMENTS].sort(),
     excludedPathPatterns: [...EXCLUDED_PATH_PATTERNS],
     redaction: {
@@ -1043,6 +1313,23 @@ export function summarizeContextBundle(bundle) {
           status: bundle?.runtimeReadiness?.status ?? "notAvailable",
           blockerCount: 0,
           readOnly: bundle?.runtimeReadiness?.safety?.readOnly === true,
+        },
+    deviceSessionStatus: bundle?.deviceSessionStatus?.summaryAvailable
+      ? {
+          status: bundle.deviceSessionStatus.status,
+          statusAnswer: bundle.deviceSessionStatus.deviceSession?.statusAnswer ?? "",
+          connectionState: bundle.deviceSessionStatus.states?.connection ?? "",
+          sessionState: bundle.deviceSessionStatus.states?.session ?? "",
+          readinessState: bundle.deviceSessionStatus.states?.readiness ?? "",
+          targetDevice: bundle.deviceSessionStatus.target?.device ?? "",
+          statusRowCount: bundle.deviceSessionStatus.statusPanel?.rowCount ?? 0,
+          errorCount: bundle.deviceSessionStatus.counts?.errors ?? 0,
+          readOnly: bundle.deviceSessionStatus.safety?.readOnly === true,
+        }
+      : {
+          status: bundle?.deviceSessionStatus?.status ?? "notAvailable",
+          statusRowCount: 0,
+          readOnly: bundle?.deviceSessionStatus?.safety?.readOnly === true,
         },
   };
 }

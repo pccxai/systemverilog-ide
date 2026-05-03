@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 export const CONTEXT_BUNDLE_AUDIT_VERSION = "pccx.contextBundleAudit.v0";
 
 function serializedLength(value) {
@@ -58,6 +61,7 @@ export function createContextBundleAudit(bundle = {}) {
     launcherStatusEntryCount: bundle?.launcher ? 1 : 0,
     labStatusEntryCount: Array.isArray(bundle?.pccxLab?.outputs) ? bundle.pccxLab.outputs.length : 0,
     diagnosticsHandoffEntryCount: bundle?.diagnosticsHandoff?.summaryAvailable === true ? 1 : 0,
+    deviceSessionStatusEntryCount: bundle?.deviceSessionStatus?.summaryAvailable === true ? 1 : 0,
     redactionApplied: textContainsRedaction(bundle),
     truncationApplied: countTruncatedItems(bundle) > 0,
     truncatedItemCount: countTruncatedItems(bundle),
@@ -70,6 +74,7 @@ export function createContextBundleAudit(bundle = {}) {
       networkCalls: false,
       mcpCalls: false,
       diagnosticsHandoffReadOnly: bundle?.diagnosticsHandoff?.safety?.readOnly === true,
+      deviceSessionStatusReadOnly: bundle?.deviceSessionStatus?.safety?.readOnly === true,
     },
   };
   return audit;
@@ -86,6 +91,7 @@ export function formatContextBundleAudit(audit) {
     `launcherStatusEntries: ${audit.launcherStatusEntryCount}`,
     `labStatusEntries: ${audit.labStatusEntryCount}`,
     `diagnosticsHandoffEntries: ${audit.diagnosticsHandoffEntryCount}`,
+    `deviceSessionStatusEntries: ${audit.deviceSessionStatusEntryCount}`,
     `redactionApplied: ${audit.redactionApplied ? "yes" : "no"}`,
     `truncationApplied: ${audit.truncationApplied ? "yes" : "no"}`,
     `excludedCategories: ${audit.excludedCategories.join(", ")}`,

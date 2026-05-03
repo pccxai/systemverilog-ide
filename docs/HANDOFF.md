@@ -11,6 +11,8 @@ Tracked handoff paths:
    boundary**.
 4. The launcher runtime readiness JSON consumer — **read-only fixture
    boundary**.
+5. The launcher device/session status JSON consumer — **read-only fixture
+   boundary**.
 
 Direction and style rules for preserving those boundaries are pinned in
 [`PROJECT_DIRECTION_AND_STYLE.md`](./PROJECT_DIRECTION_AND_STYLE.md).
@@ -208,6 +210,40 @@ code, load model weights, call providers, implement MCP or LSP, package
 for marketplace distribution, upload telemetry, or write back state. It
 does not claim KV260 inference works, does not claim Gemma 3N E4B runs on
 KV260, and does not claim measured throughput.
+
+---
+
+## launcher device/session status consumer (read-only)
+
+The VS Code prototype includes a small adapter for
+`pccx.deviceSessionStatus.v0` launcher device/session status JSON. The
+checked local example lives at
+`docs/examples/device-session-status/launcher-device-session-status.gemma3n-e4b-kv260.example.json`.
+This read-only context work is tracked by `pccxai/systemverilog-ide#61`
+and follows the launcher status panel work in
+`pccxai/pccx-llm-launcher#2` and `pccxai/pccx-llm-launcher#10`, plus the
+pccx-lab validation boundary in `pccxai/pccx-lab#50`.
+
+The current consumed launcher answer is
+`device_session_status_placeholder_blocked`. The consumer returns bounded
+summary data for target device/model, connection state, discovery state,
+authentication state, runtime state, model load state, session state, log
+stream state, diagnostics state, readiness state, status-panel rows,
+discovery path count, flow step count, error count, pccx-lab diagnostics
+placeholder state, and read-only safety flags.
+
+The status surface and context bundle treat this summary as data only.
+Missing or invalid device/session data is reported as unavailable or
+invalid context. The context does not parse raw launcher JSON in UI layers
+and does not execute a backend command.
+
+This path does not execute `pccx-llm-launcher`, execute `pccx-lab`, invoke
+the pccx-lab validator, open serial ports, write serial data, scan
+networks, execute SSH, attempt authentication, access hardware, execute
+KV260 runtime code, load model weights, call providers, implement MCP or
+LSP, package for marketplace distribution, upload telemetry, or write back
+state. It does not claim KV260 inference works, does not claim Gemma 3N E4B
+runs on KV260, and does not claim measured throughput.
 
 ---
 
