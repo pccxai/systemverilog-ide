@@ -32,6 +32,7 @@ node editors/vscode-prototype/test/patch-proposal-preview.test.mjs
 node editors/vscode-prototype/test/validation-patch-handoff.test.mjs
 node editors/vscode-prototype/test/pccx-lab-command-descriptor.test.mjs
 node editors/vscode-prototype/test/launcher-status-contract.test.mjs
+node editors/vscode-prototype/test/xsim-diagnostics-status-surface.test.mjs
 node editors/vscode-prototype/test/diagnostics-handoff-consumer.test.mjs
 node editors/vscode-prototype/test/diagnostics-handoff-status-surface.test.mjs
 node editors/vscode-prototype/test/runtime-readiness-consumer.test.mjs
