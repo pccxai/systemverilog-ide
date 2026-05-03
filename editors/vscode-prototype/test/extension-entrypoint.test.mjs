@@ -12,6 +12,7 @@ import {
   LIVE_WORKSPACE_NAVIGATION_COMMAND,
   PCCX_LAB_BACKEND_STATUS_COMMAND,
   SHOW_CONTEXT_BUNDLE_AUDIT_COMMAND,
+  SHOW_DIAGNOSTICS_HANDOFF_SUMMARY_COMMAND,
   SHOW_LOCAL_WORKFLOW_STATUS_COMMAND,
   SHOW_PATCH_PROPOSAL_PREVIEW_COMMAND,
   SHOW_RECENT_VALIDATION_RESULTS_COMMAND,
@@ -1360,6 +1361,65 @@ async function testContextBundleAuditCommandReturnsBoundedAudit() {
   assert.doesNotMatch(JSON.stringify(result.audit), /\/repo/);
 }
 
+async function testDiagnosticsHandoffSummaryCommandReturnsDataOnlySurface() {
+  const outputLines = [];
+  const informationMessages = [];
+  const facadeCalls = [];
+  const handler = createCommandHandler(
+    SHOW_DIAGNOSTICS_HANDOFF_SUMMARY_COMMAND,
+    {
+      window: {
+        showInformationMessage(...args) {
+          informationMessages.push(args);
+        },
+        showWarningMessage() {
+          throw new Error("diagnostics handoff summary should not warn for the default surface");
+        },
+      },
+    },
+    {
+      outputChannel: {
+        appendLine(line) {
+          outputLines.push(line);
+        },
+        show() {},
+      },
+      async runFacade(...args) {
+        facadeCalls.push(args);
+        throw new Error("diagnostics handoff summary must not call the facade");
+      },
+    },
+  );
+
+  const result = await handler();
+  const renderedAgain = await handler();
+
+  assert.equal(result.ok, true);
+  assert.equal(result.commandId, SHOW_DIAGNOSTICS_HANDOFF_SUMMARY_COMMAND);
+  assert.equal(result.kind, "diagnostics-handoff-status");
+  assert.equal(result.surface.kind, "diagnostics-handoff-status-surface");
+  assert.equal(result.surface.source.adapterOutput, true);
+  assert.equal(result.surface.source.rawHandoffParsedByUi, false);
+  assert.equal(result.surface.diagnostics.count, 5);
+  assert.equal(result.surface.safety.dataOnly, true);
+  assert.equal(result.surface.safety.readOnly, true);
+  assert.equal(result.surface.safety.launcherExecution, false);
+  assert.equal(result.surface.safety.pccxLabExecution, false);
+  assert.equal(result.surface.safety.pccxLabValidatorInvocation, false);
+  assert.equal(result.surface.safety.shellExecution, false);
+  assert.equal(result.surface.safety.providerCalls, false);
+  assert.equal(result.surface.safety.runtimeCalls, false);
+  assert.equal(result.surface.safety.mcpCalls, false);
+  assert.equal(result.surface.safety.lspImplemented, false);
+  assert.equal(result.surface.safety.marketplaceFlow, false);
+  assert.deepEqual(result.surface, renderedAgain.surface);
+  assert.equal(facadeCalls.length, 0);
+  assert.ok(outputLines.some((line) => line.includes("Diagnostics Handoff Summary")));
+  assert.ok(outputLines.some((line) => line.includes("execution: no launcher, no pccx-lab")));
+  assert.ok(informationMessages.some(([message]) => /Diagnostics handoff summary/.test(message)));
+  assert.doesNotMatch(JSON.stringify(result.surface), /\/home\/|TOKEN=|\.gguf|\.safetensors/);
+}
+
 async function testPccxLabBackendStatusCommandReturnsStatusOnly() {
   const settings = new Map([
     ["mode", "checkedExample"],
@@ -1433,6 +1493,7 @@ await testValidationResultCacheCommandsShowAndClear();
 await testPatchProposalPreviewCommandsShowAndClearCheckedProposalOnly();
 await testLocalWorkflowStatusCommandReturnsFixtureOnlyBoundaryState();
 await testContextBundleAuditCommandReturnsBoundedAudit();
+await testDiagnosticsHandoffSummaryCommandReturnsDataOnlySurface();
 await testPccxLabBackendStatusCommandReturnsStatusOnly();
 
 console.log("vscode extension entrypoint tests ok");

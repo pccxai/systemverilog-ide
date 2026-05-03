@@ -60,6 +60,10 @@ import {
   createContextBundleAudit,
   formatContextBundleAudit,
 } from "./context-bundle-audit.mjs";
+import {
+  createDiagnosticsHandoffStatusSurface,
+  formatDiagnosticsHandoffStatusSurface,
+} from "./diagnostics-handoff-status-surface.mjs";
 
 const EXTENSION_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_DIAGNOSTIC_FILE_ROOT = resolve(EXTENSION_ROOT, "../..");
@@ -97,6 +101,8 @@ export const SHOW_CONTEXT_BUNDLE_AUDIT_COMMAND =
   "pccxSystemVerilog.showContextBundleAudit";
 export const PCCX_LAB_BACKEND_STATUS_COMMAND =
   "pccxSystemVerilog.showPccxLabBackendStatus";
+export const SHOW_DIAGNOSTICS_HANDOFF_SUMMARY_COMMAND =
+  "pccxSystemVerilog.showDiagnosticsHandoffSummary";
 
 const NAVIGATION_LOCATION_COMMAND_IDS = Object.freeze([
   CHECKED_EXAMPLE_NAVIGATION_COMMAND,
@@ -395,6 +401,9 @@ function appendCommandOutput(outputChannel, commandId, result) {
   }
   if (result.kind === "context-bundle-audit") {
     outputChannel.appendLine(formatContextBundleAudit(result.audit));
+  }
+  if (result.kind === "diagnostics-handoff-status") {
+    outputChannel.appendLine(formatDiagnosticsHandoffStatusSurface(result.surface));
   }
   if (result.status?.kind === "pccx-lab-backend-status") {
     outputChannel.appendLine(JSON.stringify(result.status, null, 2));
@@ -977,6 +986,29 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
         };
         vscodeApi?.window?.showInformationMessage?.(
           `Context bundle audit: ${audit.approximateCharacterCount} character(s), ${audit.diagnosticCount} diagnostic(s).`,
+          result,
+        );
+      } catch (error) {
+        result = { ok: false, commandId, error: error.message };
+        vscodeApi?.window?.showWarningMessage?.(result.error, result);
+      }
+      appendCommandOutput(runtime.outputChannel, commandId, result);
+      return result;
+    }
+
+    if (commandId === SHOW_DIAGNOSTICS_HANDOFF_SUMMARY_COMMAND) {
+      let result;
+      try {
+        const surface = createDiagnosticsHandoffStatusSurface(runtime.diagnosticsHandoffSummary);
+        runtime.recentDiagnosticsHandoffStatus = surface;
+        result = {
+          ok: true,
+          commandId,
+          kind: "diagnostics-handoff-status",
+          surface,
+        };
+        vscodeApi?.window?.showInformationMessage?.(
+          `Diagnostics handoff summary: ${surface.display.summary}.`,
           result,
         );
       } catch (error) {

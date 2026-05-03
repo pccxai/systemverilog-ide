@@ -100,6 +100,12 @@ data.
 The checked fixture lives at
 `docs/examples/diagnostics-handoff/launcher-diagnostics-handoff.example.json`.
 
+`pccxSystemVerilog.showDiagnosticsHandoffSummary` is a prototype status
+surface over the adapter output. It consumes the deterministic consumer
+summary as data, returns JSON for tests or future UI code, and writes a
+small local text summary to the prototype output channel. It does not
+read raw handoff JSON in the UI layer.
+
 This path is data-only. It does not execute `pccx-llm-launcher`, does not
 execute `pccx-lab`, does not invoke the pccx-lab validator command, does
 not spawn shell commands, does not implement MCP or LSP, does not call

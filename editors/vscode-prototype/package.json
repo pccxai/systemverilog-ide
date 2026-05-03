@@ -32,7 +32,8 @@
     "onCommand:pccxSystemVerilog.clearPatchProposalPreview",
     "onCommand:pccxSystemVerilog.showLocalWorkflowStatus",
     "onCommand:pccxSystemVerilog.showContextBundleAudit",
-    "onCommand:pccxSystemVerilog.showPccxLabBackendStatus"
+    "onCommand:pccxSystemVerilog.showPccxLabBackendStatus",
+    "onCommand:pccxSystemVerilog.showDiagnosticsHandoffSummary"
   ],
   "contributes": {
     "commands": [
@@ -115,6 +116,10 @@
       {
         "command": "pccxSystemVerilog.showPccxLabBackendStatus",
         "title": "PCCX SystemVerilog: Show pccx-lab Backend Status (Experimental)"
+      },
+      {
+        "command": "pccxSystemVerilog.showDiagnosticsHandoffSummary",
+        "title": "PCCX SystemVerilog: Show Diagnostics Handoff Summary (Experimental)"
       }
     ],
     "configuration": {
