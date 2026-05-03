@@ -7,6 +7,10 @@ It is not an LSP server, a published VS Code extension, a JetBrains
 plugin, or a stable ABI/API.  Treat all JSON shapes as subject to change
 while the `pccx-lab` boundary and IDE surface mature.
 
+The later-track VS Code, JetBrains, and generic editor bridge direction is
+tracked in
+[`EXTERNAL_EDITOR_INTEGRATION_PLAN.md`](./EXTERNAL_EDITOR_INTEGRATION_PLAN.md).
+
 ## Intended Consumers
 
 - The experimental local VS Code extension scaffold.
