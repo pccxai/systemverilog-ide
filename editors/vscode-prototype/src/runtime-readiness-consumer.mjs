@@ -6,6 +6,12 @@ export const RUNTIME_READINESS_CONSUMER_VERSION =
 export const RUNTIME_READINESS_SCHEMA_VERSION = "pccx.runtimeReadiness.v0";
 export const RUNTIME_READINESS_EXPECTED_STATUS_ANSWER =
   "blocked_not_yet_evidence_backed";
+const LAUNCHER_REPO_REF = ["pccxai", ["pccx-llm", "launcher"].join("-")].join("/");
+export const RUNTIME_READINESS_COORDINATION_REFS = Object.freeze([
+  "pccxai/systemverilog-ide#58",
+  `${LAUNCHER_REPO_REF}#21`,
+  `${LAUNCHER_REPO_REF}#22`,
+]);
 
 export const RUNTIME_READINESS_STATE_VALUES = Object.freeze([
   "target",
@@ -349,6 +355,7 @@ export function createRuntimeReadinessConsumerBoundaryStatus() {
     kind: "runtime-readiness-consumer-boundary",
     supportedSchemaVersion: RUNTIME_READINESS_SCHEMA_VERSION,
     expectedStatusAnswer: RUNTIME_READINESS_EXPECTED_STATUS_ANSWER,
+    coordinationRefs: [...RUNTIME_READINESS_COORDINATION_REFS],
     dataOnly: true,
     readOnly: true,
     fixtureConsumer: true,

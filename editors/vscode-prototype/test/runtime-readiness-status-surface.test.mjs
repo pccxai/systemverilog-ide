@@ -98,6 +98,11 @@ async function testSafetyFlagsRemainDataOnly() {
   assert.equal(surface.boundary.invokesPccxLab, false);
   assert.equal(surface.boundary.accessesFpgaRepo, false);
   assert.equal(surface.boundary.kv260RuntimeExecution, false);
+  assert.deepEqual(surface.boundary.coordinationRefs, [
+    "pccxai/systemverilog-ide#58",
+    "pccxai/pccx-llm-launcher#21",
+    "pccxai/pccx-llm-launcher#22",
+  ]);
 }
 
 async function testDeterministicJsonAndTextOutput() {

@@ -461,6 +461,7 @@ export function createRuntimeReadinessStatusSurface(
       version: boundary.version,
       supportedSchemaVersion: boundary.supportedSchemaVersion,
       expectedStatusAnswer: boundary.expectedStatusAnswer,
+      coordinationRefs: [...boundary.coordinationRefs],
       fixtureConsumer: boundary.fixtureConsumer,
       readOnly: boundary.readOnly,
       invokesLauncher: boundary.invokesLauncher,

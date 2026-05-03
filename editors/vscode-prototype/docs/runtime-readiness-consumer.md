@@ -20,6 +20,10 @@ The consumer validates the checked Gemma 3N E4B plus KV260 readiness
 fixture shape from `pccx-llm-launcher` PR #21. The current launcher
 answer is `blocked_not_yet_evidence_backed`.
 
+Coordination is tracked in `pccxai/systemverilog-ide#58`. The launcher
+status summary used by this boundary is referenced from
+`pccxai/pccx-llm-launcher#22`.
+
 The summary records:
 
 - readiness and evidence states
