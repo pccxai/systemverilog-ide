@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 pccxai
+
 from __future__ import annotations
 
 import argparse
@@ -108,6 +111,25 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Declaration kind to locate (default: module).",
     )
     locate_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
+    organization_cmd = sub.add_parser(
+        "organization",
+        help=(
+            "Export scanner-based module boundaries and hierarchy seeds "
+            "for project organization."
+        ),
+    )
+    organization_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    organization_cmd.add_argument(
         "--format",
         choices=("json", "text"),
         default="json",
@@ -326,6 +348,24 @@ def main(argv: Sequence[str] | None = None) -> int:
                 f"error: ambiguous: {len(matches)} matches for {label} {args.name}\n"
             )
             return 2
+        return 0
+
+    if args.command == "organization":
+        from .module_organization import (
+            build_module_organization_export,
+            format_module_organization_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        export = build_module_organization_export(str(args.path), args.path)
+        if args.format == "json":
+            json.dump(export, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_module_organization_text(export))
         return 0
 
     if args.command == "xsim-log":

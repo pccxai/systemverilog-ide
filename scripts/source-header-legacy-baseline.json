@@ -80,7 +80,6 @@
   "scripts/vscode-extension-host-smoke.sh": "16232d6dfde7b760d634da1c3daf2f93dfbfe30d7d894b59752ef1b9dbdbe05d",
   "src/pccx_ide_cli/__init__.py": "4b1dfa220d8f3cfddab873439d0e952ea36fa22e1d74a3f6a9ee1af5641ca451",
   "src/pccx_ide_cli/__main__.py": "e34737246c4338a78411d7cac39a3a03c13fae12bd7c5bfc01896677e9e0b5c2",
-  "src/pccx_ide_cli/cli.py": "e25d1dcda1c495f5f1069c08479de1c5caffe70f2c972b37f4bc00bb0e34ee49",
   "src/pccx_ide_cli/diagnostics.py": "a17931de63813c67d6dcdc89b4c6ab7a92aecbb9257f5918e63309b51a73776e",
   "src/pccx_ide_cli/module_index.py": "604bae4cd08e857095267cd546a419bf3f41d659f4b208a99b655d99c484cf3a",
   "src/pccx_ide_cli/pccx_lab_backend.py": "2e4c9ba97d1bd883d8e954e36bb4931301e855a8c0768d770bfdc8066ff5db2f",

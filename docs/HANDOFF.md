@@ -24,6 +24,8 @@ The evolutionary loop planning boundary is documented in
 [`EVOLUTIONARY_LOOP_PLAN.md`](./EVOLUTIONARY_LOOP_PLAN.md).
 The external editor integration planning boundary is documented in
 [`EXTERNAL_EDITOR_INTEGRATION_PLAN.md`](./EXTERNAL_EDITOR_INTEGRATION_PLAN.md).
+The module organization workflow is documented in
+[`MODULE_ORGANIZATION_WORKFLOW.md`](./MODULE_ORGANIZATION_WORKFLOW.md).
 The diagnostics/xsim planning boundary for issue #3 is tracked in
 [`DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md`](./DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md).
 
@@ -427,6 +429,53 @@ JSON output uses:
 ```
 
 The output is pre-stable, scanner-based, and not semantic resolution.
+
+---
+
+## module organization scaffold (active, pre-stable)
+
+`pccx-ide organization` exposes scanner-based module boundary spans and a
+small hierarchy seed for editor/project organization workflows. It builds on
+the same local scanner used by `index`, `declarations`, and `locate`.
+
+```bash
+python -m pccx_ide_cli organization fixtures/organization/hierarchy_top.sv --format json
+python -m pccx_ide_cli organization fixtures/organization/hierarchy_top.sv --format text
+```
+
+JSON output uses:
+
+```json
+{
+  "kind": "module-organization",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "modules": [
+    {
+      "name": "top_mod",
+      "file": "<path>",
+      "start_line": 9,
+      "start_column": 1,
+      "end_line": 15,
+      "end_column": 1,
+      "span_lines": 7,
+      "complete": true
+    }
+  ],
+  "hierarchy": {
+    "edges": [],
+    "roots": [],
+    "unresolved": []
+  }
+}
+```
+
+The refactoring section is proposal-only and reports `writes_files: false`.
+This command does not apply refactors, move files, execute validation, invoke
+`pccx-lab`, invoke the launcher, run xsim or Vivado, access hardware, upload
+telemetry, or write back state. The full scope and limitations are tracked in
+[`MODULE_ORGANIZATION_WORKFLOW.md`](./MODULE_ORGANIZATION_WORKFLOW.md).
 
 ---
 
