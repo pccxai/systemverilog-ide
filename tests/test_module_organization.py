@@ -19,7 +19,9 @@ sys.path.insert(0, str(SRC))
 
 from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_organization_export,
+    build_refactor_proposal,
     format_module_organization_text,
+    format_refactor_proposal_text,
 )
 
 
@@ -78,6 +80,56 @@ def test_build_module_organization_export_refactoring_is_proposal_only():
     assert "rename module" in export["refactoring"]["planned_helpers"]
 
 
+def test_build_refactor_proposal_rename_is_review_only():
+    proposal = build_refactor_proposal(
+        str(FIXTURE),
+        FIXTURE,
+        "rename-module",
+        "top_mod",
+        new_name="top_mod_next",
+    )
+
+    assert proposal["kind"] == "module-refactor-proposal"
+    assert proposal["proposal_state"] == "proposal-only"
+    assert proposal["writes_files"] is False
+    assert proposal["preflight"]["status"] == "ready-for-review"
+    assert proposal["requested_change"]["new_name"] == "top_mod_next"
+    assert proposal["module"]["name"] == "top_mod"
+    assert proposal["safety"]["applies_patch"] is False
+    assert proposal["safety"]["runs_validation"] is False
+    assert proposal["safety"]["invokes_pccx_lab"] is False
+    assert proposal["safety"]["invokes_launcher"] is False
+
+
+def test_build_refactor_proposal_blocks_missing_module():
+    proposal = build_refactor_proposal(
+        str(FIXTURE),
+        FIXTURE,
+        "move-module",
+        "missing_mod",
+        destination="rtl/missing_mod.sv",
+    )
+
+    assert proposal["preflight"]["status"] == "blocked"
+    assert proposal["module"] is None
+    assert "module not found: missing_mod" in proposal["preflight"]["reasons"]
+    assert proposal["planned_steps"] == []
+
+
+def test_build_refactor_proposal_extract_port_requires_direction():
+    proposal = build_refactor_proposal(
+        str(FIXTURE),
+        FIXTURE,
+        "extract-port",
+        "top_mod",
+        port_name="enable_i",
+    )
+
+    assert proposal["preflight"]["status"] == "blocked"
+    assert "missing required direction" in proposal["preflight"]["reasons"]
+    assert proposal["safety"]["writes_files"] is False
+
+
 def test_format_module_organization_text_mentions_boundary_and_hierarchy():
     export = build_module_organization_export(str(FIXTURE), FIXTURE)
     text = format_module_organization_text(export)
@@ -85,6 +137,22 @@ def test_format_module_organization_text_mentions_boundary_and_hierarchy():
     assert "module top_mod (complete)" in text
     assert "top_mod -> leaf_mod as u_leaf" in text
     assert "refactoring: proposal-only, no file writes" in text
+
+
+def test_format_refactor_proposal_text_mentions_no_execution():
+    proposal = build_refactor_proposal(
+        str(FIXTURE),
+        FIXTURE,
+        "move-module",
+        "leaf_mod",
+        destination="rtl/leaf_mod.sv",
+    )
+    text = format_refactor_proposal_text(proposal)
+
+    assert "action: move-module" in text
+    assert "preflight: ready-for-review" in text
+    assert "writes files: no" in text
+    assert "no patch, validation, lab, launcher, provider, or hardware execution" in text
 
 
 def test_cli_organization_json():
@@ -102,6 +170,48 @@ def test_cli_organization_text():
     assert "source:" in result.stdout
     assert "2 modules" in result.stdout
     assert "1 hierarchy edge" in result.stdout
+
+
+def test_cli_refactor_plan_json():
+    result = _run_cli(
+        "refactor-plan",
+        str(FIXTURE),
+        "--action",
+        "rename-module",
+        "--module",
+        "leaf_mod",
+        "--new-name",
+        "leaf_mod_next",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-refactor-proposal"
+    assert payload["action"] == "rename-module"
+    assert payload["preflight"]["status"] == "ready-for-review"
+    assert payload["writes_files"] is False
+
+
+def test_cli_refactor_plan_text():
+    result = _run_cli(
+        "refactor-plan",
+        str(FIXTURE),
+        "--action",
+        "extract-port",
+        "--module",
+        "top_mod",
+        "--port-name",
+        "valid_i",
+        "--direction",
+        "input",
+        "--format",
+        "text",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "action: extract-port" in result.stdout
+    assert "preflight: ready-for-review" in result.stdout
+    assert "writes files: no" in result.stdout
 
 
 def test_cli_organization_missing_path_exits_nonzero():

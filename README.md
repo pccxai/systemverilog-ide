@@ -119,6 +119,10 @@ python -m pccx_ide_cli declarations fixtures/modules/ --format json
 python -m pccx_ide_cli organization fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli organization fixtures/organization/hierarchy_top.sv --format text
 
+# Refactoring proposal export (pre-stable, proposal-only)
+python -m pccx_ide_cli refactor-plan fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
+python -m pccx_ide_cli refactor-plan fixtures/organization/hierarchy_top.sv --action extract-port --module top_mod --port-name valid_i --direction input --format text
+
 # xsim log handoff scaffold (parses existing log files only)
 python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format json
 python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format text
@@ -174,6 +178,13 @@ it does not edit files, apply refactors, execute validation, run vendor
 tools, invoke `pccx-lab` or the launcher, or implement semantic
 elaboration. The output shape is pre-stable and is documented in
 [`docs/MODULE_ORGANIZATION_WORKFLOW.md`](./docs/MODULE_ORGANIZATION_WORKFLOW.md).
+
+`refactor-plan` emits proposal-only rename-module, extract-port, and
+move-module planning envelopes over scanner-detected module boundaries.
+It records requested inputs, a bounded preflight status, and planned
+review steps, but it does not write files, apply patches, run validation,
+invoke `pccx-lab` or the launcher, call providers, touch hardware, or
+perform automatic repository actions.
 
 `xsim-log` is an early handoff scaffold. It parses existing synthetic
 xsim-style log files into diagnostics-like JSON or text output. It does

@@ -15,6 +15,9 @@ implementation, and not a write-capable refactoring engine.
 ```bash
 python -m pccx_ide_cli organization <path> --format json
 python -m pccx_ide_cli organization <path> --format text
+python -m pccx_ide_cli refactor-plan <path> --action rename-module --module <name> --new-name <name> --format json
+python -m pccx_ide_cli refactor-plan <path> --action extract-port --module <name> --port-name <name> --direction input --format text
+python -m pccx_ide_cli refactor-plan <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
 ```
 
 `<path>` may be a `.sv` / `.v` file or a directory. Directory scans follow the
@@ -107,6 +110,55 @@ repository actions.
 Future write-capable helpers must be reviewed as a separate boundary and
 should route through explicit proposal and approval steps before any file
 mutation.
+
+## Refactoring Proposal Plan
+
+`refactor-plan` is the next reviewed boundary for module organization. It
+does not apply a refactor. It emits a proposal envelope that a UI or
+maintainer workflow can review before any write-capable helper exists.
+
+Supported proposal actions:
+
+- `rename-module`
+- `extract-port`
+- `move-module`
+
+Each envelope includes the requested action, scanner-detected module span,
+preflight status, blocked reasons when inputs are missing or unsafe, planned
+review steps, and safety flags. Example shape:
+
+```json
+{
+  "kind": "module-refactor-proposal",
+  "proposal_state": "proposal-only",
+  "action": "rename-module",
+  "writes_files": false,
+  "preflight": {
+    "status": "ready-for-review",
+    "requires_approval_before_write": true,
+    "reasons": []
+  },
+  "safety": {
+    "applies_patch": false,
+    "writes_files": false,
+    "runs_validation": false,
+    "invokes_pccx_lab": false,
+    "invokes_launcher": false,
+    "hardware_access": false
+  }
+}
+```
+
+Blocked proposals still return JSON so editor consumers can display why a
+request is not ready for review. For example, a missing module, missing
+required input, absolute destination path, or invalid identifier produces
+`preflight.status: "blocked"` with reasons.
+
+This boundary is intentionally limited to proposal metadata. It does not
+rewrite symbols, edit ports, move files, generate patches, run validation,
+execute shell commands, invoke `pccx-lab`, invoke the launcher, call
+providers, touch hardware, upload telemetry, or perform automatic repository
+actions.
 
 ## Limitations
 
