@@ -29,6 +29,8 @@ The evolutionary generate / simulate / evaluate / refine loop plan is
 tracked in [`docs/EVOLUTIONARY_LOOP_PLAN.md`](./docs/EVOLUTIONARY_LOOP_PLAN.md).
 The later-track external editor integration plan is tracked in
 [`docs/EXTERNAL_EDITOR_INTEGRATION_PLAN.md`](./docs/EXTERNAL_EDITOR_INTEGRATION_PLAN.md).
+The module organization workflow is tracked in
+[`docs/MODULE_ORGANIZATION_WORKFLOW.md`](./docs/MODULE_ORGANIZATION_WORKFLOW.md).
 
 ## Integration model
 
@@ -113,6 +115,10 @@ python -m pccx_ide_cli locate fixtures/modules/ simple_mod --format text
 # Declaration export for editor bridge consumers (pre-stable)
 python -m pccx_ide_cli declarations fixtures/modules/ --format json
 
+# Module organization export (pre-stable, read-only)
+python -m pccx_ide_cli organization fixtures/organization/hierarchy_top.sv --format json
+python -m pccx_ide_cli organization fixtures/organization/hierarchy_top.sv --format text
+
 # xsim log handoff scaffold (parses existing log files only)
 python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format json
 python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format text
@@ -162,6 +168,13 @@ not a stable API. A future editor bridge can consume this output.
 records used by `index` without the legacy module-only wrapper. It is a
 CLI bridge scaffold, not semantic resolution or a full parser.
 
+`organization` exports scanner-based module boundary spans, a small
+hierarchy seed, and proposal-only refactoring metadata. It is read-only:
+it does not edit files, apply refactors, execute validation, run vendor
+tools, invoke `pccx-lab` or the launcher, or implement semantic
+elaboration. The output shape is pre-stable and is documented in
+[`docs/MODULE_ORGANIZATION_WORKFLOW.md`](./docs/MODULE_ORGANIZATION_WORKFLOW.md).
+
 `xsim-log` is an early handoff scaffold. It parses existing synthetic
 xsim-style log files into diagnostics-like JSON or text output. It does
 not run xsim or Vivado, does not prove hardware correctness, and does
@@ -200,6 +213,9 @@ live in [`docs/HANDOFF.md`](./docs/HANDOFF.md).
 The initial roadmap for navigation, diagnostics, read-only handoff
 surfaces, external editor planning, and later workflow tracks lives in
 [`docs/ROADMAP.md`](./docs/ROADMAP.md).
+The scanner-based module organization workflow for module boundaries,
+hierarchy seeds, and proposal-only refactoring planning is documented in
+[`docs/MODULE_ORGANIZATION_WORKFLOW.md`](./docs/MODULE_ORGANIZATION_WORKFLOW.md).
 The planned AI-assisted SystemVerilog workflow, permission boundary, and
 pccx-lab controlled MCP/tool dependency are documented in
 [`docs/AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md`](./docs/AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md).

@@ -43,6 +43,9 @@ python -m pccx_ide_cli locate <path> <name> --kind package --format json
 python -m pccx_ide_cli locate <path> <name> --kind interface --format json
 python -m pccx_ide_cli locate <path> <name> --kind any --format json
 
+# Module organization for editor project trees
+python -m pccx_ide_cli organization <path> --format json
+
 # Opt-in pccx-lab diagnostics backend
 python -m pccx_ide_cli check <sv-file> --backend pccx-lab --format json
 ```
@@ -177,7 +180,11 @@ future/prepared in this prototype.
 `problems` converts local diagnostics and log records into editor-friendly
 problem records.  `index` provides scanner-based module/package/interface
 declaration records.  `declarations` exports those records directly, and
-`locate` resolves exact declaration names by requested kind.
+`locate` resolves exact declaration names by requested kind. `organization`
+adds scanner-based module boundary spans, hierarchy edges, root candidates,
+and proposal-only refactoring metadata for project tree and reviewed
+refactoring workflows. The organization surface is documented in
+[`MODULE_ORGANIZATION_WORKFLOW.md`](./MODULE_ORGANIZATION_WORKFLOW.md).
 
 For existing xsim logs, the VS Code prototype can consume the checked
 `problems from-xsim-log` JSON as a read-only status/context summary.  The
@@ -194,6 +201,8 @@ xsim path, and text surface sketches is documented in
 ## Limitations
 
 - Scanner-based scaffolds, not full SystemVerilog parsing.
+- Module organization is scanner-based; it is not semantic elaboration and
+  does not apply refactors.
 - No LSP server in this repository today.
 - No published editor extension or marketplace packaging is implemented
   here.

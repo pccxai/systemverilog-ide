@@ -31,7 +31,10 @@ cross-repo handoff notes live in [`HANDOFF.md`](./HANDOFF.md).
 ## Next
 
 - Expand project-aware navigation without claiming full semantic
-  SystemVerilog parsing or LSP coverage.
+  SystemVerilog parsing or LSP coverage. The module organization workflow
+  for scanner-based boundary spans, hierarchy seeds, and proposal-only
+  refactoring inputs is tracked in
+  [`MODULE_ORGANIZATION_WORKFLOW.md`](./MODULE_ORGANIZATION_WORKFLOW.md).
 - Continue diagnostics/xsim handoff planning through existing local JSON
   and text surfaces; reusable xsim execution remains owned by pccx-lab.
 - Add editor-facing workflow notes for validation proposal preflight,
