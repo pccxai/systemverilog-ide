@@ -10,7 +10,34 @@ Two handoff paths are tracked:
 3. The launcher diagnostics handoff JSON consumer — **read-only fixture
    boundary**.
 
+Direction and style rules for preserving those boundaries are pinned in
+[`PROJECT_DIRECTION_AND_STYLE.md`](./PROJECT_DIRECTION_AND_STYLE.md).
+
 ---
+
+## direction sync (May 3, 2026)
+
+`systemverilog-ide` remains a data-boundary-first editor cockpit spun out
+of `pccx-lab`. It consumes CLI/core and diagnostics handoff data through
+controlled adapters; it does not become a launcher/lab execution island.
+
+Current cross-repo direction:
+
+- `pccx-FPGA-NPU-LLM-kv260` remains active v002/v0.2.0 bring-up and
+  evidence work. This handoff does not claim KV260 inference works, does
+  not claim Gemma 3N E4B runs on KV260, does not claim 20 tok/s achieved,
+  and does not claim timing closure.
+- `pccx-llm-launcher` owns launcher-facing local LLM workflow direction
+  and diagnostics handoff contract work. This repository consumes checked
+  handoff data only through read-only adapter surfaces.
+- `pccx-lab` remains CLI-first and GUI-second. Its diagnostics handoff
+  validator remains outside this repository; this repository does not
+  invoke that validator.
+
+Approved runner UX work must preserve the current fixed-command,
+allowlisted, no-shell, bounded-output, user-approved boundary. It must not
+add launcher execution, pccx-lab execution, model provider calls, MCP/LSP
+runtime, KV260 runtime integration, telemetry, upload, or write-back.
 
 ## pccx-lab diagnostics handoff (active)
 

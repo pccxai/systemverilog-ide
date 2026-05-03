@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 pccxai
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -9,6 +11,12 @@ if ! command -v node >/dev/null 2>&1; then
   exit 127
 fi
 
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "error: python3 is required for the source header policy check" >&2
+  exit 127
+fi
+
+python3 scripts/check-source-headers.py
 node editors/vscode-prototype/test/adapter.test.mjs
 node editors/vscode-prototype/test/cli-runner.test.mjs
 node editors/vscode-prototype/test/facade.test.mjs
