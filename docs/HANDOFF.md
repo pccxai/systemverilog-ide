@@ -112,6 +112,14 @@ diagnostic counts, descriptor references, transport kinds, and read-only
 safety flags. Missing or invalid handoff data remains local unavailable
 or invalid context and does not trigger execution.
 
+Validation command proposals may reuse only that normalized context
+bundle section as proposal preflight data. The proposal output can show
+that the handoff summary is available, unavailable, or invalid, and it
+keeps issue/preflight notes bounded for local UI or context display. The
+proposal layer does not parse raw handoff JSON and does not add launcher,
+pccx-lab, validator, shell, provider, runtime, MCP, LSP, marketplace,
+telemetry, upload, or write-back flows.
+
 This path is data-only. It does not execute `pccx-llm-launcher`, does not
 execute `pccx-lab`, does not invoke the pccx-lab validator command, does
 not spawn shell commands, does not implement MCP or LSP, does not call

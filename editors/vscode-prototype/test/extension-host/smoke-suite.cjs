@@ -382,6 +382,15 @@ async function run() {
   assert.equal(validationProposal.executes, false);
   assert.equal(validationProposal.providerCalls, false);
   assert.equal(validationProposal.runtimeCalls, false);
+  assert.equal(validationProposal.diagnosticsHandoffContext.status, "available");
+  assert.equal(validationProposal.diagnosticsHandoffContext.summaryAvailable, true);
+  assert.equal(validationProposal.diagnosticsHandoffContext.safety.launcherExecution, false);
+  assert.equal(validationProposal.diagnosticsHandoffContext.safety.pccxLabExecution, false);
+  assert.equal(
+    validationProposal.diagnosticsHandoffContext.safety.pccxLabValidatorInvocation,
+    false,
+  );
+  assert.equal(validationProposal.diagnosticsHandoffContext.safety.shellExecution, false);
   assert.ok(validationProposal.proposals.some((proposal) => (
     proposal.id === "vscodeAdapterSmoke"
   )));
@@ -390,6 +399,9 @@ async function run() {
   )));
   assert.ok(validationProposal.proposals.some((proposal) => (
     proposal.command?.env?.PCCX_RUN_EXTENSION_HOST_SMOKE === "1"
+  )));
+  assert.ok(validationProposal.proposals.every((proposal) => (
+    proposal.preflight.diagnosticsHandoff.status === "available"
   )));
 
   const patchPreview = await vscode.commands.executeCommand(

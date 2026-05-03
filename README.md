@@ -190,6 +190,12 @@ carry the same bounded summary as read-only context. It does not execute
 the launcher, execute pccx-lab, invoke the pccx-lab validator, implement
 MCP or LSP, call providers, or touch hardware.
 
+Validation command proposals can also include a small preflight context
+derived from that normalized context-bundle `diagnosticsHandoff` section.
+The proposal data reports available, unavailable, or invalid handoff
+status plus bounded notes for local UI display. It does not parse raw
+handoff JSON in the proposal layer and does not add any execution path.
+
 ## Later track (deferred)
 
 - Local coding-assistant mode can propose interactions with `pccx-lab`

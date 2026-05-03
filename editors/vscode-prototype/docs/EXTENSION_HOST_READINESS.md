@@ -178,8 +178,11 @@ start a backend command.
 `pccxSystemVerilog.proposeValidationCommand` currently proposes only
 allowlisted templates, including the VS Code adapter smoke, editor bridge
 smoke, example drift check, pytest baseline, and opt-in Extension Host
-smoke.  The command returns JSON data with reasons, risk levels, and a
-required user approval marker; it does not execute the command.
+smoke.  The command returns JSON data with reasons, risk levels, a
+required user approval marker, and optional diagnostics handoff preflight
+context from the normalized context bundle section.  It reports handoff
+context as available, unavailable, or invalid with bounded notes; it does
+not parse raw handoff JSON in the proposal layer or execute the command.
 
 `pccxSystemVerilog.runApprovedValidationCommand` is a separate approved
 validation runner.  It is disabled unless
