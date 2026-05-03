@@ -16,6 +16,11 @@ Public surface is intentionally minimal while the `pccx-lab` CLI / core
 boundary is being stabilized. The IDE will follow that boundary; it does
 not duplicate analysis logic locally.
 
+Direction, source-header policy, and style preservation rules are pinned
+in [`docs/PROJECT_DIRECTION_AND_STYLE.md`](./docs/PROJECT_DIRECTION_AND_STYLE.md).
+New code files and changed legacy code files are expected to carry the
+repository SPDX/Copyright header.
+
 ## Integration model
 
 `pccx-lab` is **CLI-first**. The IDE consumes the same CLI / core
@@ -32,6 +37,10 @@ Development order is fixed:
 If a feature would need a side channel that bypasses the CLI / core
 contract, that is a signal the contract needs to grow first — not a
 signal to add a back door from the GUI.
+
+The current direction keeps this repository as a data-boundary-first
+editor cockpit over pccx-lab and launcher contracts. It must not become a
+launcher/lab execution island.
 
 ## Architecture roles
 
