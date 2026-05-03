@@ -200,6 +200,15 @@ validation summary, lists required future safety properties such as fixed
 args, no shell interpolation, explicit user approval, bounded output, and
 context bundle summary, and does not execute pccx-lab.
 
+`src/diagnostics-handoff-consumer.mjs` is a read-only adapter for the
+launcher diagnostics handoff JSON shape.  It validates the checked
+`pccx.diagnosticsHandoff.v0` fixture as data and returns a deterministic
+summary for future UI use.  It does not invoke `pccx-llm-launcher`, does
+not invoke `pccx-lab`, does not run the pccx-lab validator command, does
+not spawn shell commands, and does not implement MCP or LSP.  The boundary
+is documented in
+[`docs/diagnostics-handoff-consumer.md`](./docs/diagnostics-handoff-consumer.md).
+
 `src/command-handlers.mjs` is the experimental local command-handler
 scaffold.  It maps command ID -> normalized prototype settings -> known
 facade argument array -> facade JSON result -> testable UI action model.

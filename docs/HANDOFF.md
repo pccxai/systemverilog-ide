@@ -7,6 +7,8 @@ Two handoff paths are tracked:
 
 1. The `pccx-lab` CLI / core boundary (analysis backend) — **wired**.
 2. The xsim runner / log surfacing path inside `pccx-lab` — **planned**.
+3. The launcher diagnostics handoff JSON consumer — **read-only fixture
+   boundary**.
 
 ---
 
@@ -84,6 +86,28 @@ exit 2 with a message on stderr.
 - This CLI does not implement an LSP server.
 - There is no stable plugin ABI claim.
 - There is no full IDE replacement claim.
+
+---
+
+## launcher diagnostics handoff consumer (read-only)
+
+The VS Code prototype includes a small adapter for
+`pccx.diagnosticsHandoff.v0` launcher diagnostics handoff JSON. The
+adapter reads a local JSON value supplied by tests or future UI code,
+validates the expected field shape, and returns deterministic summary
+data.
+
+The checked fixture lives at
+`docs/examples/diagnostics-handoff/launcher-diagnostics-handoff.example.json`.
+
+This path is data-only. It does not execute `pccx-llm-launcher`, does not
+execute `pccx-lab`, does not invoke the pccx-lab validator command, does
+not spawn shell commands, does not implement MCP or LSP, does not call
+providers, and does not touch hardware.
+
+The pccx-lab validator remains a separate CLI/core boundary. The IDE
+consumer is for future presentation and context use, not for bypassing
+launcher or lab ownership.
 
 ---
 
