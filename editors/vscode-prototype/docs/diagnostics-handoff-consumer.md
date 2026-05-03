@@ -8,7 +8,9 @@ returns a deterministic summary for future UI surfaces.
 The implementation lives in:
 
 - `src/diagnostics-handoff-consumer.mjs`
+- `src/diagnostics-handoff-status-surface.mjs`
 - `test/diagnostics-handoff-consumer.test.mjs`
+- `test/diagnostics-handoff-status-surface.test.mjs`
 - `../../docs/examples/diagnostics-handoff/launcher-diagnostics-handoff.example.json`
 
 ## What It Does
@@ -29,6 +31,13 @@ The summary records diagnostic counts by severity and category, descriptor
 references, transport kinds, limitations, and safety flags. The output is
 deterministic JSON and is suitable for a later UI panel or context bundle
 entry.
+
+`pccxSystemVerilog.showDiagnosticsHandoffSummary` is the first small
+status surface over that summary. It consumes the adapter output as data
+and writes a deterministic text summary to the prototype output channel.
+It is experimental and local-only. It does not read raw handoff JSON in
+the UI layer, does not execute launcher or pccx-lab, and does not invoke
+the pccx-lab validator command.
 
 ## What It Does Not Do
 

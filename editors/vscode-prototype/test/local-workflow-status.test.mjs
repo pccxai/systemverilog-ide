@@ -63,6 +63,9 @@ function testLocalWorkflowStatusUsesDeterministicLocalDataOnly() {
   assert.equal(status.diagnosticsHandoffBoundary.invokesLauncher, false);
   assert.equal(status.diagnosticsHandoffBoundary.invokesPccxLab, false);
   assert.equal(status.diagnosticsHandoffBoundary.lspImplemented, false);
+  assert.equal(status.diagnosticsHandoffBoundary.surfaceStatus, "available");
+  assert.equal(status.diagnosticsHandoffBoundary.summaryAvailable, true);
+  assert.equal(status.diagnosticsHandoffBoundary.diagnosticCount, 5);
   assert.equal(status.contextBundle.itemCount, 9);
   assert.equal(status.safety.providerCalls, false);
   assert.equal(status.safety.launcherCalls, false);
@@ -81,9 +84,12 @@ function testLocalWorkflowStatusDefaultsAreDisabledAndSafe() {
   assert.equal(status.launcherBoundary.launcherCalls, false);
   assert.equal(status.diagnosticsHandoffBoundary.invokesLauncher, false);
   assert.equal(status.diagnosticsHandoffBoundary.invokesPccxLab, false);
+  assert.equal(status.diagnosticsHandoffBoundary.surfaceStatus, "available");
+  assert.equal(status.diagnosticsHandoffBoundary.summaryAvailable, true);
   assert.match(text, /Local Workflow Status/);
   assert.match(text, /validationRunner: disabled/);
   assert.match(text, /diagnosticsHandoffBoundary: pccx\.diagnosticsHandoff\.v0 readOnly=yes/);
+  assert.match(text, /diagnosticsHandoffSummary: available diagnostics=5/);
   assert.match(text, /no pccx-lab execution/);
   assert.doesNotMatch(JSON.stringify(status), /\/home\/|TOKEN=|model\.gguf/);
 }

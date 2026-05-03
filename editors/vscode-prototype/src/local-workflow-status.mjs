@@ -7,6 +7,9 @@ import {
 import {
   createDiagnosticsHandoffConsumerBoundaryStatus,
 } from "./diagnostics-handoff-consumer.mjs";
+import {
+  createDiagnosticsHandoffStatusSurface,
+} from "./diagnostics-handoff-status-surface.mjs";
 
 export const LOCAL_WORKFLOW_STATUS_VERSION = "pccx.localWorkflowStatus.v0";
 
@@ -55,6 +58,9 @@ export function createLocalWorkflowStatus(config = {}, input = {}) {
   const pccxLabBoundary = createPccxLabCommandDescriptorStatus();
   const launcherBoundary = createLauncherStatusContractStatus();
   const diagnosticsHandoffBoundary = createDiagnosticsHandoffConsumerBoundaryStatus();
+  const diagnosticsHandoffSurface = createDiagnosticsHandoffStatusSurface(
+    input.diagnosticsHandoffSummary,
+  );
   const validationCache = validationStatusFromCache(input.validationResultCache);
   const extensionMode = typeof config.mode === "string" ? config.mode : "checkedExample";
   const validationRunner = config.validationRunner ?? {};
@@ -90,6 +96,10 @@ export function createLocalWorkflowStatus(config = {}, input = {}) {
       invokesLauncher: diagnosticsHandoffBoundary.invokesLauncher === true,
       invokesPccxLab: diagnosticsHandoffBoundary.invokesPccxLab === true,
       lspImplemented: diagnosticsHandoffBoundary.lspImplemented === true,
+      statusSurfaceVersion: diagnosticsHandoffSurface.version,
+      surfaceStatus: diagnosticsHandoffSurface.readiness.status,
+      summaryAvailable: diagnosticsHandoffSurface.readiness.summaryAvailable === true,
+      diagnosticCount: diagnosticsHandoffSurface.diagnostics.count,
     },
     contextBundle: contextBundleEstimate(input),
     safety: {
@@ -113,6 +123,7 @@ export function formatLocalWorkflowStatus(status) {
     `pccxLabBoundary: ${status.pccxLabBoundary.state} descriptorOnly=${status.pccxLabBoundary.descriptorOnly ? "yes" : "no"}`,
     `launcherBoundary: ${status.launcherBoundary.state} fixtureOnly=${status.launcherBoundary.fixtureOnly ? "yes" : "no"}`,
     `diagnosticsHandoffBoundary: ${status.diagnosticsHandoffBoundary.supportedSchemaVersion} readOnly=${status.diagnosticsHandoffBoundary.readOnly ? "yes" : "no"}`,
+    `diagnosticsHandoffSummary: ${status.diagnosticsHandoffBoundary.surfaceStatus} diagnostics=${status.diagnosticsHandoffBoundary.diagnosticCount}`,
     `contextBundleItems: ${status.contextBundle.itemCount}`,
     "safety: no provider calls, no launcher calls, no pccx-lab execution",
   ].join("\n");

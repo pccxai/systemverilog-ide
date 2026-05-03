@@ -146,6 +146,7 @@ The contributed commands are:
 - `pccxSystemVerilog.showLocalWorkflowStatus`
 - `pccxSystemVerilog.showContextBundleAudit`
 - `pccxSystemVerilog.showPccxLabBackendStatus`
+- `pccxSystemVerilog.showDiagnosticsHandoffSummary`
 
 The prototype-only settings are:
 
@@ -208,6 +209,15 @@ not invoke `pccx-lab`, does not run the pccx-lab validator command, does
 not spawn shell commands, and does not implement MCP or LSP.  The boundary
 is documented in
 [`docs/diagnostics-handoff-consumer.md`](./docs/diagnostics-handoff-consumer.md).
+
+`src/diagnostics-handoff-status-surface.mjs` and
+`pccxSystemVerilog.showDiagnosticsHandoffSummary` expose that existing
+consumer summary as a small local status surface.  The command consumes
+adapter output as data, writes a deterministic summary to the prototype
+output channel, and returns JSON for tests or future UI code.  It does not
+read raw handoff JSON in the UI layer, does not invoke launcher or
+pccx-lab, does not run the pccx-lab validator command, and does not add
+provider, runtime, MCP, LSP, telemetry, upload, or marketplace behavior.
 
 `src/command-handlers.mjs` is the experimental local command-handler
 scaffold.  It maps command ID -> normalized prototype settings -> known
@@ -430,6 +440,7 @@ Now:
 - disabled-by-default approved validation runner boundary
 - recent validation summary and cache status command
 - pccx-lab backend status command
+- diagnostics handoff summary status command
 
 Next:
 
@@ -472,6 +483,8 @@ node editors/vscode-prototype/test/patch-proposal-preview.test.mjs
 node editors/vscode-prototype/test/validation-patch-handoff.test.mjs
 node editors/vscode-prototype/test/pccx-lab-command-descriptor.test.mjs
 node editors/vscode-prototype/test/launcher-status-contract.test.mjs
+node editors/vscode-prototype/test/diagnostics-handoff-consumer.test.mjs
+node editors/vscode-prototype/test/diagnostics-handoff-status-surface.test.mjs
 node editors/vscode-prototype/test/local-workflow-status.test.mjs
 node editors/vscode-prototype/test/context-bundle-audit.test.mjs
 node editors/vscode-prototype/test/validation-result-summary.test.mjs

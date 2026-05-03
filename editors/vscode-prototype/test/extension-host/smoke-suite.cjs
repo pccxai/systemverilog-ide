@@ -76,6 +76,7 @@ async function run() {
     "pccxSystemVerilog.showLocalWorkflowStatus",
     "pccxSystemVerilog.showContextBundleAudit",
     "pccxSystemVerilog.showPccxLabBackendStatus",
+    "pccxSystemVerilog.showDiagnosticsHandoffSummary",
   ]);
 
   const manifest = readManifest();
@@ -522,6 +523,23 @@ async function run() {
   assert.equal(pccxLabStatus.status.executes, false);
   assert.equal(pccxLabStatus.status.backendCommandExecuted, false);
   assert.ok(pccxLabStatus.status.futureControlledOperations.includes("diagnostics"));
+
+  const diagnosticsHandoffStatus = await vscode.commands.executeCommand(
+    "pccxSystemVerilog.showDiagnosticsHandoffSummary",
+  );
+  assert.equal(diagnosticsHandoffStatus.ok, true);
+  assert.equal(diagnosticsHandoffStatus.kind, "diagnostics-handoff-status");
+  assert.equal(diagnosticsHandoffStatus.surface.kind, "diagnostics-handoff-status-surface");
+  assert.equal(diagnosticsHandoffStatus.surface.source.adapterOutput, true);
+  assert.equal(diagnosticsHandoffStatus.surface.source.rawHandoffParsedByUi, false);
+  assert.equal(diagnosticsHandoffStatus.surface.safety.launcherExecution, false);
+  assert.equal(diagnosticsHandoffStatus.surface.safety.pccxLabExecution, false);
+  assert.equal(diagnosticsHandoffStatus.surface.safety.pccxLabValidatorInvocation, false);
+  assert.equal(diagnosticsHandoffStatus.surface.safety.shellExecution, false);
+  assert.equal(diagnosticsHandoffStatus.surface.safety.providerCalls, false);
+  assert.equal(diagnosticsHandoffStatus.surface.safety.runtimeCalls, false);
+  assert.equal(diagnosticsHandoffStatus.surface.safety.mcpCalls, false);
+  assert.equal(diagnosticsHandoffStatus.surface.safety.lspImplemented, false);
 
   const extensionModule = await importExtensionEntrypoint();
   assert.equal(typeof extensionModule.deactivate, "function");

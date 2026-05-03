@@ -52,6 +52,9 @@ should earn CI promotion separately.
   bundle.
 - pccx-lab backend status smoke.  The command reports the configured
   boundary and does not execute pccx-lab.
+- Diagnostics handoff summary status smoke.  The command reports the
+  existing adapter summary as local data and does not execute launcher,
+  pccx-lab, shell commands, providers, MCP, or LSP.
 - Guard behavior for the local-only Extension Host runtime smoke.
 - Pinned Extension Host activation and command-registration smoke when
   explicitly enabled locally.
@@ -123,12 +126,14 @@ checked-example symbols.  It executes
 `pccxSystemVerilog.showRecentValidationResults`,
 `pccxSystemVerilog.showValidationCacheStatus`,
 `pccxSystemVerilog.clearValidationResultCache`, and
-`pccxSystemVerilog.showPccxLabBackendStatus`, verifying disabled/backend
-`none` status, proposal-only actions, disabled runner blocking behavior,
-one explicitly enabled allowlisted validation run, bounded active-file
-and selected-symbol context, bounded validation-result cache summary
-handoff, status-only pccx-lab boundary data, and no provider/runtime
-calls.  This is not LSP, and there is no LSP provider yet.
+`pccxSystemVerilog.showPccxLabBackendStatus`, and
+`pccxSystemVerilog.showDiagnosticsHandoffSummary`, verifying
+disabled/backend `none` status, proposal-only actions, disabled runner
+blocking behavior, one explicitly enabled allowlisted validation run,
+bounded active-file and selected-symbol context, bounded validation-result
+cache summary handoff, status-only pccx-lab boundary data, diagnostics
+handoff summary data, and no provider/runtime calls.  This is not LSP,
+and there is no LSP provider yet.
 
 ## AI Assistant Boundary
 
@@ -156,6 +161,11 @@ workflow state without pccx-lab execution, launcher calls, provider calls,
 MCP, or LSP.
 `pccxSystemVerilog.showContextBundleAudit` reports local context bundle
 size and safety metadata without uploading context or calling providers.
+`pccxSystemVerilog.showDiagnosticsHandoffSummary` reports the checked
+diagnostics handoff adapter summary as a local status surface. It consumes
+adapter output as data, does not read raw handoff JSON in the UI layer,
+does not execute launcher or pccx-lab, and does not invoke the pccx-lab
+validator command.
 
 `pccxSystemVerilog.proposeValidationCommand` currently proposes only
 allowlisted templates, including the VS Code adapter smoke, editor bridge
