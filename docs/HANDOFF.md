@@ -175,6 +175,9 @@ The VS Code prototype includes a small adapter for
 `pccx.runtimeReadiness.v0` launcher runtime readiness JSON. The checked
 local example lives at
 `docs/examples/runtime-readiness/launcher-runtime-readiness.gemma3n-e4b-kv260.example.json`.
+This read-only context work is tracked by `pccxai/systemverilog-ide#58`
+and follows the launcher readiness contract/status work in
+`pccxai/pccx-llm-launcher#21` and `pccxai/pccx-llm-launcher#22`.
 
 The current consumed launcher answer is
 `blocked_not_yet_evidence_backed` for Gemma 3N E4B plus KV260. The

@@ -7,6 +7,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  RUNTIME_READINESS_COORDINATION_REFS,
   RUNTIME_READINESS_CONSUMER_VERSION,
   RUNTIME_READINESS_EXPECTED_STATUS_ANSWER,
   RUNTIME_READINESS_SCHEMA_VERSION,
@@ -168,6 +169,10 @@ async function testBoundaryStatusIsExecutionFree() {
   assert.equal(status.kind, "runtime-readiness-consumer-boundary");
   assert.equal(status.supportedSchemaVersion, RUNTIME_READINESS_SCHEMA_VERSION);
   assert.equal(status.expectedStatusAnswer, RUNTIME_READINESS_EXPECTED_STATUS_ANSWER);
+  assert.deepEqual(status.coordinationRefs, [...RUNTIME_READINESS_COORDINATION_REFS]);
+  assert.ok(status.coordinationRefs.includes("pccxai/systemverilog-ide#58"));
+  assert.ok(status.coordinationRefs.includes("pccxai/pccx-llm-launcher#21"));
+  assert.ok(status.coordinationRefs.includes("pccxai/pccx-llm-launcher#22"));
   assert.equal(status.dataOnly, true);
   assert.equal(status.readOnly, true);
   assert.equal(status.fixtureConsumer, true);
