@@ -188,6 +188,9 @@ The current pre-stable envelope shape is described in
 [`schema/diagnostics-v0.json`](./schema/diagnostics-v0.json).
 Handoff notes for the eventual `pccx-lab` and xsim integration paths
 live in [`docs/HANDOFF.md`](./docs/HANDOFF.md).
+The diagnostics/xsim planning boundary for the shared schema draft,
+read-only log path, and text surface sketches is documented in
+[`docs/DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md`](./docs/DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md).
 
 The experimental VS Code prototype under
 [`editors/vscode-prototype`](./editors/vscode-prototype) keeps
