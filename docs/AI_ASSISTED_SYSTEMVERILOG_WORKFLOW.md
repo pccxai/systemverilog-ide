@@ -18,6 +18,8 @@ validation.
 - [`EDITOR_BRIDGE_CONTRACT.md`](./EDITOR_BRIDGE_CONTRACT.md) describes
   the pre-stable editor JSON surfaces.
 - [`HANDOFF.md`](./HANDOFF.md) records cross-repo handoff paths.
+- [`EVOLUTIONARY_LOOP_PLAN.md`](./EVOLUTIONARY_LOOP_PLAN.md) sketches the
+  deferred generate / simulate / evaluate / refine loop.
 - [`pccx-lab#22`](https://github.com/pccxai/pccx-lab/issues/22) tracks
   the controlled MCP/tool interface that future automation should use.
 
