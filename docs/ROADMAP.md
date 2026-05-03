@@ -51,7 +51,9 @@ cross-repo handoff notes live in [`HANDOFF.md`](./HANDOFF.md).
 - Plan a local coding-assistant workflow that uses bounded context,
   reviewed proposals, and user-approved validation steps.
 - Plan an evolutionary generate / simulate / evaluate / refine loop on top
-  of the pccx-lab CLI/core boundary.
+  of the pccx-lab CLI/core boundary. The loop architecture and
+  fitness-criteria sketch are tracked in
+  [`EVOLUTIONARY_LOOP_PLAN.md`](./EVOLUTIONARY_LOOP_PLAN.md).
 - Sketch external editor bridges beyond the local VS Code prototype only
   after the shared data contracts are clearer.
 - Evaluate future plugin and MCP/tool integration through pccx-lab-owned
