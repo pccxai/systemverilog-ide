@@ -171,6 +171,13 @@ jobs:
               fixtures/organization/hierarchy_top.sv \
               | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-hierarchy-view'; assert d['safety']['writes_files'] is False"
           echo "hierarchy view smoke ok"
+      - name: cli smoke (dependency view exits zero)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli dependencies \
+              fixtures/organization/hierarchy_top.sv \
+              | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-dependency-view'; assert d['safety']['writes_files'] is False"
+          echo "dependency view smoke ok"
       - name: cli smoke (index missing path exits non-zero)
         run: |
           set -e

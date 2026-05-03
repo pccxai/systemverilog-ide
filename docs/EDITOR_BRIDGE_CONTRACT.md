@@ -46,6 +46,7 @@ python -m pccx_ide_cli locate <path> <name> --kind any --format json
 # Module organization for editor project trees
 python -m pccx_ide_cli organization <path> --format json
 python -m pccx_ide_cli hierarchy <path> --format json
+python -m pccx_ide_cli dependencies <path> --format json
 
 # Opt-in pccx-lab diagnostics backend
 python -m pccx_ide_cli check <sv-file> --backend pccx-lab --format json
@@ -184,7 +185,9 @@ declaration records.  `declarations` exports those records directly, and
 `locate` resolves exact declaration names by requested kind. `organization`
 adds scanner-based module boundary spans, hierarchy edges, root candidates,
 and proposal-only refactoring metadata for project tree and reviewed
-refactoring workflows. The organization surface is documented in
+refactoring workflows. `hierarchy` and `dependencies` render focused
+read-only views from the same scanner data. The organization surface is
+documented in
 [`MODULE_ORGANIZATION_WORKFLOW.md`](./MODULE_ORGANIZATION_WORKFLOW.md).
 `refactor-plan` extends the same boundary with proposal-only
 rename-module, extract-port, and move-module planning envelopes. It emits

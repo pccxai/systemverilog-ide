@@ -18,9 +18,11 @@ WORKFLOW_DOC = REPO_ROOT / "docs" / "MODULE_ORGANIZATION_WORKFLOW.md"
 sys.path.insert(0, str(SRC))
 
 from pccx_ide_cli.module_organization import (  # noqa: E402
+    build_module_dependency_view,
     build_module_hierarchy_view,
     build_module_organization_export,
     build_refactor_proposal,
+    format_module_dependency_text,
     format_module_hierarchy_text,
     format_module_organization_text,
     format_refactor_proposal_text,
@@ -90,6 +92,44 @@ def test_build_module_hierarchy_view_tree_is_read_only():
     assert view["tree"][1]["depth"] == 1
     assert view["tree"][1]["state"] == "resolved"
     assert view["tree"][1]["via_instance"] == "u_leaf"
+    assert view["safety"]["read_only"] is True
+    assert view["safety"]["writes_files"] is False
+    assert view["safety"]["applies_refactor"] is False
+    assert view["safety"]["runs_validation"] is False
+    assert view["safety"]["invokes_pccx_lab"] is False
+    assert view["safety"]["invokes_launcher"] is False
+    assert view["safety"]["provider_calls"] is False
+    assert view["safety"]["hardware_access"] is False
+
+
+def test_build_module_dependency_view_is_read_only():
+    view = build_module_dependency_view(str(FIXTURE), FIXTURE)
+
+    assert view["kind"] == "module-dependency-view"
+    assert view["dependency_state"] == "available_as_data"
+    assert view["module_count"] == 2
+    assert view["edge_count"] == 1
+    assert view["resolved_edge_count"] == 1
+    assert view["unresolved_edge_count"] == 0
+    assert view["edges"][0]["parent"] == "top_mod"
+    assert view["edges"][0]["child"] == "leaf_mod"
+    assert view["reverse_edges"] == [
+        {
+            "dependent": "top_mod",
+            "file": str(FIXTURE),
+            "instance": "u_leaf",
+            "line": 12,
+            "module": "leaf_mod",
+        }
+    ]
+
+    impact = {row["module"]: row for row in view["impact"]}
+    assert impact["top_mod"]["direct_dependencies"] == ["leaf_mod"]
+    assert impact["top_mod"]["direct_dependency_count"] == 1
+    assert impact["top_mod"]["direct_dependents"] == []
+    assert impact["leaf_mod"]["direct_dependencies"] == []
+    assert impact["leaf_mod"]["direct_dependents"] == ["top_mod"]
+    assert impact["leaf_mod"]["direct_dependent_count"] == 1
     assert view["safety"]["read_only"] is True
     assert view["safety"]["writes_files"] is False
     assert view["safety"]["applies_refactor"] is False
@@ -176,6 +216,17 @@ def test_format_module_hierarchy_text_mentions_tree_and_boundary():
     assert "read-only: no file writes" in text
 
 
+def test_format_module_dependency_text_mentions_impact_and_boundary():
+    view = build_module_dependency_view(str(FIXTURE), FIXTURE)
+    text = format_module_dependency_text(view)
+
+    assert "dependency view: available_as_data" in text
+    assert "top_mod -> leaf_mod as u_leaf" in text
+    assert "top_mod: dependencies=leaf_mod; dependents=none" in text
+    assert "leaf_mod: dependencies=none; dependents=top_mod" in text
+    assert "read-only: no file writes" in text
+
+
 def test_format_refactor_proposal_text_mentions_no_execution():
     proposal = build_refactor_proposal(
         str(FIXTURE),
@@ -224,6 +275,22 @@ def test_cli_hierarchy_text():
     assert result.returncode == 0, result.stderr
     assert "hierarchy view: available_as_data" in result.stdout
     assert "leaf_mod as u_leaf (resolved)" in result.stdout
+
+
+def test_cli_dependencies_json():
+    result = _run_cli("dependencies", str(FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-dependency-view"
+    assert payload["impact"][0]["impact_state"] == "available_as_data"
+    assert payload["safety"]["writes_files"] is False
+
+
+def test_cli_dependencies_text():
+    result = _run_cli("dependencies", str(FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "dependency view: available_as_data" in result.stdout
+    assert "leaf_mod: dependencies=none; dependents=top_mod" in result.stdout
 
 
 def test_cli_refactor_plan_json():
@@ -280,13 +347,21 @@ def test_cli_hierarchy_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_dependencies_missing_path_exits_nonzero():
+    result = _run_cli("dependencies", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_docs_cover_organization_flow_and_limits():
     contract = CONTRACT_DOC.read_text(encoding="utf-8")
     workflow = WORKFLOW_DOC.read_text(encoding="utf-8")
     assert "organization <path>" in contract
     assert "hierarchy <path>" in contract
+    assert "dependencies <path>" in contract
     assert "MODULE_ORGANIZATION_WORKFLOW.md" in contract
     assert "proposal-only" in workflow
     assert "module-hierarchy-view" in workflow
+    assert "module-dependency-view" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow

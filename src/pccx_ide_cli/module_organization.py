@@ -62,6 +62,16 @@ HIERARCHY_VIEW_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+DEPENDENCY_VIEW_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module dependency visualization data only",
+    "single-line instantiation candidates only",
+    "direct dependency and dependent summaries only",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "no refactor application, file write, validation run, or patch generation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 REFACTOR_ACTIONS: tuple[str, ...] = (
     "rename-module",
     "extract-port",
@@ -104,6 +114,22 @@ def _refactor_safety_flags() -> dict[str, bool]:
 
 
 def _hierarchy_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "writes_files": False,
+        "applies_refactor": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _dependency_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "writes_files": False,
@@ -401,6 +427,105 @@ def build_module_hierarchy_view(source: str, path: Path) -> dict[str, Any]:
     }
 
 
+def _dependency_impact_rows(
+    modules: list[dict[str, Any]],
+    hierarchy: dict[str, Any],
+) -> list[dict[str, Any]]:
+    module_names = sorted({module["name"] for module in modules})
+    dependencies_by_module: dict[str, set[str]] = {
+        module_name: set()
+        for module_name in module_names
+    }
+    dependents_by_module: dict[str, set[str]] = {
+        module_name: set()
+        for module_name in module_names
+    }
+    unresolved_by_module: dict[str, set[str]] = {
+        module_name: set()
+        for module_name in module_names
+    }
+
+    for edge in hierarchy["edges"]:
+        parent = edge["parent"]
+        child = edge["child"]
+        if parent not in dependencies_by_module:
+            continue
+        if edge["resolved"]:
+            dependencies_by_module[parent].add(child)
+            dependents_by_module.setdefault(child, set()).add(parent)
+        else:
+            unresolved_by_module[parent].add(child)
+
+    rows: list[dict[str, Any]] = []
+    for module_name in module_names:
+        dependencies = sorted(dependencies_by_module.get(module_name, set()))
+        dependents = sorted(dependents_by_module.get(module_name, set()))
+        unresolved = sorted(unresolved_by_module.get(module_name, set()))
+        rows.append({
+            "direct_dependencies": dependencies,
+            "direct_dependency_count": len(dependencies),
+            "direct_dependents": dependents,
+            "direct_dependent_count": len(dependents),
+            "impact_state": "available_as_data",
+            "module": module_name,
+            "unresolved_dependencies": unresolved,
+            "unresolved_dependency_count": len(unresolved),
+        })
+    return rows
+
+
+def build_module_dependency_view(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    resolved_edges = [
+        edge
+        for edge in hierarchy["edges"]
+        if edge["resolved"]
+    ]
+
+    reverse_edges = [
+        {
+            "dependent": edge["parent"],
+            "file": edge["file"],
+            "instance": edge["instance"],
+            "line": edge["line"],
+            "module": edge["child"],
+        }
+        for edge in resolved_edges
+    ]
+
+    return {
+        "dependency_state": "available_as_data",
+        "edge_count": len(hierarchy["edges"]),
+        "edges": hierarchy["edges"],
+        "impact": _dependency_impact_rows(modules, hierarchy),
+        "kind": "module-dependency-view",
+        "limitations": list(DEPENDENCY_VIEW_LIMITATIONS),
+        "module_count": len(modules),
+        "resolved_edge_count": len(resolved_edges),
+        "reverse_edges": sorted(
+            reverse_edges,
+            key=lambda e: (
+                e["module"],
+                e["dependent"],
+                e["line"],
+                e["instance"],
+            ),
+        ),
+        "safety": _dependency_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "unresolved": hierarchy["unresolved"],
+        "unresolved_edge_count": len([
+            edge
+            for edge in hierarchy["edges"]
+            if not edge["resolved"]
+        ]),
+    }
+
+
 def _requested_change(
     action: str,
     module_name: str,
@@ -622,6 +747,46 @@ def format_module_hierarchy_text(view: dict[str, Any]) -> str:
                 f"{indent}{row['module']} as {row['via_instance']} "
                 f"({row['state']})"
             )
+    if view["unresolved"]:
+        lines.append(f"unresolved: {', '.join(view['unresolved'])}")
+    lines.append(
+        "read-only: no file writes, refactors, validation, lab, launcher, "
+        "provider, or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_dependency_text(view: dict[str, Any]) -> str:
+    lines = [
+        f"source: {view['source']}",
+        f"dependency view: {view['dependency_state']}",
+        f"{view['module_count']} module"
+        f"{'s' if view['module_count'] != 1 else ''}",
+        f"{view['edge_count']} dependency edge"
+        f"{'s' if view['edge_count'] != 1 else ''}",
+        f"{view['resolved_edge_count']} resolved edge"
+        f"{'s' if view['resolved_edge_count'] != 1 else ''}",
+    ]
+    for edge in view["edges"]:
+        state = "resolved" if edge["resolved"] else "unresolved"
+        lines.append(
+            f"{edge['parent']} -> {edge['child']} as {edge['instance']} "
+            f"at {edge['file']}:{edge['line']}:{edge['column']} ({state})"
+        )
+    if not view["edges"]:
+        lines.append("edges: none")
+
+    lines.append("impact:")
+    if not view["impact"]:
+        lines.append("  empty")
+    for row in view["impact"]:
+        dependencies = ", ".join(row["direct_dependencies"]) or "none"
+        dependents = ", ".join(row["direct_dependents"]) or "none"
+        unresolved = ", ".join(row["unresolved_dependencies"]) or "none"
+        lines.append(
+            f"  {row['module']}: dependencies={dependencies}; "
+            f"dependents={dependents}; unresolved={unresolved}"
+        )
     if view["unresolved"]:
         lines.append(f"unresolved: {', '.join(view['unresolved'])}")
     lines.append(
