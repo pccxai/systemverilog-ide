@@ -23,6 +23,8 @@ repository SPDX/Copyright header.
 
 The initial Now / Next / Later roadmap is tracked in
 [`docs/ROADMAP.md`](./docs/ROADMAP.md).
+The AI-assisted SystemVerilog workflow planning boundary is tracked in
+[`docs/AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md`](./docs/AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md).
 
 ## Integration model
 
@@ -194,6 +196,9 @@ live in [`docs/HANDOFF.md`](./docs/HANDOFF.md).
 The initial roadmap for navigation, diagnostics, read-only handoff
 surfaces, external editor planning, and later workflow tracks lives in
 [`docs/ROADMAP.md`](./docs/ROADMAP.md).
+The planned AI-assisted SystemVerilog workflow, permission boundary, and
+pccx-lab controlled MCP/tool dependency are documented in
+[`docs/AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md`](./docs/AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md).
 The diagnostics/xsim planning boundary for the shared schema draft,
 read-only log path, and text surface sketches is documented in
 [`docs/DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md`](./docs/DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md).

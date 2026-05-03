@@ -18,6 +18,8 @@ Tracked handoff paths:
 
 Direction and style rules for preserving those boundaries are pinned in
 [`PROJECT_DIRECTION_AND_STYLE.md`](./PROJECT_DIRECTION_AND_STYLE.md).
+The AI-assisted SystemVerilog workflow planning boundary is documented in
+[`AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md`](./AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md).
 The diagnostics/xsim planning boundary for issue #3 is tracked in
 [`DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md`](./DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md).
 

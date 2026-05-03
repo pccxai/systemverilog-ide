@@ -35,7 +35,9 @@ cross-repo handoff notes live in [`HANDOFF.md`](./HANDOFF.md).
 - Continue diagnostics/xsim handoff planning through existing local JSON
   and text surfaces; reusable xsim execution remains owned by pccx-lab.
 - Add editor-facing workflow notes for validation proposal preflight,
-  result summary, and reviewed patch handoff.
+  result summary, and reviewed patch handoff. The AI-assisted workflow
+  planning boundary is tracked in
+  [`AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md`](./AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md).
 - Cross-link IDE workflow planning to the pccx-lab roadmap items:
   - [`pccx-lab#21`](https://github.com/pccxai/pccx-lab/issues/21) for the
     future plugin-system boundary
