@@ -21,6 +21,9 @@ in [`docs/PROJECT_DIRECTION_AND_STYLE.md`](./docs/PROJECT_DIRECTION_AND_STYLE.md
 New code files and changed legacy code files are expected to carry the
 repository SPDX/Copyright header.
 
+The initial Now / Next / Later roadmap is tracked in
+[`docs/ROADMAP.md`](./docs/ROADMAP.md).
+
 ## Integration model
 
 `pccx-lab` is **CLI-first**. The IDE consumes the same CLI / core
@@ -188,6 +191,9 @@ The current pre-stable envelope shape is described in
 [`schema/diagnostics-v0.json`](./schema/diagnostics-v0.json).
 Handoff notes for the eventual `pccx-lab` and xsim integration paths
 live in [`docs/HANDOFF.md`](./docs/HANDOFF.md).
+The initial roadmap for navigation, diagnostics, read-only handoff
+surfaces, external editor planning, and later workflow tracks lives in
+[`docs/ROADMAP.md`](./docs/ROADMAP.md).
 The diagnostics/xsim planning boundary for the shared schema draft,
 read-only log path, and text surface sketches is documented in
 [`docs/DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md`](./docs/DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md).
