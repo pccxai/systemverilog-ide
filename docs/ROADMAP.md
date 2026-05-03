@@ -55,7 +55,9 @@ cross-repo handoff notes live in [`HANDOFF.md`](./HANDOFF.md).
   fitness-criteria sketch are tracked in
   [`EVOLUTIONARY_LOOP_PLAN.md`](./EVOLUTIONARY_LOOP_PLAN.md).
 - Sketch external editor bridges beyond the local VS Code prototype only
-  after the shared data contracts are clearer.
+  after the shared data contracts are clearer. The later-track bridge plan
+  is tracked in
+  [`EXTERNAL_EDITOR_INTEGRATION_PLAN.md`](./EXTERNAL_EDITOR_INTEGRATION_PLAN.md).
 - Evaluate future plugin and MCP/tool integration through pccx-lab-owned
   boundaries before adding editor presentation.
 

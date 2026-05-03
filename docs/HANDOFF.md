@@ -22,6 +22,8 @@ The AI-assisted SystemVerilog workflow planning boundary is documented in
 [`AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md`](./AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md).
 The evolutionary loop planning boundary is documented in
 [`EVOLUTIONARY_LOOP_PLAN.md`](./EVOLUTIONARY_LOOP_PLAN.md).
+The external editor integration planning boundary is documented in
+[`EXTERNAL_EDITOR_INTEGRATION_PLAN.md`](./EXTERNAL_EDITOR_INTEGRATION_PLAN.md).
 The diagnostics/xsim planning boundary for issue #3 is tracked in
 [`DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md`](./DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md).
 

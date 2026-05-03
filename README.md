@@ -27,6 +27,8 @@ The AI-assisted SystemVerilog workflow planning boundary is tracked in
 [`docs/AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md`](./docs/AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md).
 The evolutionary generate / simulate / evaluate / refine loop plan is
 tracked in [`docs/EVOLUTIONARY_LOOP_PLAN.md`](./docs/EVOLUTIONARY_LOOP_PLAN.md).
+The later-track external editor integration plan is tracked in
+[`docs/EXTERNAL_EDITOR_INTEGRATION_PLAN.md`](./docs/EXTERNAL_EDITOR_INTEGRATION_PLAN.md).
 
 ## Integration model
 
@@ -203,6 +205,9 @@ pccx-lab controlled MCP/tool dependency are documented in
 [`docs/AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md`](./docs/AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md).
 The deferred evolutionary loop plan and fitness-criteria sketch are
 documented in [`docs/EVOLUTIONARY_LOOP_PLAN.md`](./docs/EVOLUTIONARY_LOOP_PLAN.md).
+The external editor integration direction for VS Code and other editor
+families is documented in
+[`docs/EXTERNAL_EDITOR_INTEGRATION_PLAN.md`](./docs/EXTERNAL_EDITOR_INTEGRATION_PLAN.md).
 The diagnostics/xsim planning boundary for the shared schema draft,
 read-only log path, and text surface sketches is documented in
 [`docs/DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md`](./docs/DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md).
