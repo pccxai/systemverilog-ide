@@ -140,6 +140,7 @@ async function testNoDirectShellInterpolation() {
 async function testProposalAndStatusModulesAreDataOnly() {
   const proposalAndStatusSource = await readCombined([
     resolve(EXTENSION_ROOT, "src/validation-proposals.mjs"),
+    resolve(EXTENSION_ROOT, "src/validation-proposal-preflight-audit.mjs"),
     resolve(EXTENSION_ROOT, "src/patch-proposal-contract.mjs"),
     resolve(EXTENSION_ROOT, "src/patch-proposal-preview.mjs"),
     resolve(EXTENSION_ROOT, "src/validation-patch-handoff.mjs"),
@@ -164,6 +165,7 @@ async function testProposalAndStatusModulesAreDataOnly() {
   assert.doesNotMatch(proposalAndStatusSource, /\bgh\s+(?:secret|ruleset)\b/i);
   assert.match(proposalAndStatusSource, /proposalOnly/);
   assert.match(proposalAndStatusSource, /executes: false/);
+  assert.match(proposalAndStatusSource, /auditOnly/);
   assert.match(proposalAndStatusSource, /appliesPatches: false/);
   assert.match(proposalAndStatusSource, /backendCommandExecuted: false/);
 }

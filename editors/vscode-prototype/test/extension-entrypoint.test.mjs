@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   AI_CONTEXT_BUNDLE_COMMAND,
   AI_ASSISTANT_STATUS_COMMAND,
+  AUDIT_VALIDATION_PREFLIGHT_COMMAND,
   APPROVED_VALIDATION_RUNNER_COMMAND,
   CLEAR_PATCH_PROPOSAL_PREVIEW_COMMAND,
   CLEAR_VALIDATION_RESULT_CACHE_COMMAND,
@@ -964,6 +965,58 @@ async function testValidationProposalCommandReturnsDataOnly() {
   assert.doesNotMatch(JSON.stringify(result), /git push/);
 }
 
+async function testValidationPreflightAuditCommandReturnsAuditOnly() {
+  const outputLines = [];
+  const informationMessages = [];
+  const warningMessages = [];
+  const handler = createCommandHandler(
+    AUDIT_VALIDATION_PREFLIGHT_COMMAND,
+    {
+      window: {
+        showInformationMessage(...args) {
+          informationMessages.push(args);
+        },
+        showWarningMessage(...args) {
+          warningMessages.push(args);
+        },
+      },
+    },
+    {
+      outputChannel: {
+        appendLine(line) {
+          outputLines.push(line);
+        },
+        show() {},
+      },
+    },
+  );
+
+  const result = await handler({ proposalId: "vscodeAdapterSmoke" });
+  const blocked = await handler({
+    proposalId: "vscodeAdapterSmoke",
+    command: "bash scripts/vscode-adapter-smoke.sh; rm -rf /",
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.commandId, AUDIT_VALIDATION_PREFLIGHT_COMMAND);
+  assert.equal(result.kind, "validation-proposal-preflight-audit");
+  assert.equal(result.status, "passed");
+  assert.equal(result.eligibleForApprovedRunner, true);
+  assert.equal(result.executes, false);
+  assert.equal(result.safety.automaticExecution, false);
+  assert.equal(result.safety.allowlistBroadened, false);
+  assert.equal(result.diagnosticsHandoff.status, "available");
+  assert.equal(result.diagnosticsHandoff.contextOnly, true);
+  assert.equal(blocked.ok, true);
+  assert.equal(blocked.status, "failed");
+  assert.equal(blocked.eligibleForApprovedRunner, false);
+  assert.equal(blocked.findings.rawShellString, true);
+  assert.ok(outputLines.some((line) => line.includes("Validation Proposal Preflight Audit")));
+  assert.ok(informationMessages.some(([message]) => /Validation preflight audit: vscodeAdapterSmoke passed/.test(message)));
+  assert.ok(warningMessages.some(([message]) => /Validation preflight audit: vscodeAdapterSmoke failed/.test(message)));
+  assert.doesNotMatch(JSON.stringify(blocked), /rm -rf/);
+}
+
 async function testApprovedValidationRunnerBlocksByDefaultAndUpdatesContext() {
   const settings = new Map([
     ["mode", "checkedExample"],
@@ -1510,6 +1563,7 @@ await testCommandHandlerCanBeUsedWithoutRealVsCode();
 await testAIStatusCommandReturnsDisabledBackendNone();
 await testAIContextBundleCommandUsesActiveEditorSelectionAndDiagnostics();
 await testValidationProposalCommandReturnsDataOnly();
+await testValidationPreflightAuditCommandReturnsAuditOnly();
 await testApprovedValidationRunnerBlocksByDefaultAndUpdatesContext();
 await testApprovedValidationRunnerRequiresProposalIdWhenEnabled();
 await testApprovedValidationRunnerExecutesAllowlistedProposalWhenEnabled();

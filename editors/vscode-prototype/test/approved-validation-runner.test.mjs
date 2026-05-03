@@ -145,6 +145,9 @@ async function testAllowlistedExecutionUsesExecFileArgumentArray() {
   assert.equal(result.stdoutSummary.truncated, true);
   assert.equal(result.resultSummary.proposalId, "vscodeAdapterSmoke");
   assert.equal(result.resultSummary.safety.fixedArgs, true);
+  assert.equal(result.preflightAudit.status, "passed");
+  assert.equal(result.preflightAudit.eligibleForApprovedRunner, true);
+  assert.equal(result.preflightAudit.executes, false);
   assert.equal(result.safety.allowlisted, true);
   assert.equal(result.safety.providerCalls, false);
   assert.equal(result.safety.launcherCalls, false);
@@ -155,6 +158,34 @@ async function testAllowlistedExecutionUsesExecFileArgumentArray() {
   assert.equal(stub.calls[0].options.cwd, "/repo");
   assert.equal(stub.calls[0].options.shell, false);
   assert.equal(stub.calls[0].options.timeout, 5000);
+}
+
+async function testPreflightAuditBlocksExecutionOverridesWhenEnabled() {
+  const stub = execFileStub(() => {
+    throw new Error("preflight audit failure must not execute");
+  });
+
+  const result = await runApprovedValidationProposal(
+    {
+      proposalId: "vscodeAdapterSmoke",
+      command: "bash scripts/vscode-adapter-smoke.sh; rm -rf /",
+    },
+    ENABLED_CONFIG,
+    {
+      repoRoot: "/repo",
+      execFile: stub.execFile,
+      clock: fakeClock(),
+    },
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "blocked");
+  assert.match(result.blockedReason, /preflight audit failed/);
+  assert.equal(result.preflightAudit.status, "failed");
+  assert.equal(result.preflightAudit.eligibleForApprovedRunner, false);
+  assert.equal(result.preflightAudit.findings.rawShellString, true);
+  assert.equal(stub.calls.length, 0);
+  assert.doesNotMatch(JSON.stringify(result), /rm -rf/);
 }
 
 async function testFailureTimeoutAndProposalOnlyBlocks() {
@@ -200,6 +231,7 @@ await testMissingProposalIdBlocksEvenWhenEnabled();
 await testDisabledByDefaultBlocksWithoutExecution();
 await testUnknownAndRawCommandInputBlocks();
 await testAllowlistedExecutionUsesExecFileArgumentArray();
+await testPreflightAuditBlocksExecutionOverridesWhenEnabled();
 await testFailureTimeoutAndProposalOnlyBlocks();
 
 console.log("vscode approved validation runner tests ok");

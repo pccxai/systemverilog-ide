@@ -36,7 +36,12 @@ import {
 } from "./selected-symbol-context.mjs";
 import {
   createValidationCommandProposal,
+  listValidationCommandProposals,
 } from "./validation-proposals.mjs";
+import {
+  createValidationProposalPreflightAudit,
+  formatValidationProposalPreflightAudit,
+} from "./validation-proposal-preflight-audit.mjs";
 import {
   runApprovedValidationProposal,
 } from "./approved-validation-runner.mjs";
@@ -83,6 +88,8 @@ export const AI_CONTEXT_BUNDLE_COMMAND =
   "pccxSystemVerilog.buildAIContextBundle";
 export const VALIDATION_PROPOSAL_COMMAND =
   "pccxSystemVerilog.proposeValidationCommand";
+export const AUDIT_VALIDATION_PREFLIGHT_COMMAND =
+  "pccxSystemVerilog.auditValidationProposalPreflight";
 export const APPROVED_VALIDATION_RUNNER_COMMAND =
   "pccxSystemVerilog.runApprovedValidationCommand";
 export const SHOW_RECENT_VALIDATION_RESULTS_COMMAND =
@@ -295,6 +302,15 @@ function patchProposalQuickPickItems(proposals) {
   }));
 }
 
+function validationPreflightQuickPickItems(proposals) {
+  return proposals.map((proposal) => ({
+    label: proposal.label,
+    description: [proposal.runnerPolicy, proposal.riskLevel, proposal.id].filter(Boolean).join(" "),
+    detail: proposal.reason,
+    proposalId: proposal.id,
+  }));
+}
+
 function validationOutputChannelFromRuntime(runtime = {}) {
   return runtime.validationOutputChannel ?? runtime.outputChannel;
 }
@@ -349,6 +365,9 @@ function appendCommandOutput(outputChannel, commandId, result) {
       execution: result.execution,
       diagnosticsHandoff: result.diagnosticsHandoffContext?.status ?? "unavailable",
     }, null, 2));
+  }
+  if (result.kind === "validation-proposal-preflight-audit") {
+    outputChannel.appendLine(formatValidationProposalPreflightAudit(result));
   }
   if (result.kind === "approved-validation-result") {
     outputChannel.appendLine(JSON.stringify({
@@ -787,6 +806,51 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
             },
           }),
         };
+      } catch (error) {
+        result = { ok: false, commandId, error: error.message };
+        vscodeApi?.window?.showWarningMessage?.(result.error, result);
+      }
+      appendCommandOutput(runtime.outputChannel, commandId, result);
+      return result;
+    }
+
+    if (commandId === AUDIT_VALIDATION_PREFLIGHT_COMMAND) {
+      let result;
+      try {
+        const request = createAssistantRequest(rawConfig, {
+          diagnosticsHandoffStatus: diagnosticsHandoffStatusFromRuntime(runtime),
+        });
+        let auditInput = input;
+        if (auditInput == null && typeof vscodeApi?.window?.showQuickPick === "function") {
+          const selected = await vscodeApi.window.showQuickPick(
+            validationPreflightQuickPickItems(listValidationCommandProposals({
+              contextBundle: {
+                diagnosticsHandoff: request.contextBundle.diagnosticsHandoff,
+              },
+            })),
+            {
+              title: "Validation Proposal Preflight Audit",
+              placeHolder: "Select a validation proposal to audit",
+            },
+          );
+          auditInput = selected?.proposalId ?? null;
+        }
+        result = {
+          ok: true,
+          commandId,
+          ...createValidationProposalPreflightAudit(auditInput ?? {}, {
+            contextBundle: {
+              diagnosticsHandoff: request.contextBundle.diagnosticsHandoff,
+            },
+          }),
+        };
+        const message =
+          `Validation preflight audit: ${result.proposalId || "unknown"} ${result.status}.`;
+        if (result.status === "passed") {
+          vscodeApi?.window?.showInformationMessage?.(message, result);
+        } else {
+          vscodeApi?.window?.showWarningMessage?.(message, result);
+        }
       } catch (error) {
         result = { ok: false, commandId, error: error.message };
         vscodeApi?.window?.showWarningMessage?.(result.error, result);

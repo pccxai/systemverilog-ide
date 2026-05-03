@@ -24,6 +24,7 @@
     "onCommand:pccxSystemVerilog.showAIAssistantStatus",
     "onCommand:pccxSystemVerilog.buildAIContextBundle",
     "onCommand:pccxSystemVerilog.proposeValidationCommand",
+    "onCommand:pccxSystemVerilog.auditValidationProposalPreflight",
     "onCommand:pccxSystemVerilog.runApprovedValidationCommand",
     "onCommand:pccxSystemVerilog.showRecentValidationResults",
     "onCommand:pccxSystemVerilog.showValidationCacheStatus",
@@ -80,6 +81,10 @@
       {
         "command": "pccxSystemVerilog.proposeValidationCommand",
         "title": "PCCX SystemVerilog: Propose Validation Command (Experimental)"
+      },
+      {
+        "command": "pccxSystemVerilog.auditValidationProposalPreflight",
+        "title": "PCCX SystemVerilog: Audit Validation Proposal Preflight (Experimental)"
       },
       {
         "command": "pccxSystemVerilog.runApprovedValidationCommand",

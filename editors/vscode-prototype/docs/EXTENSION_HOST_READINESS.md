@@ -126,18 +126,20 @@ checked-example symbols.  It executes
 `pccxSystemVerilog.showAIAssistantStatus`,
 `pccxSystemVerilog.buildAIContextBundle`,
 `pccxSystemVerilog.proposeValidationCommand`, and
+`pccxSystemVerilog.auditValidationProposalPreflight`,
 `pccxSystemVerilog.runApprovedValidationCommand`,
 `pccxSystemVerilog.showRecentValidationResults`,
 `pccxSystemVerilog.showValidationCacheStatus`,
 `pccxSystemVerilog.clearValidationResultCache`, and
 `pccxSystemVerilog.showPccxLabBackendStatus`, and
 `pccxSystemVerilog.showDiagnosticsHandoffSummary`, verifying
-disabled/backend `none` status, proposal-only actions, disabled runner
-blocking behavior, one explicitly enabled allowlisted validation run,
-bounded active-file and selected-symbol context, bounded validation-result
-cache summary handoff, status-only pccx-lab boundary data, diagnostics
-handoff summary data, and no provider/runtime calls.  This is not LSP,
-and there is no LSP provider yet.
+disabled/backend `none` status, proposal-only actions, validation
+proposal preflight audit data, disabled runner blocking behavior, one
+explicitly enabled allowlisted validation run, bounded active-file and
+selected-symbol context, bounded validation-result cache summary handoff,
+status-only pccx-lab boundary data, diagnostics handoff summary data, and
+no provider/runtime calls.  This is not LSP, and there is no LSP provider
+yet.
 
 ## AI Assistant Boundary
 
