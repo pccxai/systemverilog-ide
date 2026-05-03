@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import assert from "node:assert/strict";
 
 import {
@@ -11,6 +14,9 @@ import {
 import {
   cloneDefaultDiagnosticsHandoffConsumerSummary,
 } from "../src/diagnostics-handoff-status-surface.mjs";
+import {
+  cloneDefaultDeviceSessionStatusConsumerSummary,
+} from "../src/device-session-status-surface.mjs";
 
 function testAuditCountsBoundedContextShape() {
   const bundle = buildContextBundle(
@@ -40,6 +46,7 @@ function testAuditCountsBoundedContextShape() {
         { label: "fixture", summaryLines: ["TOKEN=hidden"] },
       ],
       diagnosticsHandoffSummary: cloneDefaultDiagnosticsHandoffConsumerSummary(),
+      deviceSessionStatusSummary: cloneDefaultDeviceSessionStatusConsumerSummary(),
     },
     {
       workspaceRoot: "/repo",
@@ -59,6 +66,7 @@ function testAuditCountsBoundedContextShape() {
   assert.equal(audit.launcherStatusEntryCount, 0);
   assert.equal(audit.labStatusEntryCount, 1);
   assert.equal(audit.diagnosticsHandoffEntryCount, 1);
+  assert.equal(audit.deviceSessionStatusEntryCount, 1);
   assert.equal(audit.redactionApplied, true);
   assert.equal(audit.truncationApplied, true);
   assert.ok(audit.excludedCategories.includes("node_modules"));
@@ -66,9 +74,11 @@ function testAuditCountsBoundedContextShape() {
   assert.equal(audit.safety.fullLogsExcluded, true);
   assert.equal(audit.safety.providerCalls, false);
   assert.equal(audit.safety.diagnosticsHandoffReadOnly, true);
+  assert.equal(audit.safety.deviceSessionStatusReadOnly, true);
   assert.match(text, /Context Bundle Audit/);
   assert.match(text, /validationSummaries: 1/);
   assert.match(text, /diagnosticsHandoffEntries: 1/);
+  assert.match(text, /deviceSessionStatusEntries: 1/);
   assert.doesNotMatch(JSON.stringify(audit), /TOKEN=hidden|\/repo/);
 }
 
@@ -79,6 +89,7 @@ function testEmptyAuditIsDeterministicAndSafe() {
   assert.equal(audit.snippetCount, 0);
   assert.equal(audit.validationSummaryCount, 0);
   assert.equal(audit.diagnosticsHandoffEntryCount, 0);
+  assert.equal(audit.deviceSessionStatusEntryCount, 0);
   assert.equal(audit.redactionApplied, false);
   assert.equal(audit.truncationApplied, false);
   assert.deepEqual(audit.excludedCategories, []);

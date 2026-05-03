@@ -239,6 +239,27 @@ weight loading, provider calls, MCP, LSP, marketplace, telemetry, upload,
 or write-back behavior. The boundary notes are tracked in
 [`docs/runtime-readiness-consumer.md`](./docs/runtime-readiness-consumer.md).
 
+`src/device-session-status-consumer.mjs` is a read-only adapter for the
+launcher device/session status JSON shape. It validates the checked
+`pccx.deviceSessionStatus.v0` Gemma 3N E4B plus KV260 fixture as data and
+returns a deterministic bounded summary. The current consumed answer is
+`device_session_status_placeholder_blocked`: connection, discovery,
+authentication, model load, session activity, log stream, diagnostics,
+and runtime readiness remain placeholder, inactive, not configured, or
+blocked status data.
+
+`src/device-session-status-surface.mjs` exposes that consumer summary as
+local status data. The context bundle can include the same summary when a
+device/session status surface or consumer summary is supplied. It records
+target model/device, connection state, discovery state, authentication
+state, runtime state, model load state, session state, log stream state,
+diagnostics state, readiness state, status-panel rows, counts, pccx-lab
+diagnostics placeholder state, and read-only safety flags. Missing or
+invalid status data stays unavailable or invalid context. This path does
+not execute launcher, pccx-lab, validator, serial, network, SSH, hardware,
+KV260 runtime, model weight loading, provider calls, MCP, LSP,
+marketplace, telemetry, upload, or write-back behavior.
+
 `src/command-handlers.mjs` is the experimental local command-handler
 scaffold.  It maps command ID -> normalized prototype settings -> known
 facade argument array -> facade JSON result -> testable UI action model.
@@ -487,6 +508,7 @@ Now:
 - pccx-lab backend status command
 - diagnostics handoff summary status command
 - runtime readiness consumer and context status data
+- device/session status consumer and context status data
 
 Next:
 
@@ -535,6 +557,8 @@ node editors/vscode-prototype/test/diagnostics-handoff-consumer.test.mjs
 node editors/vscode-prototype/test/diagnostics-handoff-status-surface.test.mjs
 node editors/vscode-prototype/test/runtime-readiness-consumer.test.mjs
 node editors/vscode-prototype/test/runtime-readiness-status-surface.test.mjs
+node editors/vscode-prototype/test/device-session-status-consumer.test.mjs
+node editors/vscode-prototype/test/device-session-status-surface.test.mjs
 node editors/vscode-prototype/test/local-workflow-status.test.mjs
 node editors/vscode-prototype/test/context-bundle-audit.test.mjs
 node editors/vscode-prototype/test/validation-result-summary.test.mjs

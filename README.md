@@ -221,6 +221,16 @@ launcher, execute pccx-lab, access the FPGA repository, execute KV260
 runtime code, load model weights, call providers, implement MCP or LSP,
 upload telemetry, or write back state.
 
+The VS Code prototype also has a read-only device/session status consumer
+for launcher `pccx.deviceSessionStatus.v0` JSON. The checked local example
+represents the KV260 connection, model load, session activity, diagnostics,
+and runtime readiness rows as placeholder or blocked status data. It
+validates only local JSON supplied by tests or future UI code and returns a
+bounded status surface for context use. It does not execute the launcher,
+execute pccx-lab, invoke a validator, open serial ports, scan networks,
+attempt SSH or authentication, access hardware, load model assets, call
+providers, upload telemetry, or write back state.
+
 ## Later track (deferred)
 
 - Local coding-assistant mode can propose interactions with `pccx-lab`
