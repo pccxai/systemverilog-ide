@@ -8,6 +8,9 @@ import {
 import {
   buildContextBundle,
 } from "../src/context-bundle.mjs";
+import {
+  cloneDefaultDiagnosticsHandoffConsumerSummary,
+} from "../src/diagnostics-handoff-status-surface.mjs";
 
 function testAuditCountsBoundedContextShape() {
   const bundle = buildContextBundle(
@@ -36,6 +39,7 @@ function testAuditCountsBoundedContextShape() {
       pccxLabOutputs: [
         { label: "fixture", summaryLines: ["TOKEN=hidden"] },
       ],
+      diagnosticsHandoffSummary: cloneDefaultDiagnosticsHandoffConsumerSummary(),
     },
     {
       workspaceRoot: "/repo",
@@ -54,14 +58,17 @@ function testAuditCountsBoundedContextShape() {
   assert.equal(audit.validationSummaryCount, 1);
   assert.equal(audit.launcherStatusEntryCount, 0);
   assert.equal(audit.labStatusEntryCount, 1);
+  assert.equal(audit.diagnosticsHandoffEntryCount, 1);
   assert.equal(audit.redactionApplied, true);
   assert.equal(audit.truncationApplied, true);
   assert.ok(audit.excludedCategories.includes("node_modules"));
   assert.ok(audit.excludedCategories.includes("node_modules/**"));
   assert.equal(audit.safety.fullLogsExcluded, true);
   assert.equal(audit.safety.providerCalls, false);
+  assert.equal(audit.safety.diagnosticsHandoffReadOnly, true);
   assert.match(text, /Context Bundle Audit/);
   assert.match(text, /validationSummaries: 1/);
+  assert.match(text, /diagnosticsHandoffEntries: 1/);
   assert.doesNotMatch(JSON.stringify(audit), /TOKEN=hidden|\/repo/);
 }
 
@@ -71,6 +78,7 @@ function testEmptyAuditIsDeterministicAndSafe() {
   assert.equal(audit.diagnosticCount, 0);
   assert.equal(audit.snippetCount, 0);
   assert.equal(audit.validationSummaryCount, 0);
+  assert.equal(audit.diagnosticsHandoffEntryCount, 0);
   assert.equal(audit.redactionApplied, false);
   assert.equal(audit.truncationApplied, false);
   assert.deepEqual(audit.excludedCategories, []);

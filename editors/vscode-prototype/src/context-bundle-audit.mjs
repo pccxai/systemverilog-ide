@@ -57,6 +57,7 @@ export function createContextBundleAudit(bundle = {}) {
     validationSummaryCount: validationSummaryCount(bundle),
     launcherStatusEntryCount: bundle?.launcher ? 1 : 0,
     labStatusEntryCount: Array.isArray(bundle?.pccxLab?.outputs) ? bundle.pccxLab.outputs.length : 0,
+    diagnosticsHandoffEntryCount: bundle?.diagnosticsHandoff?.summaryAvailable === true ? 1 : 0,
     redactionApplied: textContainsRedaction(bundle),
     truncationApplied: countTruncatedItems(bundle) > 0,
     truncatedItemCount: countTruncatedItems(bundle),
@@ -68,6 +69,7 @@ export function createContextBundleAudit(bundle = {}) {
       providerCalls: false,
       networkCalls: false,
       mcpCalls: false,
+      diagnosticsHandoffReadOnly: bundle?.diagnosticsHandoff?.safety?.readOnly === true,
     },
   };
   return audit;
@@ -83,6 +85,7 @@ export function formatContextBundleAudit(audit) {
     `validationSummaries: ${audit.validationSummaryCount}`,
     `launcherStatusEntries: ${audit.launcherStatusEntryCount}`,
     `labStatusEntries: ${audit.labStatusEntryCount}`,
+    `diagnosticsHandoffEntries: ${audit.diagnosticsHandoffEntryCount}`,
     `redactionApplied: ${audit.redactionApplied ? "yes" : "no"}`,
     `truncationApplied: ${audit.truncationApplied ? "yes" : "no"}`,
     `excludedCategories: ${audit.excludedCategories.join(", ")}`,

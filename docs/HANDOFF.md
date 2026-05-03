@@ -106,6 +106,12 @@ summary as data, returns JSON for tests or future UI code, and writes a
 small local text summary to the prototype output channel. It does not
 read raw handoff JSON in the UI layer.
 
+The local AI/context bundle can include the same diagnostics handoff
+summary as bounded context. It records the schema and handoff IDs,
+diagnostic counts, descriptor references, transport kinds, and read-only
+safety flags. Missing or invalid handoff data remains local unavailable
+or invalid context and does not trigger execution.
+
 This path is data-only. It does not execute `pccx-llm-launcher`, does not
 execute `pccx-lab`, does not invoke the pccx-lab validator command, does
 not spawn shell commands, does not implement MCP or LSP, does not call

@@ -596,6 +596,17 @@ function contextConfiguration(config) {
   };
 }
 
+function diagnosticsHandoffStatusFromRuntime(runtime = {}) {
+  if (runtime.recentDiagnosticsHandoffStatus?.kind === "diagnostics-handoff-status-surface") {
+    return runtime.recentDiagnosticsHandoffStatus;
+  }
+  try {
+    return createDiagnosticsHandoffStatusSurface(runtime.diagnosticsHandoffSummary);
+  } catch {
+    return null;
+  }
+}
+
 function collectActiveDiagnostics(vscodeApi, runtime, document) {
   if (!document?.uri) {
     return [];
@@ -687,6 +698,7 @@ function collectActiveDocumentContext(vscodeApi, runtime, config) {
       recentCommandStatus: runtime.recentCommandStatus ?? null,
       recentValidation: recentValidationHistory[0] ?? runtime.recentValidationSummary ?? null,
       recentValidationHistory,
+      diagnosticsHandoffStatus: diagnosticsHandoffStatusFromRuntime(runtime),
     },
   };
 }

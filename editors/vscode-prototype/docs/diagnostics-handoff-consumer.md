@@ -39,6 +39,13 @@ It is experimental and local-only. It does not read raw handoff JSON in
 the UI layer, does not execute launcher or pccx-lab, and does not invoke
 the pccx-lab validator command.
 
+`pccxSystemVerilog.buildAIContextBundle` can include a bounded
+`diagnosticsHandoff` section from the same status surface. That context
+section is summary-only: schema ID, handoff ID, diagnostic counts,
+descriptor references, transport kinds, and read-only safety flags.
+Missing or invalid handoff data is represented as unavailable/invalid
+context instead of executing a backend command.
+
 ## What It Does Not Do
 
 This boundary does not:
