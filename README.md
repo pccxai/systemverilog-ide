@@ -181,6 +181,13 @@ token-saving context bundle commands with no provider calls.  The
 guarded Extension Host runtime smoke uses only the controlled fixture
 under `editors/vscode-prototype/test/fixtures/live-workspace`.
 
+The VS Code prototype also has a read-only diagnostics handoff consumer
+for the launcher / pccx-lab `pccx.diagnosticsHandoff.v0` JSON shape. It
+parses a checked local fixture and returns deterministic summary data for
+future UI use. It does not execute the launcher, execute pccx-lab, invoke
+the pccx-lab validator, implement MCP or LSP, call providers, or touch
+hardware.
+
 ## Later track (deferred)
 
 - Local coding-assistant mode can propose interactions with `pccx-lab`

@@ -57,6 +57,12 @@ function testLocalWorkflowStatusUsesDeterministicLocalDataOnly() {
   assert.equal(status.launcherBoundary.state, "future");
   assert.equal(status.launcherBoundary.fixtureOnly, true);
   assert.equal(status.launcherBoundary.runtimeCalls, false);
+  assert.equal(status.diagnosticsHandoffBoundary.supportedSchemaVersion, "pccx.diagnosticsHandoff.v0");
+  assert.equal(status.diagnosticsHandoffBoundary.fixtureConsumer, true);
+  assert.equal(status.diagnosticsHandoffBoundary.readOnly, true);
+  assert.equal(status.diagnosticsHandoffBoundary.invokesLauncher, false);
+  assert.equal(status.diagnosticsHandoffBoundary.invokesPccxLab, false);
+  assert.equal(status.diagnosticsHandoffBoundary.lspImplemented, false);
   assert.equal(status.contextBundle.itemCount, 9);
   assert.equal(status.safety.providerCalls, false);
   assert.equal(status.safety.launcherCalls, false);
@@ -73,8 +79,11 @@ function testLocalWorkflowStatusDefaultsAreDisabledAndSafe() {
   assert.equal(status.recentValidation.count, 0);
   assert.equal(status.pccxLabBoundary.executes, false);
   assert.equal(status.launcherBoundary.launcherCalls, false);
+  assert.equal(status.diagnosticsHandoffBoundary.invokesLauncher, false);
+  assert.equal(status.diagnosticsHandoffBoundary.invokesPccxLab, false);
   assert.match(text, /Local Workflow Status/);
   assert.match(text, /validationRunner: disabled/);
+  assert.match(text, /diagnosticsHandoffBoundary: pccx\.diagnosticsHandoff\.v0 readOnly=yes/);
   assert.match(text, /no pccx-lab execution/);
   assert.doesNotMatch(JSON.stringify(status), /\/home\/|TOKEN=|model\.gguf/);
 }
