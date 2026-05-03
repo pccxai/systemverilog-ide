@@ -119,6 +119,10 @@ python -m pccx_ide_cli declarations fixtures/modules/ --format json
 python -m pccx_ide_cli organization fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli organization fixtures/organization/hierarchy_top.sv --format text
 
+# Module hierarchy view (pre-stable, read-only)
+python -m pccx_ide_cli hierarchy fixtures/organization/hierarchy_top.sv --format json
+python -m pccx_ide_cli hierarchy fixtures/organization/hierarchy_top.sv --format text
+
 # Refactoring proposal export (pre-stable, proposal-only)
 python -m pccx_ide_cli refactor-plan fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 python -m pccx_ide_cli refactor-plan fixtures/organization/hierarchy_top.sv --action extract-port --module top_mod --port-name valid_i --direction input --format text
@@ -173,10 +177,12 @@ records used by `index` without the legacy module-only wrapper. It is a
 CLI bridge scaffold, not semantic resolution or a full parser.
 
 `organization` exports scanner-based module boundary spans, a small
-hierarchy seed, and proposal-only refactoring metadata. It is read-only:
-it does not edit files, apply refactors, execute validation, run vendor
-tools, invoke `pccx-lab` or the launcher, or implement semantic
-elaboration. The output shape is pre-stable and is documented in
+hierarchy seed, and proposal-only refactoring metadata. `hierarchy`
+renders the same scanner data as a focused read-only hierarchy view for
+editor tree consumers. These commands do not edit files, apply refactors,
+execute validation, run vendor tools, invoke `pccx-lab` or the launcher,
+or implement semantic elaboration. The output shapes are pre-stable and
+documented in
 [`docs/MODULE_ORGANIZATION_WORKFLOW.md`](./docs/MODULE_ORGANIZATION_WORKFLOW.md).
 
 `refactor-plan` emits proposal-only rename-module, extract-port, and
@@ -225,7 +231,7 @@ The initial roadmap for navigation, diagnostics, read-only handoff
 surfaces, external editor planning, and later workflow tracks lives in
 [`docs/ROADMAP.md`](./docs/ROADMAP.md).
 The scanner-based module organization workflow for module boundaries,
-hierarchy seeds, and proposal-only refactoring planning is documented in
+hierarchy views, and proposal-only refactoring planning is documented in
 [`docs/MODULE_ORGANIZATION_WORKFLOW.md`](./docs/MODULE_ORGANIZATION_WORKFLOW.md).
 The planned AI-assisted SystemVerilog workflow, permission boundary, and
 pccx-lab controlled MCP/tool dependency are documented in

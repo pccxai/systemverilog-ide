@@ -3,9 +3,9 @@
 ## Status
 
 This is a pre-stable, scanner-based workflow for organizing modular RTL
-projects. It adds a read-only `organization` CLI surface that reports
-module boundary spans and a small hierarchy seed for editor navigation and
-reviewed refactoring planning.
+projects. It adds read-only `organization` and `hierarchy` CLI surfaces
+that report module boundary spans and scanner-based hierarchy data for
+editor navigation and reviewed refactoring planning.
 
 It is not a full SystemVerilog parser, not semantic elaboration, not an LSP
 implementation, and not a write-capable refactoring engine.
@@ -15,6 +15,8 @@ implementation, and not a write-capable refactoring engine.
 ```bash
 python -m pccx_ide_cli organization <path> --format json
 python -m pccx_ide_cli organization <path> --format text
+python -m pccx_ide_cli hierarchy <path> --format json
+python -m pccx_ide_cli hierarchy <path> --format text
 python -m pccx_ide_cli refactor-plan <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-plan <path> --action extract-port --module <name> --port-name <name> --direction input --format text
 python -m pccx_ide_cli refactor-plan <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
@@ -46,6 +48,35 @@ The JSON envelope uses:
 ```
 
 The shape is pre-stable and may change while the editor bridge matures.
+
+The focused hierarchy view uses the same scanner data but emits a
+tree-oriented shape for editor consumers:
+
+```json
+{
+  "kind": "module-hierarchy-view",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "view_state": "available_as_data",
+  "module_count": 2,
+  "edge_count": 1,
+  "roots": [],
+  "tree": [],
+  "safety": {
+    "read_only": true,
+    "writes_files": false,
+    "applies_refactor": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The hierarchy view is display data only. It does not write files, apply
+refactors, run validation, execute shell commands, invoke `pccx-lab`,
+invoke the launcher, call providers, touch hardware, upload telemetry, or
+perform automatic repository actions.
 
 ## Module Boundary Detection
 
@@ -89,9 +120,10 @@ complete module spans:
 scan. `roots[]` lists known modules that are not resolved children, and
 `unresolved[]` lists candidate child types without a local declaration.
 
-This is a visualization seed for editor trees and review workflows. It does
-not run elaboration, expand macros, interpret generate blocks, or replace
-vendor tooling.
+This is a visualization seed for editor trees and review workflows. The
+`hierarchy` command renders it as JSON or text tree data. It does not run
+elaboration, expand macros, interpret generate blocks, or replace vendor
+tooling.
 
 ## Refactoring Boundary
 
@@ -173,5 +205,5 @@ actions.
 
 This workflow advances
 [`systemverilog-ide#8`](https://github.com/pccxai/systemverilog-ide/issues/8)
-with read-only module boundary detection, a hierarchy visualization seed, and
-a proposal-only refactoring boundary.
+with read-only module boundary detection, a focused hierarchy view, and a
+proposal-only refactoring boundary.

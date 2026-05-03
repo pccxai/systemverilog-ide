@@ -53,6 +53,15 @@ LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+HIERARCHY_VIEW_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based hierarchy visualization data only",
+    "single-line instantiation candidates only",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "no refactor application, file write, validation run, or patch generation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 REFACTOR_ACTIONS: tuple[str, ...] = (
     "rename-module",
     "extract-port",
@@ -83,6 +92,22 @@ def _refactor_safety_flags() -> dict[str, bool]:
         "applies_patch": False,
         "writes_files": False,
         "moves_files": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _hierarchy_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "writes_files": False,
+        "applies_refactor": False,
         "runs_validation": False,
         "runs_shell": False,
         "invokes_pccx_lab": False,
@@ -267,6 +292,113 @@ def _module_lookup(modules: list[dict[str, Any]], name: str) -> list[dict[str, A
         for module in modules
         if module["name"] == name
     ]
+
+
+def _module_summary(module: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "complete": module["complete"],
+        "end_line": module["end_line"],
+        "file": module["file"],
+        "name": module["name"],
+        "start_line": module["start_line"],
+    }
+
+
+def _hierarchy_tree_rows(
+    modules: list[dict[str, Any]],
+    hierarchy: dict[str, Any],
+) -> list[dict[str, Any]]:
+    modules_by_name: dict[str, dict[str, Any]] = {}
+    for module in modules:
+        modules_by_name.setdefault(module["name"], module)
+
+    children_by_parent: dict[str, list[dict[str, Any]]] = {}
+    for edge in hierarchy["edges"]:
+        children_by_parent.setdefault(edge["parent"], []).append(edge)
+
+    roots = hierarchy["roots"] or sorted(modules_by_name)
+    rows: list[dict[str, Any]] = []
+
+    def visit(
+        module_name: str,
+        depth: int,
+        path: list[str],
+        via_edge: dict[str, Any] | None,
+    ) -> None:
+        module = modules_by_name.get(module_name)
+        next_path = [*path, module_name]
+        row = {
+            "complete": module["complete"] if module is not None else False,
+            "depth": depth,
+            "file": module["file"] if module is not None else via_edge["file"],
+            "module": module_name,
+            "path": next_path,
+            "start_line": (
+                module["start_line"] if module is not None else via_edge["line"]
+            ),
+            "state": (
+                "root"
+                if via_edge is None
+                else "resolved" if via_edge["resolved"] else "unresolved"
+            ),
+            "via_instance": via_edge["instance"] if via_edge is not None else None,
+            "via_parent": via_edge["parent"] if via_edge is not None else None,
+        }
+        rows.append(row)
+
+        if module_name in path:
+            row["state"] = "cycle"
+            return
+
+        for edge in children_by_parent.get(module_name, []):
+            if edge["resolved"]:
+                visit(edge["child"], depth + 1, next_path, edge)
+            else:
+                rows.append({
+                    "complete": False,
+                    "depth": depth + 1,
+                    "file": edge["file"],
+                    "module": edge["child"],
+                    "path": [*next_path, edge["child"]],
+                    "start_line": edge["line"],
+                    "state": "unresolved",
+                    "via_instance": edge["instance"],
+                    "via_parent": edge["parent"],
+                })
+
+    for root in roots:
+        visit(root, 0, [], None)
+    return rows
+
+
+def build_module_hierarchy_view(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    modules_by_name: dict[str, dict[str, Any]] = {}
+    for module in modules:
+        modules_by_name.setdefault(module["name"], module)
+
+    return {
+        "edge_count": len(hierarchy["edges"]),
+        "edges": hierarchy["edges"],
+        "kind": "module-hierarchy-view",
+        "limitations": list(HIERARCHY_VIEW_LIMITATIONS),
+        "module_count": len(modules),
+        "root_count": len(hierarchy["roots"]),
+        "roots": [
+            _module_summary(modules_by_name[root])
+            for root in hierarchy["roots"]
+            if root in modules_by_name
+        ],
+        "safety": _hierarchy_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "tree": _hierarchy_tree_rows(modules, hierarchy),
+        "unresolved": hierarchy["unresolved"],
+        "view_state": "available_as_data",
+    }
 
 
 def _requested_change(
@@ -466,4 +598,34 @@ def format_module_organization_text(export: dict[str, Any]) -> str:
     if hierarchy["unresolved"]:
         lines.append(f"unresolved: {', '.join(hierarchy['unresolved'])}")
     lines.append("refactoring: proposal-only, no file writes")
+    return "\n".join(lines) + "\n"
+
+
+def format_module_hierarchy_text(view: dict[str, Any]) -> str:
+    lines = [
+        f"source: {view['source']}",
+        f"hierarchy view: {view['view_state']}",
+        f"{view['module_count']} module"
+        f"{'s' if view['module_count'] != 1 else ''}",
+        f"{view['edge_count']} hierarchy edge"
+        f"{'s' if view['edge_count'] != 1 else ''}",
+        "tree:",
+    ]
+    if not view["tree"]:
+        lines.append("  empty")
+    for row in view["tree"]:
+        indent = "  " * (row["depth"] + 1)
+        if row["via_instance"] is None:
+            lines.append(f"{indent}{row['module']} ({row['state']})")
+        else:
+            lines.append(
+                f"{indent}{row['module']} as {row['via_instance']} "
+                f"({row['state']})"
+            )
+    if view["unresolved"]:
+        lines.append(f"unresolved: {', '.join(view['unresolved'])}")
+    lines.append(
+        "read-only: no file writes, refactors, validation, lab, launcher, "
+        "provider, or hardware execution"
+    )
     return "\n".join(lines) + "\n"
