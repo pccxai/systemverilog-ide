@@ -67,6 +67,7 @@ async function run() {
     "pccxSystemVerilog.showAIAssistantStatus",
     "pccxSystemVerilog.buildAIContextBundle",
     "pccxSystemVerilog.proposeValidationCommand",
+    "pccxSystemVerilog.auditValidationProposalPreflight",
     "pccxSystemVerilog.runApprovedValidationCommand",
     "pccxSystemVerilog.showRecentValidationResults",
     "pccxSystemVerilog.showValidationCacheStatus",
@@ -403,6 +404,29 @@ async function run() {
   assert.ok(validationProposal.proposals.every((proposal) => (
     proposal.preflight.diagnosticsHandoff.status === "available"
   )));
+
+  const validationPreflightAudit = await vscode.commands.executeCommand(
+    "pccxSystemVerilog.auditValidationProposalPreflight",
+    { proposalId: "vscodeAdapterSmoke" },
+  );
+  assert.equal(validationPreflightAudit.ok, true);
+  assert.equal(validationPreflightAudit.kind, "validation-proposal-preflight-audit");
+  assert.equal(validationPreflightAudit.status, "passed");
+  assert.equal(validationPreflightAudit.eligibleForApprovedRunner, true);
+  assert.equal(validationPreflightAudit.executes, false);
+  assert.equal(validationPreflightAudit.diagnosticsHandoff.status, "available");
+  assert.equal(validationPreflightAudit.diagnosticsHandoff.contextOnly, true);
+  assert.equal(validationPreflightAudit.safety.automaticExecution, false);
+  assert.equal(validationPreflightAudit.safety.allowlistBroadened, false);
+
+  const blockedValidationPreflightAudit = await vscode.commands.executeCommand(
+    "pccxSystemVerilog.auditValidationProposalPreflight",
+    { proposalId: "vscodeAdapterSmoke", command: "bash scripts/vscode-adapter-smoke.sh; rm -rf /" },
+  );
+  assert.equal(blockedValidationPreflightAudit.ok, true);
+  assert.equal(blockedValidationPreflightAudit.status, "failed");
+  assert.equal(blockedValidationPreflightAudit.eligibleForApprovedRunner, false);
+  assert.equal(blockedValidationPreflightAudit.findings.rawShellString, true);
 
   const patchPreview = await vscode.commands.executeCommand(
     "pccxSystemVerilog.showPatchProposalPreview",

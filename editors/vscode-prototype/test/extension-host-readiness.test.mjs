@@ -104,6 +104,7 @@ async function testReadinessDocsAndCiPolicy() {
   assert.match(`${readme}\n${readiness}`, /buildAIContextBundle/);
   assert.match(`${readme}\n${readiness}`, /selected-symbol context/i);
   assert.match(`${readme}\n${readiness}`, /proposeValidationCommand/);
+  assert.match(`${readme}\n${readiness}`, /auditValidationProposalPreflight/);
   assert.match(`${readme}\n${readiness}`, /runApprovedValidationCommand/);
   assert.match(`${readme}\n${readiness}`, /showRecentValidationResults/);
   assert.match(`${readme}\n${readiness}`, /showValidationCacheStatus/);
@@ -116,6 +117,7 @@ async function testReadinessDocsAndCiPolicy() {
   assert.match(`${readme}\n${readiness}`, /showDiagnosticsHandoffSummary/);
   assert.match(`${readme}\n${readiness}`, /context bundle command/i);
   assert.match(`${readme}\n${readiness}`, /validation command proposal/i);
+  assert.match(`${readme}\n${readiness}`, /validation proposal preflight audit/i);
   assert.match(`${readme}\n${readiness}`, /patch proposal contract/i);
   assert.match(`${readme}\n${readiness}`, /validation-to-patch handoff/i);
   assert.match(`${readme}\n${readiness}`, /pccx-lab command descriptor contract/i);
@@ -169,6 +171,7 @@ async function testRuntimeRunnerIsPinnedAndBounded() {
   assert.match(suite, /buildAIContextBundle/);
   assert.match(suite, /selectedContext/);
   assert.match(suite, /proposeValidationCommand/);
+  assert.match(suite, /auditValidationProposalPreflight/);
   assert.match(suite, /runApprovedValidationCommand/);
   assert.match(suite, /showRecentValidationResults/);
   assert.match(suite, /showValidationCacheStatus/);

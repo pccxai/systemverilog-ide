@@ -148,6 +148,11 @@ references, recent command status, current mode, validation summaries, and
 bounded snippets by path/range instead of whole workspaces.  Any command
 proposal or validation proposal must remain proposal-only until an
 editor/user-controlled executor accepts an allowlisted proposal ID.
+Validation proposal preflight audit sits before that approved runner
+handoff and returns bounded status only: it checks proposal ID, fixed
+command shape, existing allowlist membership, blocked launcher/pccx-lab
+or shell paths, unsupported execution wording, and diagnostics handoff
+context-only handling without executing commands.
 Patch proposals are also contract-only: they may describe reviewed edits
 with repository-relative paths and bounded hunk previews, but they do not
 apply changes or execute commands.
@@ -160,9 +165,10 @@ Launcher status contracts are also status-only and do not call
 pccx-llm-launcher, include model paths, include board logs, or make device
 performance claims.
 Approved validation execution must use fixed argument arrays, bounded
-output, an explicit user-approved command invocation, and no shell
-interpolation.  pccx-lab command execution remains future/prepared in
-this prototype.
+output, an explicit user-approved command invocation, no shell
+interpolation, and a passing preflight audit immediately before the
+runner reaches execution.  pccx-lab command execution remains
+future/prepared in this prototype.
 
 `problems` converts local diagnostics and log records into editor-friendly
 problem records.  `index` provides scanner-based module/package/interface

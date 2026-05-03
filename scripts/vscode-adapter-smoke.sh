@@ -18,6 +18,7 @@ node editors/vscode-prototype/test/context-bundle.test.mjs
 node editors/vscode-prototype/test/selected-symbol-context.test.mjs
 node editors/vscode-prototype/test/ai-assistant-boundary.test.mjs
 node editors/vscode-prototype/test/validation-proposals.test.mjs
+node editors/vscode-prototype/test/validation-proposal-preflight-audit.test.mjs
 node editors/vscode-prototype/test/patch-proposal-contract.test.mjs
 node editors/vscode-prototype/test/patch-proposal-preview.test.mjs
 node editors/vscode-prototype/test/validation-patch-handoff.test.mjs

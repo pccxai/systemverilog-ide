@@ -7,6 +7,9 @@ import {
   createValidationResultSummary,
   summarizeOutputText,
 } from "./validation-result-summary.mjs";
+import {
+  createValidationProposalPreflightAudit,
+} from "./validation-proposal-preflight-audit.mjs";
 
 export const APPROVED_VALIDATION_RESULT_VERSION = "pccx.approvedValidationResult.v0";
 
@@ -76,6 +79,7 @@ function blockedResult(proposalId, proposal, reason, options = {}) {
   const result = {
     ...safeBaseResult(proposalId, proposal),
     blockedReason: reason,
+    preflightAudit: options.preflightAudit ?? null,
     startedAt: options.startedAt ?? "",
     finishedAt: options.finishedAt ?? "",
     durationMs: durationMs(startedMs, finishedMs),
@@ -241,6 +245,24 @@ export async function runApprovedValidationProposal(input, rawConfig = {}, optio
     );
   }
 
+  const preflightAudit = createValidationProposalPreflightAudit(input);
+  if (!preflightAudit.eligibleForApprovedRunner) {
+    const finishedMs = options.clock?.now?.() ?? Date.now();
+    return blockedResult(
+      proposalId,
+      proposal,
+      preflightAudit.blockedReason || "validation proposal preflight audit failed",
+      {
+        maxOutputLines,
+        startedMs,
+        finishedMs,
+        startedAt,
+        finishedAt: nowIso(options.clock ?? Date),
+        preflightAudit,
+      },
+    );
+  }
+
   let executable;
   let args;
   try {
@@ -253,6 +275,7 @@ export async function runApprovedValidationProposal(input, rawConfig = {}, optio
       finishedMs,
       startedAt,
       finishedAt: nowIso(options.clock ?? Date),
+      preflightAudit,
     });
   }
 
@@ -288,6 +311,7 @@ export async function runApprovedValidationProposal(input, rawConfig = {}, optio
     startedAt,
     finishedAt: nowIso(options.clock ?? Date),
     durationMs: durationMs(startedMs, finishedMs),
+    preflightAudit,
     ok: status === "passed",
     safety: {
       allowlisted: true,

@@ -120,6 +120,14 @@ proposal layer does not parse raw handoff JSON and does not add launcher,
 pccx-lab, validator, shell, provider, runtime, MCP, LSP, marketplace,
 telemetry, upload, or write-back flows.
 
+Validation proposal preflight audit is the next bounded data-only handoff
+before the approved runner path. It re-checks the proposal ID, fixed
+command template, existing approved-runner allowlist membership, blocked
+launcher/pccx-lab/shell paths, pccx-lab diagnostics handoff validator
+wording, unsupported execution wording, and diagnostics handoff
+context-only handling. The audit returns bounded JSON/text status and
+does not execute commands or expand the runner allowlist.
+
 This path is data-only. It does not execute `pccx-llm-launcher`, does not
 execute `pccx-lab`, does not invoke the pccx-lab validator command, does
 not spawn shell commands, does not implement MCP or LSP, does not call
@@ -382,7 +390,9 @@ python -m pccx_ide_cli problems from-xsim-log fixtures/xsim/mixed.log --format t
   boundary.  The current VS Code prototype only has boundary types,
   status/context commands, and tests: no AI provider calls, no local chat
   backend runtime calls, no MCP server implementation, and no direct
-  execution of command or validation proposals.
+  execution of command or validation proposals.  Validation proposal
+  preflight audit remains a bounded review step before any approved
+  runner invocation.
 
 These are intentionally unresolved while both sides mature.
 

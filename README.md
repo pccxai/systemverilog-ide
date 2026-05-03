@@ -195,6 +195,11 @@ derived from that normalized context-bundle `diagnosticsHandoff` section.
 The proposal data reports available, unavailable, or invalid handoff
 status plus bounded notes for local UI display. It does not parse raw
 handoff JSON in the proposal layer and does not add any execution path.
+The prototype also has a validation proposal preflight audit command that
+checks a proposal ID and fixed command template before the approved runner
+handoff. That audit returns bounded JSON/text status only; it does not
+execute launcher, pccx-lab, validator, shell, provider, runtime, MCP, LSP,
+marketplace, telemetry, upload, or write-back flows.
 
 ## Later track (deferred)
 

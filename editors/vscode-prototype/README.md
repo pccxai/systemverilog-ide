@@ -388,12 +388,25 @@ display.  It does not parse raw handoff JSON in the proposal layer, spawn
 a process, call pccx-lab, call an AI provider, write files, or run git
 operations.
 
+`pccxSystemVerilog.auditValidationProposalPreflight` is a review-only
+preflight audit between proposal display and the approved runner handoff.
+It accepts a proposal ID or checked proposal-shaped data, re-resolves the
+existing proposal allowlist, and returns bounded JSON/text explaining
+whether the proposal is eligible for the existing approved runner path.
+It checks for missing or unknown IDs, malformed command shape, raw shell
+strings, launcher commands, pccx-lab commands, pccx-lab diagnostics
+handoff validator invocation, provider/runtime/KV260/MCP/LSP/marketplace
+execution wording, and diagnostics handoff data appearing as execution
+input.  The audit does not execute commands and does not broaden the
+runner allowlist.
+
 `pccxSystemVerilog.runApprovedValidationCommand` is a separate approved
 validation runner boundary.  It is disabled by default; execution requires
 `pccxSystemVerilog.validationRunner.enabled=true` and
 `pccxSystemVerilog.validationRunner.mode=allowlisted`.  The command
 accepts proposal IDs only, not raw command strings, and re-resolves those
-IDs through the internal allowlist before execution.  Initial runnable IDs
+IDs through the internal allowlist and preflight audit before execution.
+Initial runnable IDs
 are `vscodeAdapterSmoke`, `editorBridgeSmoke`, `exampleDriftCheck`, and
 `pytestBaseline`.  `extensionHostSmokeOptIn` remains proposal-only from
 inside the runner.  The runner uses fixed executable and argument arrays
@@ -447,6 +460,7 @@ Now:
 - AI assistant status command and bounded context bundle command
 - selected-symbol context
 - validation command proposal
+- validation proposal preflight audit
 - patch proposal contract
 - disabled-by-default approved validation runner boundary
 - recent validation summary and cache status command
@@ -472,10 +486,11 @@ Later:
 1. Inspect checked-example or explicit live workspace diagnostics and navigation.
 2. Build a selected-symbol AI context bundle for the active editor state.
 3. Propose a validation command as data with `pccxSystemVerilog.proposeValidationCommand`.
-4. User approves an allowlisted validation proposal ID.
-5. Run `pccxSystemVerilog.runApprovedValidationCommand` only after the runner is explicitly enabled.
-6. Inspect the bounded validation cache status and feed the summary back into the context bundle.
-7. Future local coding-assistant mode can propose a patch or next validation step, but does not execute either directly.
+4. Audit the proposal handoff with `pccxSystemVerilog.auditValidationProposalPreflight`.
+5. User approves an allowlisted validation proposal ID.
+6. Run `pccxSystemVerilog.runApprovedValidationCommand` only after the runner is explicitly enabled.
+7. Inspect the bounded validation cache status and feed the summary back into the context bundle.
+8. Future local coding-assistant mode can propose a patch or next validation step, but does not execute either directly.
 
 ## Local Smoke
 
@@ -489,6 +504,7 @@ node editors/vscode-prototype/test/context-bundle.test.mjs
 node editors/vscode-prototype/test/selected-symbol-context.test.mjs
 node editors/vscode-prototype/test/ai-assistant-boundary.test.mjs
 node editors/vscode-prototype/test/validation-proposals.test.mjs
+node editors/vscode-prototype/test/validation-proposal-preflight-audit.test.mjs
 node editors/vscode-prototype/test/patch-proposal-contract.test.mjs
 node editors/vscode-prototype/test/patch-proposal-preview.test.mjs
 node editors/vscode-prototype/test/validation-patch-handoff.test.mjs
