@@ -301,7 +301,13 @@ code, duration/timestamps, working-directory kind, command kind, bounded
 stdout/stderr summaries, truncation/redaction flags, failure hints, and
 safety metadata.  It does not include full logs, raw shell command
 strings, raw absolute private paths, generated artifacts, or bulk file
-content.  The selected-symbol
+content.  The bundle can also include the diagnostics handoff summary
+section from `src/diagnostics-handoff-status-surface.mjs` as read-only
+adapter data.  That section carries counts, descriptor references,
+transport kinds, and safety flags only; missing or invalid handoff data is
+reported as unavailable/invalid context and does not trigger launcher,
+pccx-lab, validator, shell, provider, runtime, MCP, LSP, telemetry,
+upload, or write-back behavior.  The selected-symbol
 context extracts simple SystemVerilog-like lexical cues such as the symbol
 text, current line, and nearby module/package/interface/parameter/function
 or task declaration; it is not full semantic analysis.  The bundle

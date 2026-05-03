@@ -354,6 +354,19 @@ async function run() {
     contextResult.contextBundle.recentCommand.commandId,
     "pccxSystemVerilog.showLiveWorkspaceNavigation",
   );
+  assert.equal(contextResult.contextBundle.diagnosticsHandoff.status, "available");
+  assert.equal(contextResult.contextBundle.diagnosticsHandoff.summaryAvailable, true);
+  assert.equal(contextResult.contextBundle.diagnosticsHandoff.source.adapterOutput, true);
+  assert.equal(contextResult.contextBundle.diagnosticsHandoff.source.rawHandoffParsedByUi, false);
+  assert.equal(contextResult.contextBundle.diagnosticsHandoff.safety.launcherExecution, false);
+  assert.equal(contextResult.contextBundle.diagnosticsHandoff.safety.pccxLabExecution, false);
+  assert.equal(contextResult.contextBundle.diagnosticsHandoff.safety.pccxLabValidatorInvocation, false);
+  assert.equal(contextResult.contextBundle.diagnosticsHandoff.safety.shellExecution, false);
+  assert.equal(contextResult.contextBundle.diagnosticsHandoff.safety.providerCalls, false);
+  assert.equal(contextResult.contextBundle.diagnosticsHandoff.safety.runtimeCalls, false);
+  assert.equal(contextResult.contextBundle.diagnosticsHandoff.safety.mcpCalls, false);
+  assert.equal(contextResult.contextBundle.diagnosticsHandoff.safety.lspImplemented, false);
+  assert.equal(contextResult.contextSummary.diagnosticsHandoff.diagnosticCount, 5);
   assert.doesNotMatch(JSON.stringify(contextResult.contextBundle), /\/home\//);
   assert.ok(contextResult.contextBundle.excludedPathPatterns.includes("node_modules/**"));
   assert.doesNotMatch(JSON.stringify(contextResult.contextBundle), /AGENTS\.md/);
@@ -473,6 +486,8 @@ async function run() {
       summaryOnly: true,
       fullLogsExcluded: true,
     });
+    assert.equal(postValidationContext.contextBundle.diagnosticsHandoff.summaryAvailable, true);
+    assert.equal(postValidationContext.contextBundle.diagnosticsHandoff.safety.readOnly, true);
 
     const cacheStatus = await vscode.commands.executeCommand(
       "pccxSystemVerilog.showValidationCacheStatus",

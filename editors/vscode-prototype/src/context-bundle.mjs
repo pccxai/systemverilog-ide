@@ -1,5 +1,13 @@
 import { isAbsolute, relative } from "node:path";
 
+import {
+  DIAGNOSTICS_HANDOFF_CATEGORIES,
+  DIAGNOSTICS_HANDOFF_SEVERITIES,
+} from "./diagnostics-handoff-consumer.mjs";
+import {
+  createDiagnosticsHandoffStatusSurface,
+} from "./diagnostics-handoff-status-surface.mjs";
+
 export const CONTEXT_BUNDLE_VERSION = "pccx.contextBundle.v0";
 export const CONTEXT_BUNDLE_SOURCE = "pccx-systemverilog-ide";
 
@@ -12,6 +20,9 @@ export const DEFAULT_CONTEXT_BUNDLE_LIMITS = Object.freeze({
   maxRecentValidationResults: 5,
   maxTextCharacters: 4000,
 });
+
+export const CONTEXT_BUNDLE_DIAGNOSTICS_HANDOFF_VERSION =
+  "pccx.contextBundleDiagnosticsHandoff.v0";
 
 const EXCLUDED_PATH_SEGMENTS = new Set([
   ".git",
@@ -512,6 +523,176 @@ function normalizeRecentValidationHistory(history, limits) {
     .slice(0, limits.maxRecentValidationResults);
 }
 
+function diagnosticsHandoffSafetyBase() {
+  return {
+    dataOnly: true,
+    readOnly: true,
+    localOnly: true,
+    launcherExecution: false,
+    pccxLabExecution: false,
+    pccxLabValidatorInvocation: false,
+    shellExecution: false,
+    providerCalls: false,
+    networkCalls: false,
+    runtimeCalls: false,
+    mcpCalls: false,
+    lspImplemented: false,
+    marketplaceFlow: false,
+    telemetry: false,
+    automaticUpload: false,
+    writeBack: false,
+  };
+}
+
+function missingDiagnosticsHandoffContext(status = "notAvailable", reason = "") {
+  return {
+    version: CONTEXT_BUNDLE_DIAGNOSTICS_HANDOFF_VERSION,
+    kind: "diagnostics-handoff-context",
+    status,
+    summaryAvailable: false,
+    source: {
+      adapterOutput: false,
+      rawHandoffParsedByUi: false,
+    },
+    handoff: null,
+    diagnostics: {
+      count: 0,
+      bySeverity: {},
+      byCategory: {},
+    },
+    descriptorRefs: null,
+    transportKinds: [],
+    limitations: [],
+    safety: diagnosticsHandoffSafetyBase(),
+    reason,
+  };
+}
+
+function normalizeCountMap(value, keys) {
+  return Object.fromEntries(keys.map((key) => {
+    const count = value?.[key];
+    return [key, Math.max(0, Math.floor(clampNumber(count)))];
+  }));
+}
+
+function normalizeDiagnosticsHandoffStatusSurface(surface, limits) {
+  return {
+    version: CONTEXT_BUNDLE_DIAGNOSTICS_HANDOFF_VERSION,
+    kind: "diagnostics-handoff-context",
+    status: scrubText(surface.readiness?.status ?? "available", 80),
+    summaryAvailable: surface.readiness?.summaryAvailable === true,
+    source: {
+      adapterOutput: surface.source?.adapterOutput === true,
+      rawHandoffParsedByUi: surface.source?.rawHandoffParsedByUi === true,
+    },
+    handoff: surface.handoff
+      ? {
+          schemaVersion: scrubText(surface.handoff.schemaVersion ?? "", 120),
+          handoffId: scrubText(surface.handoff.handoffId ?? "", 160),
+          handoffKind: scrubText(surface.handoff.handoffKind ?? "", 120),
+          producerId: scrubText(surface.handoff.producerId ?? "", 120),
+          consumerId: scrubText(surface.handoff.consumerId ?? "", 120),
+          targetKind: scrubText(surface.handoff.targetKind ?? "", 120),
+        }
+      : null,
+    diagnostics: {
+      count: Math.max(0, Math.floor(clampNumber(surface.diagnostics?.count))),
+      bySeverity: normalizeCountMap(
+        surface.diagnostics?.bySeverity,
+        DIAGNOSTICS_HANDOFF_SEVERITIES,
+      ),
+      byCategory: normalizeCountMap(
+        surface.diagnostics?.byCategory,
+        DIAGNOSTICS_HANDOFF_CATEGORIES,
+      ),
+    },
+    descriptorRefs: surface.descriptorRefs
+      ? {
+          launcherOperationId: scrubText(surface.descriptorRefs.launcherOperationId ?? "", 160),
+          modelId: scrubText(surface.descriptorRefs.modelId ?? "", 160),
+          runtimeId: scrubText(surface.descriptorRefs.runtimeId ?? "", 160),
+          referenceKind: scrubText(surface.descriptorRefs.referenceKind ?? "", 120),
+        }
+      : null,
+    transportKinds: Array.isArray(surface.transportKinds)
+      ? surface.transportKinds.map((kind) => scrubText(kind, 120)).slice(0, 4)
+      : [],
+    limitations: Array.isArray(surface.limitations)
+      ? surface.limitations.map((item) => scrubText(item, 500)).slice(0, 4)
+      : [],
+    safety: {
+      ...diagnosticsHandoffSafetyBase(),
+      dataOnly: surface.safety?.dataOnly === true,
+      readOnly: surface.safety?.readOnly === true,
+      localOnly: surface.safety?.localOnly === true,
+      launcherExecution: surface.safety?.launcherExecution === true,
+      pccxLabExecution: surface.safety?.pccxLabExecution === true,
+      pccxLabValidatorInvocation: surface.safety?.pccxLabValidatorInvocation === true,
+      shellExecution: surface.safety?.shellExecution === true,
+      providerCalls: surface.safety?.providerCalls === true,
+      networkCalls: surface.safety?.networkCalls === true,
+      runtimeCalls: surface.safety?.runtimeCalls === true,
+      mcpCalls: surface.safety?.mcpCalls === true,
+      lspImplemented: surface.safety?.lspImplemented === true,
+      marketplaceFlow: surface.safety?.marketplaceFlow === true,
+      telemetry: surface.safety?.telemetry === true,
+      automaticUpload: surface.safety?.automaticUpload === true,
+      writeBack: surface.safety?.writeBack === true,
+    },
+  };
+}
+
+function assertDiagnosticsHandoffContextSafety(context) {
+  const safety = context.safety ?? {};
+  if (
+    safety.dataOnly !== true ||
+    safety.readOnly !== true ||
+    safety.launcherExecution === true ||
+    safety.pccxLabExecution === true ||
+    safety.pccxLabValidatorInvocation === true ||
+    safety.shellExecution === true ||
+    safety.providerCalls === true ||
+    safety.networkCalls === true ||
+    safety.runtimeCalls === true ||
+    safety.mcpCalls === true ||
+    safety.lspImplemented === true ||
+    safety.marketplaceFlow === true ||
+    safety.telemetry === true ||
+    safety.automaticUpload === true ||
+    safety.writeBack === true ||
+    context.source?.rawHandoffParsedByUi === true
+  ) {
+    throw new Error("diagnostics handoff context must remain data-only and read-only");
+  }
+}
+
+function normalizeDiagnosticsHandoffContext(input, limits) {
+  const suppliedSurface = input?.diagnosticsHandoffStatus ??
+    input?.diagnosticsHandoff?.statusSurface ??
+    null;
+  const suppliedSummary = input?.diagnosticsHandoffSummary ??
+    input?.diagnosticsHandoff?.consumerSummary ??
+    null;
+
+  if (!suppliedSurface && !suppliedSummary) {
+    return missingDiagnosticsHandoffContext();
+  }
+
+  try {
+    const surface = suppliedSurface?.kind === "diagnostics-handoff-status-surface"
+      ? suppliedSurface
+      : createDiagnosticsHandoffStatusSurface(suppliedSummary);
+    const context = normalizeDiagnosticsHandoffStatusSurface(surface, limits);
+    assertDiagnosticsHandoffContextSafety(context);
+    return context;
+  } catch (error) {
+    return missingDiagnosticsHandoffContext(
+      "invalid",
+      scrubText(error.message, limits.maxTextCharacters),
+    );
+  }
+}
+
 export function buildContextBundle(input = {}, options = {}) {
   const limits = mergeLimits(options.limits);
   const workspaceRoot = options.workspaceRoot ?? input.workspaceRoot ?? null;
@@ -579,6 +760,7 @@ export function buildContextBundle(input = {}, options = {}) {
         .map((entry) => normalizeLogSummary(entry, limits))
         .slice(0, limits.maxFiles),
     },
+    diagnosticsHandoff: normalizeDiagnosticsHandoffContext(input, limits),
     excludedPathSegments: [...EXCLUDED_PATH_SEGMENTS].sort(),
     excludedPathPatterns: [...EXCLUDED_PATH_PATTERNS],
     redaction: {
@@ -616,7 +798,20 @@ export function summarizeContextBundle(bundle) {
           recentHistoryCount: Array.isArray(bundle.validation.recentHistory)
             ? bundle.validation.recentHistory.length
             : 0,
-        }
+      }
       : null,
+    diagnosticsHandoff: bundle?.diagnosticsHandoff?.summaryAvailable
+      ? {
+          status: bundle.diagnosticsHandoff.status,
+          schemaVersion: bundle.diagnosticsHandoff.handoff?.schemaVersion ?? "",
+          diagnosticCount: bundle.diagnosticsHandoff.diagnostics?.count ?? 0,
+          blockedCount: bundle.diagnosticsHandoff.diagnostics?.bySeverity?.blocked ?? 0,
+          readOnly: bundle.diagnosticsHandoff.safety?.readOnly === true,
+        }
+      : {
+          status: bundle?.diagnosticsHandoff?.status ?? "notAvailable",
+          diagnosticCount: 0,
+          readOnly: bundle?.diagnosticsHandoff?.safety?.readOnly === true,
+        },
   };
 }

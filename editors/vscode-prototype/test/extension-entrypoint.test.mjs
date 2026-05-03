@@ -919,6 +919,20 @@ async function testAIContextBundleCommandUsesActiveEditorSelectionAndDiagnostics
   assert.equal(result.contextBundle.symbols.declarations.length, 1);
   assert.equal(result.contextBundle.symbols.declarations[0].path, "rtl/top.sv");
   assert.equal(result.contextBundle.recentCommand.commandId, "pccxSystemVerilog.publishCheckedExampleDiagnostics");
+  assert.equal(result.contextBundle.diagnosticsHandoff.status, "available");
+  assert.equal(result.contextBundle.diagnosticsHandoff.summaryAvailable, true);
+  assert.equal(result.contextBundle.diagnosticsHandoff.source.adapterOutput, true);
+  assert.equal(result.contextBundle.diagnosticsHandoff.source.rawHandoffParsedByUi, false);
+  assert.equal(result.contextBundle.diagnosticsHandoff.diagnostics.count, 5);
+  assert.equal(result.contextBundle.diagnosticsHandoff.safety.readOnly, true);
+  assert.equal(result.contextBundle.diagnosticsHandoff.safety.launcherExecution, false);
+  assert.equal(result.contextBundle.diagnosticsHandoff.safety.pccxLabExecution, false);
+  assert.equal(result.contextBundle.diagnosticsHandoff.safety.pccxLabValidatorInvocation, false);
+  assert.equal(result.contextBundle.diagnosticsHandoff.safety.shellExecution, false);
+  assert.equal(result.contextBundle.diagnosticsHandoff.safety.providerCalls, false);
+  assert.equal(result.contextBundle.diagnosticsHandoff.safety.runtimeCalls, false);
+  assert.equal(result.contextSummary.diagnosticsHandoff.status, "available");
+  assert.equal(result.contextSummary.diagnosticsHandoff.diagnosticCount, 5);
   assert.doesNotMatch(JSON.stringify(result.contextBundle), /\/repo/);
 }
 

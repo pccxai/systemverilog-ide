@@ -44,6 +44,10 @@ should earn CI promotion separately.
   runtime calls reported as unimplemented.
 - Selected-symbol context smoke for the context bundle.  The selected
   symbol context is lexical and bounded, not full semantic analysis.
+- Diagnostics handoff summary context smoke.  The context bundle carries
+  the existing adapter summary as bounded read-only context and does not
+  execute launcher, pccx-lab, validator commands, shell commands,
+  providers, MCP, or LSP.
 - Validation command proposal smoke.  The command returns data only and
   does not execute validation commands.
 - Approved validation runner smoke.  The command blocks by default,
@@ -166,6 +170,10 @@ diagnostics handoff adapter summary as a local status surface. It consumes
 adapter output as data, does not read raw handoff JSON in the UI layer,
 does not execute launcher or pccx-lab, and does not invoke the pccx-lab
 validator command.
+The same summary can flow into `pccxSystemVerilog.buildAIContextBundle`
+as a bounded `diagnosticsHandoff` context section. Missing or invalid
+handoff data is kept as local unavailable/invalid context and does not
+start a backend command.
 
 `pccxSystemVerilog.proposeValidationCommand` currently proposes only
 allowlisted templates, including the VS Code adapter smoke, editor bridge

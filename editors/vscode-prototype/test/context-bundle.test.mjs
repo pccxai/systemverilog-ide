@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
 
 import {
+  CONTEXT_BUNDLE_DIAGNOSTICS_HANDOFF_VERSION,
   CONTEXT_BUNDLE_VERSION,
   buildContextBundle,
   summarizeContextBundle,
 } from "../src/context-bundle.mjs";
+import {
+  cloneDefaultDiagnosticsHandoffConsumerSummary,
+  createDiagnosticsHandoffStatusSurface,
+} from "../src/diagnostics-handoff-status-surface.mjs";
 
 const SECRET_KEY_PATTERN =
   /\b(?:api[_-]?key|authorization|bearer|client[_-]?secret|password|private[_-]?key|secret|token)\b/i;
@@ -258,6 +263,7 @@ function fixtureInput() {
         redactionApplied: false,
       },
     ],
+    diagnosticsHandoffSummary: cloneDefaultDiagnosticsHandoffConsumerSummary(),
     pccxLabOutputs: [
       {
         flow: "problems from-check",
@@ -326,6 +332,27 @@ function testStableBoundedShape() {
   assert.equal(bundle.recentCommand.facade.mode, "example");
   assert.equal(bundle.pccxLab.outputs.length, 1);
   assert.deepEqual(bundle.pccxLab.outputs[0].lines, ["[redacted]"]);
+  assert.equal(bundle.diagnosticsHandoff.version, CONTEXT_BUNDLE_DIAGNOSTICS_HANDOFF_VERSION);
+  assert.equal(bundle.diagnosticsHandoff.kind, "diagnostics-handoff-context");
+  assert.equal(bundle.diagnosticsHandoff.status, "available");
+  assert.equal(bundle.diagnosticsHandoff.summaryAvailable, true);
+  assert.equal(bundle.diagnosticsHandoff.source.adapterOutput, true);
+  assert.equal(bundle.diagnosticsHandoff.source.rawHandoffParsedByUi, false);
+  assert.equal(bundle.diagnosticsHandoff.handoff.schemaVersion, "pccx.diagnosticsHandoff.v0");
+  assert.equal(bundle.diagnosticsHandoff.handoff.handoffKind, "read_only_handoff");
+  assert.equal(bundle.diagnosticsHandoff.diagnostics.count, 5);
+  assert.equal(bundle.diagnosticsHandoff.diagnostics.bySeverity.blocked, 2);
+  assert.equal(bundle.diagnosticsHandoff.descriptorRefs.referenceKind, "descriptor_ref_only");
+  assert.equal(bundle.diagnosticsHandoff.safety.dataOnly, true);
+  assert.equal(bundle.diagnosticsHandoff.safety.readOnly, true);
+  assert.equal(bundle.diagnosticsHandoff.safety.launcherExecution, false);
+  assert.equal(bundle.diagnosticsHandoff.safety.pccxLabExecution, false);
+  assert.equal(bundle.diagnosticsHandoff.safety.pccxLabValidatorInvocation, false);
+  assert.equal(bundle.diagnosticsHandoff.safety.shellExecution, false);
+  assert.equal(bundle.diagnosticsHandoff.safety.providerCalls, false);
+  assert.equal(bundle.diagnosticsHandoff.safety.runtimeCalls, false);
+  assert.equal(bundle.diagnosticsHandoff.safety.mcpCalls, false);
+  assert.equal(bundle.diagnosticsHandoff.safety.lspImplemented, false);
   assert.ok(bundle.excludedPathPatterns.includes("agent-instruction-files"));
   assert.equal(bundle.redaction.assignmentPolicy, "secret-like-lines-redacted");
   assert.deepEqual(summarizeContextBundle(bundle), {
@@ -345,6 +372,13 @@ function testStableBoundedShape() {
       status: "failed",
       label: "VS Code adapter smoke",
       recentHistoryCount: 2,
+    },
+    diagnosticsHandoff: {
+      status: "available",
+      schemaVersion: "pccx.diagnosticsHandoff.v0",
+      diagnosticCount: 5,
+      blockedCount: 2,
+      readOnly: true,
     },
   });
 }
@@ -606,6 +640,49 @@ function testNoActiveEditorContextShape() {
   assert.deepEqual(bundle.snippets, []);
   assert.equal(bundle.recentCommand, null);
   assert.equal(bundle.configuration.mode, "unknown");
+  assert.equal(bundle.diagnosticsHandoff.status, "notAvailable");
+  assert.equal(bundle.diagnosticsHandoff.summaryAvailable, false);
+  assert.equal(bundle.diagnosticsHandoff.safety.readOnly, true);
+  assert.equal(bundle.diagnosticsHandoff.safety.launcherExecution, false);
+}
+
+function testDiagnosticsHandoffStatusSurfaceInputIsAccepted() {
+  const surface = createDiagnosticsHandoffStatusSurface(
+    cloneDefaultDiagnosticsHandoffConsumerSummary(),
+  );
+  const bundle = buildContextBundle({ diagnosticsHandoffStatus: surface }, {});
+
+  assert.equal(bundle.diagnosticsHandoff.status, "available");
+  assert.equal(bundle.diagnosticsHandoff.source.adapterOutput, true);
+  assert.equal(bundle.diagnosticsHandoff.source.rawHandoffParsedByUi, false);
+  assert.equal(bundle.diagnosticsHandoff.diagnostics.count, 5);
+  assert.deepEqual(summarizeContextBundle(bundle).diagnosticsHandoff, {
+    status: "available",
+    schemaVersion: "pccx.diagnosticsHandoff.v0",
+    diagnosticCount: 5,
+    blockedCount: 2,
+    readOnly: true,
+  });
+}
+
+function testInvalidDiagnosticsHandoffDataIsSafeAndBounded() {
+  const unsafeSurface = createDiagnosticsHandoffStatusSurface(
+    cloneDefaultDiagnosticsHandoffConsumerSummary(),
+  );
+  unsafeSurface.safety.pccxLabExecution = true;
+  unsafeSurface.limitations = ["/home/user/private.log"];
+  const bundle = buildContextBundle(
+    { diagnosticsHandoffStatus: unsafeSurface },
+    { limits: { maxTextCharacters: 80 } },
+  );
+  const serialized = JSON.stringify(bundle.diagnosticsHandoff);
+
+  assert.equal(bundle.diagnosticsHandoff.status, "invalid");
+  assert.equal(bundle.diagnosticsHandoff.summaryAvailable, false);
+  assert.equal(bundle.diagnosticsHandoff.source.rawHandoffParsedByUi, false);
+  assert.equal(bundle.diagnosticsHandoff.safety.pccxLabExecution, false);
+  assert.doesNotMatch(serialized, /\/home\/user/);
+  assert.match(bundle.diagnosticsHandoff.reason, /data-only and read-only/);
 }
 
 testStableBoundedShape();
@@ -618,5 +695,7 @@ testValidationHistoryIsSummaryOnlyAndBounded();
 testNoSecretValuesOrSecretLikeKeys();
 testNoAbsoluteHomePathLeakage();
 testNoActiveEditorContextShape();
+testDiagnosticsHandoffStatusSurfaceInputIsAccepted();
+testInvalidDiagnosticsHandoffDataIsSafeAndBounded();
 
 console.log("vscode context bundle tests ok");

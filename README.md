@@ -185,9 +185,10 @@ The VS Code prototype also has a read-only diagnostics handoff consumer
 for the launcher / pccx-lab `pccx.diagnosticsHandoff.v0` JSON shape. It
 parses a checked local fixture and returns deterministic summary data for
 future UI use. The `showDiagnosticsHandoffSummary` command surfaces that
-adapter summary as local status data. It does not execute the launcher,
-execute pccx-lab, invoke the pccx-lab validator, implement MCP or LSP,
-call providers, or touch hardware.
+adapter summary as local status data, and the local context bundle can
+carry the same bounded summary as read-only context. It does not execute
+the launcher, execute pccx-lab, invoke the pccx-lab validator, implement
+MCP or LSP, call providers, or touch hardware.
 
 ## Later track (deferred)
 
