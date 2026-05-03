@@ -19,6 +19,10 @@ import {
 import {
   createRuntimeReadinessStatusSurface,
 } from "./runtime-readiness-status-surface.mjs";
+import {
+  XSIM_DIAGNOSTICS_SEVERITIES,
+  createXsimDiagnosticsStatusSurface,
+} from "./xsim-diagnostics-status-surface.mjs";
 
 export const CONTEXT_BUNDLE_VERSION = "pccx.contextBundle.v0";
 export const CONTEXT_BUNDLE_SOURCE = "pccx-systemverilog-ide";
@@ -39,6 +43,8 @@ export const CONTEXT_BUNDLE_RUNTIME_READINESS_VERSION =
   "pccx.contextBundleRuntimeReadiness.v0";
 export const CONTEXT_BUNDLE_DEVICE_SESSION_STATUS_VERSION =
   "pccx.contextBundleDeviceSessionStatus.v0";
+export const CONTEXT_BUNDLE_XSIM_DIAGNOSTICS_VERSION =
+  "pccx.contextBundleXsimDiagnostics.v0";
 
 const EXCLUDED_PATH_SEGMENTS = new Set([
   ".git",
@@ -709,6 +715,197 @@ function normalizeDiagnosticsHandoffContext(input, limits) {
   }
 }
 
+function xsimDiagnosticsSafetyBase() {
+  return {
+    dataOnly: true,
+    readOnly: true,
+    localOnly: true,
+    existingLogOnly: true,
+    rawLogIncluded: false,
+    rawLineEcho: false,
+    xsimExecution: false,
+    vivadoExecution: false,
+    pccxLabExecution: false,
+    launcherExecution: false,
+    shellExecution: false,
+    fpgaRepoAccess: false,
+    hardwareAccess: false,
+    kv260Access: false,
+    runtimeExecution: false,
+    modelExecution: false,
+    providerCalls: false,
+    networkCalls: false,
+    mcpCalls: false,
+    lspImplemented: false,
+    marketplaceFlow: false,
+    telemetry: false,
+    automaticUpload: false,
+    writeBack: false,
+  };
+}
+
+function missingXsimDiagnosticsContext(status = "notAvailable", reason = "") {
+  return {
+    version: CONTEXT_BUNDLE_XSIM_DIAGNOSTICS_VERSION,
+    kind: "xsim-diagnostics-context",
+    status,
+    summaryAvailable: false,
+    source: {
+      adapterOutput: false,
+      rawProblemsParsedByUi: false,
+      rawLogParsedByUi: false,
+    },
+    xsimLog: null,
+    diagnostics: {
+      count: 0,
+      bySeverity: {},
+      locatedCount: 0,
+      unlocatedCount: 0,
+      codedCount: 0,
+    },
+    files: {
+      count: 0,
+      items: [],
+    },
+    limitations: [],
+    safety: xsimDiagnosticsSafetyBase(),
+    reason,
+  };
+}
+
+function normalizeXsimDiagnosticsStatusSurface(surface, limits) {
+  return {
+    version: CONTEXT_BUNDLE_XSIM_DIAGNOSTICS_VERSION,
+    kind: "xsim-diagnostics-context",
+    status: scrubText(surface.readiness?.status ?? "available", 80),
+    summaryAvailable: surface.readiness?.summaryAvailable === true,
+    source: {
+      adapterOutput: surface.source?.adapterOutput === true,
+      rawProblemsParsedByUi: surface.source?.rawProblemsParsedByUi === true,
+      rawLogParsedByUi: surface.source?.rawLogParsedByUi === true,
+    },
+    xsimLog: surface.xsimLog
+      ? {
+          source: scrubText(surface.xsimLog.source ?? "", 160),
+          sourceKind: scrubText(surface.xsimLog.sourceKind ?? "", 80),
+          tool: scrubText(surface.xsimLog.tool ?? "", 120),
+        }
+      : null,
+    diagnostics: {
+      count: Math.max(0, Math.floor(clampNumber(surface.diagnostics?.count))),
+      bySeverity: normalizeCountMap(
+        surface.diagnostics?.bySeverity,
+        XSIM_DIAGNOSTICS_SEVERITIES,
+      ),
+      locatedCount: Math.max(0, Math.floor(clampNumber(surface.diagnostics?.locatedCount))),
+      unlocatedCount: Math.max(0, Math.floor(clampNumber(surface.diagnostics?.unlocatedCount))),
+      codedCount: Math.max(0, Math.floor(clampNumber(surface.diagnostics?.codedCount))),
+    },
+    files: {
+      count: Math.max(0, Math.floor(clampNumber(surface.files?.count))),
+      items: Array.isArray(surface.files?.items)
+        ? surface.files.items.map((item) => ({
+            file: scrubText(item.file ?? "", 160),
+            problemCount: Math.max(0, Math.floor(clampNumber(item.problemCount))),
+          })).slice(0, limits.maxFiles)
+        : [],
+    },
+    limitations: Array.isArray(surface.limitations)
+      ? surface.limitations.map((item) => scrubText(item, 500)).slice(0, 4)
+      : [],
+    safety: {
+      ...xsimDiagnosticsSafetyBase(),
+      dataOnly: surface.safety?.dataOnly === true,
+      readOnly: surface.safety?.readOnly === true,
+      localOnly: surface.safety?.localOnly === true,
+      existingLogOnly: surface.safety?.existingLogOnly === true,
+      rawLogIncluded: surface.safety?.rawLogIncluded === true,
+      rawLineEcho: surface.safety?.rawLineEcho === true,
+      xsimExecution: surface.safety?.xsimExecution === true,
+      vivadoExecution: surface.safety?.vivadoExecution === true,
+      pccxLabExecution: surface.safety?.pccxLabExecution === true,
+      launcherExecution: surface.safety?.launcherExecution === true,
+      shellExecution: surface.safety?.shellExecution === true,
+      fpgaRepoAccess: surface.safety?.fpgaRepoAccess === true,
+      hardwareAccess: surface.safety?.hardwareAccess === true,
+      kv260Access: surface.safety?.kv260Access === true,
+      runtimeExecution: surface.safety?.runtimeExecution === true,
+      modelExecution: surface.safety?.modelExecution === true,
+      providerCalls: surface.safety?.providerCalls === true,
+      networkCalls: surface.safety?.networkCalls === true,
+      mcpCalls: surface.safety?.mcpCalls === true,
+      lspImplemented: surface.safety?.lspImplemented === true,
+      marketplaceFlow: surface.safety?.marketplaceFlow === true,
+      telemetry: surface.safety?.telemetry === true,
+      automaticUpload: surface.safety?.automaticUpload === true,
+      writeBack: surface.safety?.writeBack === true,
+    },
+  };
+}
+
+function assertXsimDiagnosticsContextSafety(context) {
+  const safety = context.safety ?? {};
+  if (
+    safety.dataOnly !== true ||
+    safety.readOnly !== true ||
+    safety.existingLogOnly !== true ||
+    safety.rawLogIncluded === true ||
+    safety.rawLineEcho === true ||
+    safety.xsimExecution === true ||
+    safety.vivadoExecution === true ||
+    safety.pccxLabExecution === true ||
+    safety.launcherExecution === true ||
+    safety.shellExecution === true ||
+    safety.fpgaRepoAccess === true ||
+    safety.hardwareAccess === true ||
+    safety.kv260Access === true ||
+    safety.runtimeExecution === true ||
+    safety.modelExecution === true ||
+    safety.providerCalls === true ||
+    safety.networkCalls === true ||
+    safety.mcpCalls === true ||
+    safety.lspImplemented === true ||
+    safety.marketplaceFlow === true ||
+    safety.telemetry === true ||
+    safety.automaticUpload === true ||
+    safety.writeBack === true ||
+    context.source?.rawProblemsParsedByUi === true ||
+    context.source?.rawLogParsedByUi === true
+  ) {
+    throw new Error("xsim diagnostics context must remain existing-log data only and read-only");
+  }
+}
+
+function normalizeXsimDiagnosticsContext(input, limits) {
+  const suppliedSurface = input?.xsimDiagnosticsStatus ??
+    input?.xsimDiagnostics?.statusSurface ??
+    null;
+  const suppliedSummary = input?.xsimDiagnosticsSummary ??
+    input?.xsimDiagnostics?.summary ??
+    null;
+  const suppliedProblems = input?.xsimDiagnosticsProblems ??
+    input?.xsimDiagnostics?.problemsPayload ??
+    null;
+
+  if (!suppliedSurface && !suppliedSummary && !suppliedProblems) {
+    return missingXsimDiagnosticsContext();
+  }
+
+  try {
+    const surface = suppliedSurface?.kind === "xsim-diagnostics-status-surface"
+      ? suppliedSurface
+      : createXsimDiagnosticsStatusSurface(suppliedSummary ?? suppliedProblems);
+    const context = normalizeXsimDiagnosticsStatusSurface(surface, limits);
+    assertXsimDiagnosticsContextSafety(context);
+    return context;
+  } catch (error) {
+    return missingXsimDiagnosticsContext(
+      "invalid",
+      scrubText(error.message, limits.maxTextCharacters),
+    );
+  }
+}
+
 function runtimeReadinessSafetyBase() {
   return {
     dataOnly: true,
@@ -1244,6 +1441,7 @@ export function buildContextBundle(input = {}, options = {}) {
         .map((entry) => normalizeLogSummary(entry, limits))
         .slice(0, limits.maxFiles),
     },
+    xsimDiagnostics: normalizeXsimDiagnosticsContext(input, limits),
     diagnosticsHandoff: normalizeDiagnosticsHandoffContext(input, limits),
     runtimeReadiness: normalizeRuntimeReadinessContext(input, limits),
     deviceSessionStatus: normalizeDeviceSessionStatusContext(input, limits),
@@ -1286,6 +1484,21 @@ export function summarizeContextBundle(bundle) {
             : 0,
       }
       : null,
+    xsimDiagnostics: bundle?.xsimDiagnostics?.summaryAvailable
+      ? {
+          status: bundle.xsimDiagnostics.status,
+          sourceKind: bundle.xsimDiagnostics.xsimLog?.sourceKind ?? "",
+          diagnosticCount: bundle.xsimDiagnostics.diagnostics?.count ?? 0,
+          errorCount: bundle.xsimDiagnostics.diagnostics?.bySeverity?.error ?? 0,
+          warningCount: bundle.xsimDiagnostics.diagnostics?.bySeverity?.warning ?? 0,
+          locatedCount: bundle.xsimDiagnostics.diagnostics?.locatedCount ?? 0,
+          readOnly: bundle.xsimDiagnostics.safety?.readOnly === true,
+        }
+      : {
+          status: bundle?.xsimDiagnostics?.status ?? "notAvailable",
+          diagnosticCount: 0,
+          readOnly: bundle?.xsimDiagnostics?.safety?.readOnly === true,
+        },
     diagnosticsHandoff: bundle?.diagnosticsHandoff?.summaryAvailable
       ? {
           status: bundle.diagnosticsHandoff.status,

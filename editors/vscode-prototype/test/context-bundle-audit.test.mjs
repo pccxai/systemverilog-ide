@@ -17,6 +17,9 @@ import {
 import {
   cloneDefaultDeviceSessionStatusConsumerSummary,
 } from "../src/device-session-status-surface.mjs";
+import {
+  cloneDefaultXsimDiagnosticsSummary,
+} from "../src/xsim-diagnostics-status-surface.mjs";
 
 function testAuditCountsBoundedContextShape() {
   const bundle = buildContextBundle(
@@ -45,6 +48,7 @@ function testAuditCountsBoundedContextShape() {
       pccxLabOutputs: [
         { label: "fixture", summaryLines: ["TOKEN=hidden"] },
       ],
+      xsimDiagnosticsSummary: cloneDefaultXsimDiagnosticsSummary(),
       diagnosticsHandoffSummary: cloneDefaultDiagnosticsHandoffConsumerSummary(),
       deviceSessionStatusSummary: cloneDefaultDeviceSessionStatusConsumerSummary(),
     },
@@ -65,6 +69,7 @@ function testAuditCountsBoundedContextShape() {
   assert.equal(audit.validationSummaryCount, 1);
   assert.equal(audit.launcherStatusEntryCount, 0);
   assert.equal(audit.labStatusEntryCount, 1);
+  assert.equal(audit.xsimDiagnosticsEntryCount, 1);
   assert.equal(audit.diagnosticsHandoffEntryCount, 1);
   assert.equal(audit.deviceSessionStatusEntryCount, 1);
   assert.equal(audit.redactionApplied, true);
@@ -73,10 +78,12 @@ function testAuditCountsBoundedContextShape() {
   assert.ok(audit.excludedCategories.includes("node_modules/**"));
   assert.equal(audit.safety.fullLogsExcluded, true);
   assert.equal(audit.safety.providerCalls, false);
+  assert.equal(audit.safety.xsimDiagnosticsReadOnly, true);
   assert.equal(audit.safety.diagnosticsHandoffReadOnly, true);
   assert.equal(audit.safety.deviceSessionStatusReadOnly, true);
   assert.match(text, /Context Bundle Audit/);
   assert.match(text, /validationSummaries: 1/);
+  assert.match(text, /xsimDiagnosticsEntries: 1/);
   assert.match(text, /diagnosticsHandoffEntries: 1/);
   assert.match(text, /deviceSessionStatusEntries: 1/);
   assert.doesNotMatch(JSON.stringify(audit), /TOKEN=hidden|\/repo/);
@@ -88,6 +95,7 @@ function testEmptyAuditIsDeterministicAndSafe() {
   assert.equal(audit.diagnosticCount, 0);
   assert.equal(audit.snippetCount, 0);
   assert.equal(audit.validationSummaryCount, 0);
+  assert.equal(audit.xsimDiagnosticsEntryCount, 0);
   assert.equal(audit.diagnosticsHandoffEntryCount, 0);
   assert.equal(audit.deviceSessionStatusEntryCount, 0);
   assert.equal(audit.redactionApplied, false);

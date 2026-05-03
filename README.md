@@ -165,6 +165,14 @@ xsim-log parsing. It does not implement LSP, a VS Code extension,
 a JetBrains plugin, or any GUI. It does not run xsim or Vivado. The
 output shape is pre-stable; future editor bridges may consume it.
 
+The VS Code prototype can also summarize existing
+`problems from-xsim-log` JSON as an `xsimDiagnostics` status/context
+surface. That surface records counts by severity, located/unlocated
+problem counts, and relative file counts. It does not read raw log files
+in the UI layer, echo raw log lines into context bundles, run xsim or
+Vivado, execute pccx-lab, call the launcher, touch hardware, or implement
+MCP/LSP.
+
 The external editor bridge CLI contract is documented in
 [`docs/EDITOR_BRIDGE_CONTRACT.md`](./docs/EDITOR_BRIDGE_CONTRACT.md).
 It is a pre-stable CLI contract, not an editor extension implementation.

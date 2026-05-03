@@ -175,6 +175,15 @@ problem records.  `index` provides scanner-based module/package/interface
 declaration records.  `declarations` exports those records directly, and
 `locate` resolves exact declaration names by requested kind.
 
+For existing xsim logs, the VS Code prototype can consume the checked
+`problems from-xsim-log` JSON as a read-only status/context summary.  The
+summary carries problem counts by severity, located/unlocated counts,
+relative file counts, and safety flags.  It does not read raw logs in
+the UI layer, echo raw log lines into context bundles, run xsim or
+Vivado, invoke pccx-lab or the launcher, touch hardware, or implement
+MCP/LSP.  The surface is documented in
+`editors/vscode-prototype/docs/xsim-diagnostics-status-surface.md`.
+
 ## Limitations
 
 - Scanner-based scaffolds, not full SystemVerilog parsing.

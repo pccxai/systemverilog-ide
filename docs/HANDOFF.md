@@ -7,6 +7,8 @@ Tracked handoff paths:
 
 1. The `pccx-lab` CLI / core boundary (analysis backend) — **wired**.
 2. The xsim runner / log surfacing path inside `pccx-lab` — **planned**.
+   Existing xsim-log problem JSON can be summarized locally as a
+   read-only IDE status/context surface.
 3. The launcher diagnostics handoff JSON consumer — **read-only fixture
    boundary**.
 4. The launcher runtime readiness JSON consumer — **read-only fixture
@@ -168,6 +170,35 @@ providers, and does not touch hardware.
 The pccx-lab validator remains a separate CLI/core boundary. The IDE
 consumer is for future presentation and context use, not for bypassing
 launcher or lab ownership.
+
+---
+
+## xsim diagnostics status surface (read-only)
+
+The VS Code prototype includes a small status surface for existing
+`problems from-xsim-log` JSON. The checked local example lives at
+`docs/examples/editor-bridge/problems-xsim-mixed.example.json`.
+This read-only context work tracks `pccxai/systemverilog-ide#3`.
+
+The surface consumes adapter output as data and returns bounded summary
+fields: source kind, tool, total problem count, counts by severity,
+located and unlocated problem counts, coded problem count, relative file
+counts, limitations, and safety flags.
+
+The local AI/context bundle can include the same summary as
+`xsimDiagnostics`. That context section is summary-only and does not
+include raw xsim log lines or full logs.
+
+This path does not run xsim or Vivado, execute `pccx-lab`, execute
+`pccx-llm-launcher`, spawn shell commands, read raw log files in the UI
+layer, echo raw log lines into context bundles, access hardware or KV260
+runtime paths, load model weights, call providers, implement MCP or LSP,
+package for marketplace distribution, upload telemetry, or write back
+state.
+
+The pccx-lab CLI/core boundary remains the owner for reusable
+verification and diagnostics behavior. This IDE status surface is only a
+small presentation/context summary over already-produced local JSON.
 
 ---
 

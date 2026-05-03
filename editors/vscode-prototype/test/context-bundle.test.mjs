@@ -8,6 +8,7 @@ import {
   CONTEXT_BUNDLE_DIAGNOSTICS_HANDOFF_VERSION,
   CONTEXT_BUNDLE_RUNTIME_READINESS_VERSION,
   CONTEXT_BUNDLE_VERSION,
+  CONTEXT_BUNDLE_XSIM_DIAGNOSTICS_VERSION,
   buildContextBundle,
   summarizeContextBundle,
 } from "../src/context-bundle.mjs";
@@ -23,6 +24,10 @@ import {
   cloneDefaultRuntimeReadinessConsumerSummary,
   createRuntimeReadinessStatusSurface,
 } from "../src/runtime-readiness-status-surface.mjs";
+import {
+  cloneDefaultXsimDiagnosticsSummary,
+  createXsimDiagnosticsStatusSurface,
+} from "../src/xsim-diagnostics-status-surface.mjs";
 
 const SECRET_KEY_PATTERN =
   /\b(?:api[_-]?key|authorization|bearer|client[_-]?secret|password|private[_-]?key|secret|token)\b/i;
@@ -276,6 +281,7 @@ function fixtureInput() {
         redactionApplied: false,
       },
     ],
+    xsimDiagnosticsSummary: cloneDefaultXsimDiagnosticsSummary(),
     diagnosticsHandoffSummary: cloneDefaultDiagnosticsHandoffConsumerSummary(),
     runtimeReadinessSummary: cloneDefaultRuntimeReadinessConsumerSummary(),
     deviceSessionStatusSummary: cloneDefaultDeviceSessionStatusConsumerSummary(),
@@ -347,6 +353,39 @@ function testStableBoundedShape() {
   assert.equal(bundle.recentCommand.facade.mode, "example");
   assert.equal(bundle.pccxLab.outputs.length, 1);
   assert.deepEqual(bundle.pccxLab.outputs[0].lines, ["[redacted]"]);
+  assert.equal(bundle.xsimDiagnostics.version, CONTEXT_BUNDLE_XSIM_DIAGNOSTICS_VERSION);
+  assert.equal(bundle.xsimDiagnostics.kind, "xsim-diagnostics-context");
+  assert.equal(bundle.xsimDiagnostics.status, "available");
+  assert.equal(bundle.xsimDiagnostics.summaryAvailable, true);
+  assert.equal(bundle.xsimDiagnostics.source.adapterOutput, true);
+  assert.equal(bundle.xsimDiagnostics.source.rawProblemsParsedByUi, false);
+  assert.equal(bundle.xsimDiagnostics.source.rawLogParsedByUi, false);
+  assert.equal(bundle.xsimDiagnostics.xsimLog.sourceKind, "xsim-log");
+  assert.equal(bundle.xsimDiagnostics.xsimLog.tool, "pccx-ide-cli");
+  assert.equal(bundle.xsimDiagnostics.diagnostics.count, 5);
+  assert.equal(bundle.xsimDiagnostics.diagnostics.bySeverity.error, 2);
+  assert.equal(bundle.xsimDiagnostics.diagnostics.bySeverity.warning, 2);
+  assert.equal(bundle.xsimDiagnostics.diagnostics.bySeverity.info, 1);
+  assert.equal(bundle.xsimDiagnostics.diagnostics.locatedCount, 2);
+  assert.equal(bundle.xsimDiagnostics.diagnostics.unlocatedCount, 3);
+  assert.equal(bundle.xsimDiagnostics.diagnostics.codedCount, 2);
+  assert.equal(bundle.xsimDiagnostics.files.count, 2);
+  assert.equal(bundle.xsimDiagnostics.files.items.length, 2);
+  assert.equal(bundle.xsimDiagnostics.safety.dataOnly, true);
+  assert.equal(bundle.xsimDiagnostics.safety.readOnly, true);
+  assert.equal(bundle.xsimDiagnostics.safety.existingLogOnly, true);
+  assert.equal(bundle.xsimDiagnostics.safety.rawLogIncluded, false);
+  assert.equal(bundle.xsimDiagnostics.safety.rawLineEcho, false);
+  assert.equal(bundle.xsimDiagnostics.safety.xsimExecution, false);
+  assert.equal(bundle.xsimDiagnostics.safety.vivadoExecution, false);
+  assert.equal(bundle.xsimDiagnostics.safety.pccxLabExecution, false);
+  assert.equal(bundle.xsimDiagnostics.safety.launcherExecution, false);
+  assert.equal(bundle.xsimDiagnostics.safety.shellExecution, false);
+  assert.equal(bundle.xsimDiagnostics.safety.hardwareAccess, false);
+  assert.equal(bundle.xsimDiagnostics.safety.kv260Access, false);
+  assert.equal(bundle.xsimDiagnostics.safety.providerCalls, false);
+  assert.equal(bundle.xsimDiagnostics.safety.mcpCalls, false);
+  assert.equal(bundle.xsimDiagnostics.safety.lspImplemented, false);
   assert.equal(bundle.diagnosticsHandoff.version, CONTEXT_BUNDLE_DIAGNOSTICS_HANDOFF_VERSION);
   assert.equal(bundle.diagnosticsHandoff.kind, "diagnostics-handoff-context");
   assert.equal(bundle.diagnosticsHandoff.status, "available");
@@ -462,6 +501,15 @@ function testStableBoundedShape() {
       status: "failed",
       label: "VS Code adapter smoke",
       recentHistoryCount: 2,
+    },
+    xsimDiagnostics: {
+      status: "available",
+      sourceKind: "xsim-log",
+      diagnosticCount: 5,
+      errorCount: 2,
+      warningCount: 2,
+      locatedCount: 2,
+      readOnly: true,
     },
     diagnosticsHandoff: {
       status: "available",
@@ -750,6 +798,12 @@ function testNoActiveEditorContextShape() {
   assert.deepEqual(bundle.snippets, []);
   assert.equal(bundle.recentCommand, null);
   assert.equal(bundle.configuration.mode, "unknown");
+  assert.equal(bundle.xsimDiagnostics.status, "notAvailable");
+  assert.equal(bundle.xsimDiagnostics.summaryAvailable, false);
+  assert.equal(bundle.xsimDiagnostics.safety.readOnly, true);
+  assert.equal(bundle.xsimDiagnostics.safety.existingLogOnly, true);
+  assert.equal(bundle.xsimDiagnostics.safety.xsimExecution, false);
+  assert.equal(bundle.xsimDiagnostics.safety.vivadoExecution, false);
   assert.equal(bundle.diagnosticsHandoff.status, "notAvailable");
   assert.equal(bundle.diagnosticsHandoff.summaryAvailable, false);
   assert.equal(bundle.diagnosticsHandoff.safety.readOnly, true);
@@ -765,6 +819,52 @@ function testNoActiveEditorContextShape() {
   assert.equal(bundle.deviceSessionStatus.safety.launcherExecution, false);
   assert.equal(bundle.deviceSessionStatus.safety.kv260Access, false);
   assert.equal(bundle.deviceSessionStatus.safety.opensSerialPort, false);
+}
+
+function testXsimDiagnosticsStatusSurfaceInputIsAccepted() {
+  const surface = createXsimDiagnosticsStatusSurface(
+    cloneDefaultXsimDiagnosticsSummary(),
+  );
+  const bundle = buildContextBundle({ xsimDiagnosticsStatus: surface }, {});
+
+  assert.equal(bundle.xsimDiagnostics.status, "available");
+  assert.equal(bundle.xsimDiagnostics.source.adapterOutput, true);
+  assert.equal(bundle.xsimDiagnostics.source.rawProblemsParsedByUi, false);
+  assert.equal(bundle.xsimDiagnostics.source.rawLogParsedByUi, false);
+  assert.equal(bundle.xsimDiagnostics.diagnostics.count, 5);
+  assert.equal(bundle.xsimDiagnostics.diagnostics.bySeverity.error, 2);
+  assert.equal(bundle.xsimDiagnostics.diagnostics.locatedCount, 2);
+  assert.deepEqual(summarizeContextBundle(bundle).xsimDiagnostics, {
+    status: "available",
+    sourceKind: "xsim-log",
+    diagnosticCount: 5,
+    errorCount: 2,
+    warningCount: 2,
+    locatedCount: 2,
+    readOnly: true,
+  });
+}
+
+function testInvalidXsimDiagnosticsDataIsSafeAndBounded() {
+  const unsafeSurface = createXsimDiagnosticsStatusSurface(
+    cloneDefaultXsimDiagnosticsSummary(),
+  );
+  unsafeSurface.safety.xsimExecution = true;
+  unsafeSurface.xsimLog.source = "/home/user/private.log";
+  const bundle = buildContextBundle(
+    { xsimDiagnosticsStatus: unsafeSurface },
+    { limits: { maxTextCharacters: 80 } },
+  );
+  const serialized = JSON.stringify(bundle.xsimDiagnostics);
+
+  assert.equal(bundle.xsimDiagnostics.status, "invalid");
+  assert.equal(bundle.xsimDiagnostics.summaryAvailable, false);
+  assert.equal(bundle.xsimDiagnostics.source.rawProblemsParsedByUi, false);
+  assert.equal(bundle.xsimDiagnostics.source.rawLogParsedByUi, false);
+  assert.equal(bundle.xsimDiagnostics.safety.xsimExecution, false);
+  assert.equal(bundle.xsimDiagnostics.safety.vivadoExecution, false);
+  assert.doesNotMatch(serialized, /\/home\/user/);
+  assert.match(bundle.xsimDiagnostics.reason, /existing-log data only and read-only/);
 }
 
 function testDiagnosticsHandoffStatusSurfaceInputIsAccepted() {
@@ -907,6 +1007,8 @@ testValidationHistoryIsSummaryOnlyAndBounded();
 testNoSecretValuesOrSecretLikeKeys();
 testNoAbsoluteHomePathLeakage();
 testNoActiveEditorContextShape();
+testXsimDiagnosticsStatusSurfaceInputIsAccepted();
+testInvalidXsimDiagnosticsDataIsSafeAndBounded();
 testDiagnosticsHandoffStatusSurfaceInputIsAccepted();
 testInvalidDiagnosticsHandoffDataIsSafeAndBounded();
 testRuntimeReadinessStatusSurfaceInputIsAccepted();
