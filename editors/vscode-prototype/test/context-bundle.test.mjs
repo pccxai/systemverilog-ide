@@ -1,7 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import assert from "node:assert/strict";
 
 import {
   CONTEXT_BUNDLE_DIAGNOSTICS_HANDOFF_VERSION,
+  CONTEXT_BUNDLE_RUNTIME_READINESS_VERSION,
   CONTEXT_BUNDLE_VERSION,
   buildContextBundle,
   summarizeContextBundle,
@@ -10,6 +14,10 @@ import {
   cloneDefaultDiagnosticsHandoffConsumerSummary,
   createDiagnosticsHandoffStatusSurface,
 } from "../src/diagnostics-handoff-status-surface.mjs";
+import {
+  cloneDefaultRuntimeReadinessConsumerSummary,
+  createRuntimeReadinessStatusSurface,
+} from "../src/runtime-readiness-status-surface.mjs";
 
 const SECRET_KEY_PATTERN =
   /\b(?:api[_-]?key|authorization|bearer|client[_-]?secret|password|private[_-]?key|secret|token)\b/i;
@@ -264,6 +272,7 @@ function fixtureInput() {
       },
     ],
     diagnosticsHandoffSummary: cloneDefaultDiagnosticsHandoffConsumerSummary(),
+    runtimeReadinessSummary: cloneDefaultRuntimeReadinessConsumerSummary(),
     pccxLabOutputs: [
       {
         flow: "problems from-check",
@@ -353,6 +362,36 @@ function testStableBoundedShape() {
   assert.equal(bundle.diagnosticsHandoff.safety.runtimeCalls, false);
   assert.equal(bundle.diagnosticsHandoff.safety.mcpCalls, false);
   assert.equal(bundle.diagnosticsHandoff.safety.lspImplemented, false);
+  assert.equal(bundle.runtimeReadiness.version, CONTEXT_BUNDLE_RUNTIME_READINESS_VERSION);
+  assert.equal(bundle.runtimeReadiness.kind, "runtime-readiness-context");
+  assert.equal(bundle.runtimeReadiness.status, "available");
+  assert.equal(bundle.runtimeReadiness.summaryAvailable, true);
+  assert.equal(bundle.runtimeReadiness.source.adapterOutput, true);
+  assert.equal(bundle.runtimeReadiness.source.rawReadinessParsedByUi, false);
+  assert.equal(bundle.runtimeReadiness.fixture.schemaVersion, "pccx.runtimeReadiness.v0");
+  assert.equal(bundle.runtimeReadiness.readiness.statusAnswer, "blocked_not_yet_evidence_backed");
+  assert.equal(bundle.runtimeReadiness.readiness.readinessState, "blocked");
+  assert.equal(bundle.runtimeReadiness.readiness.evidenceState, "blocked");
+  assert.equal(bundle.runtimeReadiness.target.model.modelId, "gemma3n_e4b_placeholder");
+  assert.equal(bundle.runtimeReadiness.target.device, "kv260");
+  assert.equal(bundle.runtimeReadiness.states.timing, "blocked");
+  assert.equal(bundle.runtimeReadiness.states.bitstream, "blocked");
+  assert.equal(bundle.runtimeReadiness.states.implementation, "blocked");
+  assert.equal(bundle.runtimeReadiness.states.kv260Smoke, "blocked");
+  assert.equal(bundle.runtimeReadiness.states.runtimeEvidence, "blocked");
+  assert.equal(bundle.runtimeReadiness.states.throughput, "target");
+  assert.equal(bundle.runtimeReadiness.blockers.count, 6);
+  assert.equal(bundle.runtimeReadiness.safety.dataOnly, true);
+  assert.equal(bundle.runtimeReadiness.safety.readOnly, true);
+  assert.equal(bundle.runtimeReadiness.safety.launcherExecution, false);
+  assert.equal(bundle.runtimeReadiness.safety.pccxLabExecution, false);
+  assert.equal(bundle.runtimeReadiness.safety.fpgaRepoAccess, false);
+  assert.equal(bundle.runtimeReadiness.safety.kv260RuntimeExecution, false);
+  assert.equal(bundle.runtimeReadiness.safety.runtimeExecution, false);
+  assert.equal(bundle.runtimeReadiness.safety.modelExecution, false);
+  assert.equal(bundle.runtimeReadiness.safety.providerCalls, false);
+  assert.equal(bundle.runtimeReadiness.safety.mcpCalls, false);
+  assert.equal(bundle.runtimeReadiness.safety.lspImplemented, false);
   assert.ok(bundle.excludedPathPatterns.includes("agent-instruction-files"));
   assert.equal(bundle.redaction.assignmentPolicy, "secret-like-lines-redacted");
   assert.deepEqual(summarizeContextBundle(bundle), {
@@ -378,6 +417,15 @@ function testStableBoundedShape() {
       schemaVersion: "pccx.diagnosticsHandoff.v0",
       diagnosticCount: 5,
       blockedCount: 2,
+      readOnly: true,
+    },
+    runtimeReadiness: {
+      status: "available",
+      statusAnswer: "blocked_not_yet_evidence_backed",
+      readinessState: "blocked",
+      evidenceState: "blocked",
+      targetDevice: "kv260",
+      blockerCount: 6,
       readOnly: true,
     },
   });
@@ -644,6 +692,11 @@ function testNoActiveEditorContextShape() {
   assert.equal(bundle.diagnosticsHandoff.summaryAvailable, false);
   assert.equal(bundle.diagnosticsHandoff.safety.readOnly, true);
   assert.equal(bundle.diagnosticsHandoff.safety.launcherExecution, false);
+  assert.equal(bundle.runtimeReadiness.status, "notAvailable");
+  assert.equal(bundle.runtimeReadiness.summaryAvailable, false);
+  assert.equal(bundle.runtimeReadiness.safety.readOnly, true);
+  assert.equal(bundle.runtimeReadiness.safety.launcherExecution, false);
+  assert.equal(bundle.runtimeReadiness.safety.fpgaRepoAccess, false);
 }
 
 function testDiagnosticsHandoffStatusSurfaceInputIsAccepted() {
@@ -685,6 +738,49 @@ function testInvalidDiagnosticsHandoffDataIsSafeAndBounded() {
   assert.match(bundle.diagnosticsHandoff.reason, /data-only and read-only/);
 }
 
+function testRuntimeReadinessStatusSurfaceInputIsAccepted() {
+  const surface = createRuntimeReadinessStatusSurface(
+    cloneDefaultRuntimeReadinessConsumerSummary(),
+  );
+  const bundle = buildContextBundle({ runtimeReadinessStatus: surface }, {});
+
+  assert.equal(bundle.runtimeReadiness.status, "available");
+  assert.equal(bundle.runtimeReadiness.source.adapterOutput, true);
+  assert.equal(bundle.runtimeReadiness.source.rawReadinessParsedByUi, false);
+  assert.equal(bundle.runtimeReadiness.readiness.statusAnswer, "blocked_not_yet_evidence_backed");
+  assert.equal(bundle.runtimeReadiness.blockers.count, 6);
+  assert.deepEqual(summarizeContextBundle(bundle).runtimeReadiness, {
+    status: "available",
+    statusAnswer: "blocked_not_yet_evidence_backed",
+    readinessState: "blocked",
+    evidenceState: "blocked",
+    targetDevice: "kv260",
+    blockerCount: 6,
+    readOnly: true,
+  });
+}
+
+function testInvalidRuntimeReadinessDataIsSafeAndBounded() {
+  const unsafeSurface = createRuntimeReadinessStatusSurface(
+    cloneDefaultRuntimeReadinessConsumerSummary(),
+  );
+  unsafeSurface.safety.fpgaRepoAccess = true;
+  unsafeSurface.blockers.items[0].summary = "/home/user/private.log";
+  const bundle = buildContextBundle(
+    { runtimeReadinessStatus: unsafeSurface },
+    { limits: { maxTextCharacters: 80 } },
+  );
+  const serialized = JSON.stringify(bundle.runtimeReadiness);
+
+  assert.equal(bundle.runtimeReadiness.status, "invalid");
+  assert.equal(bundle.runtimeReadiness.summaryAvailable, false);
+  assert.equal(bundle.runtimeReadiness.source.rawReadinessParsedByUi, false);
+  assert.equal(bundle.runtimeReadiness.safety.fpgaRepoAccess, false);
+  assert.equal(bundle.runtimeReadiness.safety.kv260RuntimeExecution, false);
+  assert.doesNotMatch(serialized, /\/home\/user/);
+  assert.match(bundle.runtimeReadiness.reason, /data-only and read-only/);
+}
+
 testStableBoundedShape();
 testDeterministicOrdering();
 testSelectedFileSnippetAndDiagnosticsArePrioritized();
@@ -697,5 +793,7 @@ testNoAbsoluteHomePathLeakage();
 testNoActiveEditorContextShape();
 testDiagnosticsHandoffStatusSurfaceInputIsAccepted();
 testInvalidDiagnosticsHandoffDataIsSafeAndBounded();
+testRuntimeReadinessStatusSurfaceInputIsAccepted();
+testInvalidRuntimeReadinessDataIsSafeAndBounded();
 
 console.log("vscode context bundle tests ok");

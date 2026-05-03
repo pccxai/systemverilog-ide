@@ -20,9 +20,10 @@ the owning repo boundaries.
   evidence work. No KV260 inference works claim. No Gemma 3N E4B on
   KV260 claim. No 20 tok/s achieved claim. No timing closure claim.
 - `pccx-llm-launcher` owns launcher-facing local LLM workflow direction
-  and has diagnostics handoff contract work. This repository may consume
-  checked diagnostics handoff data through explicit read-only boundaries,
-  but it does not call the launcher.
+  and has diagnostics handoff plus runtime readiness contract work. This
+  repository may consume checked diagnostics handoff and runtime readiness
+  data through explicit read-only boundaries, but it does not call the
+  launcher.
 - `pccx-lab` remains CLI-first and GUI-second. Its diagnostics handoff
   validator is a separate CLI/core boundary; this repository does not
   invoke it and does not bypass pccx-lab ownership.
@@ -52,10 +53,10 @@ fixed-command, no-shell, bounded-output, disabled-by-default model.
 - No 20 tok/s achieved claim.
 - No timing closure claim.
 
-Keep diagnostics handoff, launcher status, pccx-lab command descriptors,
-context bundles, validation proposals, patch proposals, and validation
-result caches as data surfaces unless a later PR explicitly extends a
-reviewed boundary with tests.
+Keep diagnostics handoff, runtime readiness, launcher status, pccx-lab
+command descriptors, context bundles, validation proposals, patch
+proposals, and validation result caches as data surfaces unless a later
+PR explicitly extends a reviewed boundary with tests.
 
 ## Engineering Direction
 

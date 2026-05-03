@@ -34,6 +34,8 @@ node editors/vscode-prototype/test/pccx-lab-command-descriptor.test.mjs
 node editors/vscode-prototype/test/launcher-status-contract.test.mjs
 node editors/vscode-prototype/test/diagnostics-handoff-consumer.test.mjs
 node editors/vscode-prototype/test/diagnostics-handoff-status-surface.test.mjs
+node editors/vscode-prototype/test/runtime-readiness-consumer.test.mjs
+node editors/vscode-prototype/test/runtime-readiness-status-surface.test.mjs
 node editors/vscode-prototype/test/local-workflow-status.test.mjs
 node editors/vscode-prototype/test/context-bundle-audit.test.mjs
 node editors/vscode-prototype/test/validation-result-summary.test.mjs

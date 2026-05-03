@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import { isAbsolute, relative } from "node:path";
 
 import {
@@ -7,6 +10,9 @@ import {
 import {
   createDiagnosticsHandoffStatusSurface,
 } from "./diagnostics-handoff-status-surface.mjs";
+import {
+  createRuntimeReadinessStatusSurface,
+} from "./runtime-readiness-status-surface.mjs";
 
 export const CONTEXT_BUNDLE_VERSION = "pccx.contextBundle.v0";
 export const CONTEXT_BUNDLE_SOURCE = "pccx-systemverilog-ide";
@@ -23,6 +29,8 @@ export const DEFAULT_CONTEXT_BUNDLE_LIMITS = Object.freeze({
 
 export const CONTEXT_BUNDLE_DIAGNOSTICS_HANDOFF_VERSION =
   "pccx.contextBundleDiagnosticsHandoff.v0";
+export const CONTEXT_BUNDLE_RUNTIME_READINESS_VERSION =
+  "pccx.contextBundleRuntimeReadiness.v0";
 
 const EXCLUDED_PATH_SEGMENTS = new Set([
   ".git",
@@ -693,6 +701,213 @@ function normalizeDiagnosticsHandoffContext(input, limits) {
   }
 }
 
+function runtimeReadinessSafetyBase() {
+  return {
+    dataOnly: true,
+    readOnly: true,
+    localOnly: true,
+    launcherExecution: false,
+    pccxLabExecution: false,
+    pccxLabValidatorInvocation: false,
+    shellExecution: false,
+    fpgaRepoAccess: false,
+    kv260RuntimeExecution: false,
+    kv260Access: false,
+    runtimeExecution: false,
+    modelLoaded: false,
+    modelExecution: false,
+    modelWeightPathsIncluded: false,
+    privatePathsIncluded: false,
+    credentialDataIncluded: false,
+    generatedBlobsIncluded: false,
+    hardwareDumpsIncluded: false,
+    writesArtifacts: false,
+    providerCalls: false,
+    networkCalls: false,
+    mcpCalls: false,
+    lspImplemented: false,
+    marketplaceFlow: false,
+    telemetry: false,
+    automaticUpload: false,
+    writeBack: false,
+    stableApiAbiClaim: false,
+  };
+}
+
+function missingRuntimeReadinessContext(status = "notAvailable", reason = "") {
+  return {
+    version: CONTEXT_BUNDLE_RUNTIME_READINESS_VERSION,
+    kind: "runtime-readiness-context",
+    status,
+    summaryAvailable: false,
+    source: {
+      adapterOutput: false,
+      rawReadinessParsedByUi: false,
+    },
+    fixture: null,
+    target: null,
+    readiness: null,
+    states: null,
+    blockers: {
+      count: 0,
+      items: [],
+    },
+    safety: runtimeReadinessSafetyBase(),
+    reason,
+  };
+}
+
+function normalizeRuntimeReadinessStatusSurface(surface, limits) {
+  return {
+    version: CONTEXT_BUNDLE_RUNTIME_READINESS_VERSION,
+    kind: "runtime-readiness-context",
+    status: scrubText(surface.readiness?.status ?? "available", 80),
+    summaryAvailable: surface.readiness?.summaryAvailable === true,
+    source: {
+      adapterOutput: surface.source?.adapterOutput === true,
+      rawReadinessParsedByUi: surface.source?.rawReadinessParsedByUi === true,
+    },
+    fixture: surface.fixture
+      ? {
+          schemaVersion: scrubText(surface.fixture.schemaVersion ?? "", 120),
+          readinessId: scrubText(surface.fixture.readinessId ?? "", 160),
+          fixtureVersion: scrubText(surface.fixture.fixtureVersion ?? "", 160),
+          lastUpdatedSource: scrubText(surface.fixture.lastUpdatedSource ?? "", 160),
+        }
+      : null,
+    target: surface.target
+      ? {
+          model: {
+            modelId: scrubText(surface.target.model?.modelId ?? "", 160),
+            modelFamily: scrubText(surface.target.model?.modelFamily ?? "", 80),
+            modelVariant: scrubText(surface.target.model?.modelVariant ?? "", 80),
+          },
+          device: scrubText(surface.target.device ?? "", 80),
+          board: scrubText(surface.target.board ?? "", 160),
+        }
+      : null,
+    readiness: {
+      statusAnswer: scrubText(surface.readiness?.statusAnswer ?? "", 120),
+      readinessState: scrubText(surface.readiness?.readinessState ?? "", 80),
+      evidenceState: scrubText(surface.readiness?.evidenceState ?? "", 80),
+    },
+    states: {
+      timing: scrubText(surface.states?.timing ?? "", 80),
+      bitstream: scrubText(surface.states?.bitstream ?? "", 80),
+      implementation: scrubText(surface.states?.implementation ?? "", 80),
+      kv260Smoke: scrubText(surface.states?.kv260Smoke ?? "", 80),
+      runtimeEvidence: scrubText(surface.states?.runtimeEvidence ?? "", 80),
+      throughput: scrubText(surface.states?.throughput ?? "", 80),
+    },
+    blockers: {
+      count: Math.max(0, Math.floor(clampNumber(surface.blockers?.count))),
+      items: Array.isArray(surface.blockers?.items)
+        ? surface.blockers.items.map((item) => ({
+            blockerId: scrubText(item.blockerId ?? "", 160),
+            state: scrubText(item.state ?? "", 80),
+            requiredBefore: scrubText(item.requiredBefore ?? "", 160),
+            summary: scrubText(item.summary ?? "", 500),
+          })).slice(0, 8)
+        : [],
+    },
+    safety: {
+      ...runtimeReadinessSafetyBase(),
+      dataOnly: surface.safety?.dataOnly === true,
+      readOnly: surface.safety?.readOnly === true,
+      localOnly: surface.safety?.localOnly === true,
+      launcherExecution: surface.safety?.launcherExecution === true,
+      pccxLabExecution: surface.safety?.pccxLabExecution === true,
+      pccxLabValidatorInvocation: surface.safety?.pccxLabValidatorInvocation === true,
+      shellExecution: surface.safety?.shellExecution === true,
+      fpgaRepoAccess: surface.safety?.fpgaRepoAccess === true,
+      kv260RuntimeExecution: surface.safety?.kv260RuntimeExecution === true,
+      kv260Access: surface.safety?.kv260Access === true,
+      runtimeExecution: surface.safety?.runtimeExecution === true,
+      modelLoaded: surface.safety?.modelLoaded === true,
+      modelExecution: surface.safety?.modelExecution === true,
+      modelWeightPathsIncluded: surface.safety?.modelWeightPathsIncluded === true,
+      privatePathsIncluded: surface.safety?.privatePathsIncluded === true,
+      credentialDataIncluded: surface.safety?.secretsIncluded === true ||
+        surface.safety?.tokensIncluded === true,
+      generatedBlobsIncluded: surface.safety?.generatedBlobsIncluded === true,
+      hardwareDumpsIncluded: surface.safety?.hardwareDumpsIncluded === true,
+      writesArtifacts: surface.safety?.writesArtifacts === true,
+      providerCalls: surface.safety?.providerCalls === true,
+      networkCalls: surface.safety?.networkCalls === true,
+      mcpCalls: surface.safety?.mcpCalls === true,
+      lspImplemented: surface.safety?.lspImplemented === true,
+      marketplaceFlow: surface.safety?.marketplaceFlow === true,
+      telemetry: surface.safety?.telemetry === true,
+      automaticUpload: surface.safety?.automaticUpload === true,
+      writeBack: surface.safety?.writeBack === true,
+      stableApiAbiClaim: surface.safety?.stableApiAbiClaim === true,
+    },
+  };
+}
+
+function assertRuntimeReadinessContextSafety(context) {
+  const safety = context.safety ?? {};
+  if (
+    safety.dataOnly !== true ||
+    safety.readOnly !== true ||
+    safety.launcherExecution === true ||
+    safety.pccxLabExecution === true ||
+    safety.pccxLabValidatorInvocation === true ||
+    safety.shellExecution === true ||
+    safety.fpgaRepoAccess === true ||
+    safety.kv260RuntimeExecution === true ||
+    safety.kv260Access === true ||
+    safety.runtimeExecution === true ||
+    safety.modelLoaded === true ||
+    safety.modelExecution === true ||
+    safety.modelWeightPathsIncluded === true ||
+    safety.privatePathsIncluded === true ||
+    safety.credentialDataIncluded === true ||
+    safety.generatedBlobsIncluded === true ||
+    safety.hardwareDumpsIncluded === true ||
+    safety.writesArtifacts === true ||
+    safety.providerCalls === true ||
+    safety.networkCalls === true ||
+    safety.mcpCalls === true ||
+    safety.lspImplemented === true ||
+    safety.marketplaceFlow === true ||
+    safety.telemetry === true ||
+    safety.automaticUpload === true ||
+    safety.writeBack === true ||
+    safety.stableApiAbiClaim === true ||
+    context.source?.rawReadinessParsedByUi === true
+  ) {
+    throw new Error("runtime readiness context must remain data-only and read-only");
+  }
+}
+
+function normalizeRuntimeReadinessContext(input, limits) {
+  const suppliedSurface = input?.runtimeReadinessStatus ??
+    input?.runtimeReadiness?.statusSurface ??
+    null;
+  const suppliedSummary = input?.runtimeReadinessSummary ??
+    input?.runtimeReadiness?.consumerSummary ??
+    null;
+
+  if (!suppliedSurface && !suppliedSummary) {
+    return missingRuntimeReadinessContext();
+  }
+
+  try {
+    const surface = suppliedSurface?.kind === "runtime-readiness-status-surface"
+      ? suppliedSurface
+      : createRuntimeReadinessStatusSurface(suppliedSummary);
+    const context = normalizeRuntimeReadinessStatusSurface(surface, limits);
+    assertRuntimeReadinessContextSafety(context);
+    return context;
+  } catch (error) {
+    return missingRuntimeReadinessContext(
+      "invalid",
+      scrubText(error.message, limits.maxTextCharacters),
+    );
+  }
+}
+
 export function buildContextBundle(input = {}, options = {}) {
   const limits = mergeLimits(options.limits);
   const workspaceRoot = options.workspaceRoot ?? input.workspaceRoot ?? null;
@@ -761,6 +976,7 @@ export function buildContextBundle(input = {}, options = {}) {
         .slice(0, limits.maxFiles),
     },
     diagnosticsHandoff: normalizeDiagnosticsHandoffContext(input, limits),
+    runtimeReadiness: normalizeRuntimeReadinessContext(input, limits),
     excludedPathSegments: [...EXCLUDED_PATH_SEGMENTS].sort(),
     excludedPathPatterns: [...EXCLUDED_PATH_PATTERNS],
     redaction: {
@@ -812,6 +1028,21 @@ export function summarizeContextBundle(bundle) {
           status: bundle?.diagnosticsHandoff?.status ?? "notAvailable",
           diagnosticCount: 0,
           readOnly: bundle?.diagnosticsHandoff?.safety?.readOnly === true,
+        },
+    runtimeReadiness: bundle?.runtimeReadiness?.summaryAvailable
+      ? {
+          status: bundle.runtimeReadiness.status,
+          statusAnswer: bundle.runtimeReadiness.readiness?.statusAnswer ?? "",
+          readinessState: bundle.runtimeReadiness.readiness?.readinessState ?? "",
+          evidenceState: bundle.runtimeReadiness.readiness?.evidenceState ?? "",
+          targetDevice: bundle.runtimeReadiness.target?.device ?? "",
+          blockerCount: bundle.runtimeReadiness.blockers?.count ?? 0,
+          readOnly: bundle.runtimeReadiness.safety?.readOnly === true,
+        }
+      : {
+          status: bundle?.runtimeReadiness?.status ?? "notAvailable",
+          blockerCount: 0,
+          readOnly: bundle?.runtimeReadiness?.safety?.readOnly === true,
         },
   };
 }

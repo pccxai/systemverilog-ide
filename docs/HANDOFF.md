@@ -3,11 +3,13 @@
 This document describes the controlled integration boundary between
 `pccx-ide` (this CLI) and `pccx-lab`.
 
-Two handoff paths are tracked:
+Tracked handoff paths:
 
 1. The `pccx-lab` CLI / core boundary (analysis backend) — **wired**.
 2. The xsim runner / log surfacing path inside `pccx-lab` — **planned**.
 3. The launcher diagnostics handoff JSON consumer — **read-only fixture
+   boundary**.
+4. The launcher runtime readiness JSON consumer — **read-only fixture
    boundary**.
 
 Direction and style rules for preserving those boundaries are pinned in
@@ -27,9 +29,10 @@ Current cross-repo direction:
   evidence work. This handoff does not claim KV260 inference works, does
   not claim Gemma 3N E4B runs on KV260, does not claim 20 tok/s achieved,
   and does not claim timing closure.
-- `pccx-llm-launcher` owns launcher-facing local LLM workflow direction
-  and diagnostics handoff contract work. This repository consumes checked
-  handoff data only through read-only adapter surfaces.
+- `pccx-llm-launcher` owns launcher-facing local LLM workflow direction,
+  diagnostics handoff contract work, and runtime readiness data for the
+  planned Gemma 3N E4B plus KV260 path. This repository consumes checked
+  launcher data only through read-only adapter surfaces.
 - `pccx-lab` remains CLI-first and GUI-second. Its diagnostics handoff
   validator remains outside this repository; this repository does not
   invoke that validator.
@@ -163,6 +166,45 @@ providers, and does not touch hardware.
 The pccx-lab validator remains a separate CLI/core boundary. The IDE
 consumer is for future presentation and context use, not for bypassing
 launcher or lab ownership.
+
+---
+
+## launcher runtime readiness consumer (read-only)
+
+The VS Code prototype includes a small adapter for
+`pccx.runtimeReadiness.v0` launcher runtime readiness JSON. The checked
+local example lives at
+`docs/examples/runtime-readiness/launcher-runtime-readiness.gemma3n-e4b-kv260.example.json`.
+
+The current consumed launcher answer is
+`blocked_not_yet_evidence_backed` for Gemma 3N E4B plus KV260. The
+consumer returns deterministic bounded summary data: readiness and
+evidence state, target model and device, timing state, bitstream state,
+implementation state, KV260 smoke state, runtime evidence state,
+throughput state, blocker count/list, and read-only safety flags.
+
+The status surface and context bundle treat this summary as data only.
+Missing or invalid readiness data is reported as unavailable or invalid
+context. The context does not parse raw launcher JSON in UI/proposal
+layers and does not execute a backend command.
+
+Current evidence represented by the launcher data:
+
+- xsim evidence is present.
+- Vivado synthesis evidence is present.
+- Timing remains blocked.
+- Implementation remains blocked.
+- Bitstream generation is not proven.
+- KV260 board smoke and runtime evidence are absent.
+- Throughput measurement is absent; the throughput value remains a target
+  only.
+
+This path does not execute `pccx-llm-launcher`, execute `pccx-lab`, invoke
+the pccx-lab validator, access the FPGA repository, execute KV260 runtime
+code, load model weights, call providers, implement MCP or LSP, package
+for marketplace distribution, upload telemetry, or write back state. It
+does not claim KV260 inference works, does not claim Gemma 3N E4B runs on
+KV260, and does not claim measured throughput.
 
 ---
 
