@@ -46,6 +46,13 @@ descriptor references, transport kinds, and read-only safety flags.
 Missing or invalid handoff data is represented as unavailable/invalid
 context instead of executing a backend command.
 
+`pccxSystemVerilog.proposeValidationCommand` can reuse the normalized
+context-bundle `diagnosticsHandoff` section as proposal preflight data.
+It reports available, unavailable, or invalid handoff status and bounded
+notes for local proposal UI. The proposal code does not parse raw handoff
+JSON and does not execute launcher, pccx-lab, validator, shell, provider,
+runtime, MCP, LSP, marketplace, telemetry, upload, or write-back flows.
+
 ## What It Does Not Do
 
 This boundary does not:

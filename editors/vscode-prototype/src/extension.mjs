@@ -347,6 +347,7 @@ function appendCommandOutput(outputChannel, commandId, result) {
       kind: result.kind,
       proposalCount: result.proposals?.length ?? 0,
       execution: result.execution,
+      diagnosticsHandoff: result.diagnosticsHandoffContext?.status ?? "unavailable",
     }, null, 2));
   }
   if (result.kind === "approved-validation-result") {
@@ -774,10 +775,17 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
     if (commandId === VALIDATION_PROPOSAL_COMMAND) {
       let result;
       try {
+        const request = createAssistantRequest(rawConfig, {
+          diagnosticsHandoffStatus: diagnosticsHandoffStatusFromRuntime(runtime),
+        });
         result = {
           ok: true,
           commandId,
-          ...createValidationCommandProposal(input),
+          ...createValidationCommandProposal({
+            contextBundle: {
+              diagnosticsHandoff: request.contextBundle.diagnosticsHandoff,
+            },
+          }),
         };
       } catch (error) {
         result = { ok: false, commandId, error: error.message };

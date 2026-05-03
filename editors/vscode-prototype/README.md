@@ -380,8 +380,13 @@ providers.
 `pccxSystemVerilog.proposeValidationCommand` returns allowlisted
 validation command proposals as JSON data.  The proposal includes
 allowlisted proposal IDs, argument-array templates, reasons, risk levels, and
-explicit user approval requirements.  It does not spawn a process, call
-pccx-lab, call an AI provider, write files, or run git operations.
+explicit user approval requirements.  It can also include experimental
+local diagnostics handoff preflight context derived from the normalized
+context-bundle `diagnosticsHandoff` section.  That context reports
+available, unavailable, or invalid handoff status and bounded notes for UI
+display.  It does not parse raw handoff JSON in the proposal layer, spawn
+a process, call pccx-lab, call an AI provider, write files, or run git
+operations.
 
 `pccxSystemVerilog.runApprovedValidationCommand` is a separate approved
 validation runner boundary.  It is disabled by default; execution requires

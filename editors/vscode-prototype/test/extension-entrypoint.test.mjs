@@ -948,8 +948,18 @@ async function testValidationProposalCommandReturnsDataOnly() {
   assert.equal(result.executes, false);
   assert.equal(result.providerCalls, false);
   assert.equal(result.runtimeCalls, false);
+  assert.equal(result.diagnosticsHandoffContext.status, "available");
+  assert.equal(result.diagnosticsHandoffContext.summaryAvailable, true);
+  assert.equal(result.diagnosticsHandoffContext.diagnostics.count, 5);
+  assert.equal(result.diagnosticsHandoffContext.safety.launcherExecution, false);
+  assert.equal(result.diagnosticsHandoffContext.safety.pccxLabExecution, false);
+  assert.equal(result.diagnosticsHandoffContext.safety.pccxLabValidatorInvocation, false);
+  assert.equal(result.diagnosticsHandoffContext.safety.shellExecution, false);
   assert.ok(result.proposals.some((proposal) => (
     proposal.command?.argv?.join(" ") === "bash scripts/vscode-adapter-smoke.sh"
+  )));
+  assert.ok(result.proposals.every((proposal) => (
+    proposal.preflight.diagnosticsHandoff.status === "available"
   )));
   assert.doesNotMatch(JSON.stringify(result), /git push/);
 }

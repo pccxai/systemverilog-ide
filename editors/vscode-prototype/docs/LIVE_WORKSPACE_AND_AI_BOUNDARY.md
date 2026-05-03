@@ -155,9 +155,13 @@ SystemVerilog resolution.
 Validation command proposals use allowlisted templates such as the VS Code
 adapter smoke, editor bridge smoke, example drift check, pytest baseline,
 and the opt-in Extension Host smoke.  They include reasons, risk levels,
-and a required user approval marker.  The command returns JSON data only:
-it does not spawn a process, call pccx-lab, call an AI provider, write
-files, or run git commands.
+and a required user approval marker.  They may include diagnostics
+handoff preflight context from the normalized context-bundle
+`diagnosticsHandoff` section.  That proposal context is summary-only and
+bounded: it reports available, unavailable, or invalid handoff status plus
+short preflight/issue notes.  The command returns JSON data only: it does
+not parse raw handoff JSON in the proposal layer, spawn a process, call
+pccx-lab, call an AI provider, write files, or run git commands.
 
 The approved validation runner re-resolves proposal IDs through an
 internal allowlist.  Runnable initial IDs are `vscodeAdapterSmoke`,
