@@ -45,6 +45,7 @@ python -m pccx_ide_cli locate <path> <name> --kind any --format json
 
 # Module organization for editor project trees
 python -m pccx_ide_cli organization <path> --format json
+python -m pccx_ide_cli hierarchy <path> --format json
 
 # Opt-in pccx-lab diagnostics backend
 python -m pccx_ide_cli check <sv-file> --backend pccx-lab --format json

@@ -136,6 +136,25 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    hierarchy_cmd = sub.add_parser(
+        "hierarchy",
+        help=(
+            "Render a scanner-based read-only module hierarchy view "
+            "for editor trees."
+        ),
+    )
+    hierarchy_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    hierarchy_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     refactor_plan_cmd = sub.add_parser(
         "refactor-plan",
         help=(
@@ -422,6 +441,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_module_organization_text(export))
+        return 0
+
+    if args.command == "hierarchy":
+        from .module_organization import (
+            build_module_hierarchy_view,
+            format_module_hierarchy_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        view = build_module_hierarchy_view(str(args.path), args.path)
+        if args.format == "json":
+            json.dump(view, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_module_hierarchy_text(view))
         return 0
 
     if args.command == "refactor-plan":
