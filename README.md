@@ -210,6 +210,17 @@ handoff. That audit returns bounded JSON/text status only; it does not
 execute launcher, pccx-lab, validator, shell, provider, runtime, MCP, LSP,
 marketplace, telemetry, upload, or write-back flows.
 
+The prototype also has an experimental read-only runtime readiness
+consumer for the launcher `pccx.runtimeReadiness.v0` JSON shape. The
+checked local example represents Gemma 3N E4B plus KV260 as
+`blocked_not_yet_evidence_backed`. The summary carries readiness and
+evidence state, target model/device, timing, bitstream, implementation,
+KV260 smoke, runtime evidence, throughput state, bounded blockers, and
+safety flags. It is context/status data only: it does not execute the
+launcher, execute pccx-lab, access the FPGA repository, execute KV260
+runtime code, load model weights, call providers, implement MCP or LSP,
+upload telemetry, or write back state.
+
 ## Later track (deferred)
 
 - Local coding-assistant mode can propose interactions with `pccx-lab`

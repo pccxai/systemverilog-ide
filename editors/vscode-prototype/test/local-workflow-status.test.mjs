@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import assert from "node:assert/strict";
 
 import {
@@ -66,10 +69,41 @@ function testLocalWorkflowStatusUsesDeterministicLocalDataOnly() {
   assert.equal(status.diagnosticsHandoffBoundary.surfaceStatus, "available");
   assert.equal(status.diagnosticsHandoffBoundary.summaryAvailable, true);
   assert.equal(status.diagnosticsHandoffBoundary.diagnosticCount, 5);
-  assert.equal(status.contextBundle.itemCount, 9);
+  assert.equal(status.runtimeReadinessBoundary.supportedSchemaVersion, "pccx.runtimeReadiness.v0");
+  assert.equal(status.runtimeReadinessBoundary.expectedStatusAnswer, "blocked_not_yet_evidence_backed");
+  assert.equal(status.runtimeReadinessBoundary.fixtureConsumer, true);
+  assert.equal(status.runtimeReadinessBoundary.readOnly, true);
+  assert.equal(status.runtimeReadinessBoundary.invokesLauncher, false);
+  assert.equal(status.runtimeReadinessBoundary.invokesPccxLab, false);
+  assert.equal(status.runtimeReadinessBoundary.accessesFpgaRepo, false);
+  assert.equal(status.runtimeReadinessBoundary.kv260RuntimeExecution, false);
+  assert.equal(status.runtimeReadinessBoundary.modelExecution, false);
+  assert.equal(status.runtimeReadinessBoundary.providerCalls, false);
+  assert.equal(status.runtimeReadinessBoundary.mcpCalls, false);
+  assert.equal(status.runtimeReadinessBoundary.lspImplemented, false);
+  assert.equal(status.runtimeReadinessBoundary.surfaceStatus, "available");
+  assert.equal(status.runtimeReadinessBoundary.summaryAvailable, true);
+  assert.equal(status.runtimeReadinessBoundary.statusAnswer, "blocked_not_yet_evidence_backed");
+  assert.equal(status.runtimeReadinessBoundary.readinessState, "blocked");
+  assert.equal(status.runtimeReadinessBoundary.evidenceState, "blocked");
+  assert.equal(status.runtimeReadinessBoundary.targetModelId, "gemma3n_e4b_placeholder");
+  assert.equal(status.runtimeReadinessBoundary.targetDevice, "kv260");
+  assert.equal(status.runtimeReadinessBoundary.timingState, "blocked");
+  assert.equal(status.runtimeReadinessBoundary.bitstreamState, "blocked");
+  assert.equal(status.runtimeReadinessBoundary.implementationState, "blocked");
+  assert.equal(status.runtimeReadinessBoundary.kv260SmokeState, "blocked");
+  assert.equal(status.runtimeReadinessBoundary.runtimeEvidenceState, "blocked");
+  assert.equal(status.runtimeReadinessBoundary.throughputState, "target");
+  assert.equal(status.runtimeReadinessBoundary.blockerCount, 6);
+  assert.equal(status.contextBundle.itemCount, 15);
   assert.equal(status.safety.providerCalls, false);
   assert.equal(status.safety.launcherCalls, false);
   assert.equal(status.safety.pccxLabExecution, false);
+  assert.equal(status.safety.fpgaRepoAccess, false);
+  assert.equal(status.safety.kv260RuntimeExecution, false);
+  assert.equal(status.safety.telemetry, false);
+  assert.equal(status.safety.automaticUpload, false);
+  assert.equal(status.safety.writeBack, false);
 }
 
 function testLocalWorkflowStatusDefaultsAreDisabledAndSafe() {
@@ -86,11 +120,21 @@ function testLocalWorkflowStatusDefaultsAreDisabledAndSafe() {
   assert.equal(status.diagnosticsHandoffBoundary.invokesPccxLab, false);
   assert.equal(status.diagnosticsHandoffBoundary.surfaceStatus, "available");
   assert.equal(status.diagnosticsHandoffBoundary.summaryAvailable, true);
+  assert.equal(status.runtimeReadinessBoundary.invokesLauncher, false);
+  assert.equal(status.runtimeReadinessBoundary.invokesPccxLab, false);
+  assert.equal(status.runtimeReadinessBoundary.accessesFpgaRepo, false);
+  assert.equal(status.runtimeReadinessBoundary.kv260RuntimeExecution, false);
+  assert.equal(status.runtimeReadinessBoundary.statusAnswer, "blocked_not_yet_evidence_backed");
+  assert.equal(status.runtimeReadinessBoundary.blockerCount, 6);
   assert.match(text, /Local Workflow Status/);
   assert.match(text, /validationRunner: disabled/);
   assert.match(text, /diagnosticsHandoffBoundary: pccx\.diagnosticsHandoff\.v0 readOnly=yes/);
   assert.match(text, /diagnosticsHandoffSummary: available diagnostics=5/);
+  assert.match(text, /runtimeReadinessBoundary: pccx\.runtimeReadiness\.v0 readOnly=yes/);
+  assert.match(text, /runtimeReadinessSummary: blocked_not_yet_evidence_backed readiness=blocked blockers=6/);
   assert.match(text, /no pccx-lab execution/);
+  assert.match(text, /no FPGA repo access/);
+  assert.match(text, /no KV260 runtime/);
   assert.doesNotMatch(JSON.stringify(status), /\/home\/|TOKEN=|model\.gguf/);
 }
 

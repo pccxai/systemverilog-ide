@@ -1,0 +1,207 @@
+{
+  "bitstreamState": "blocked",
+  "blockers": [
+    {
+      "blockerId": "board_model_bitstream_runtime_environment_missing",
+      "requiredBefore": "kv260_smoke_or_runtime_claim",
+      "state": "blocked",
+      "summary": "KV260 board, model assets, generated bitstream, and runtime environment are not provided by this launcher fixture."
+    },
+    {
+      "blockerId": "post_synth_drc_timing_open",
+      "requiredBefore": "implementation_or_bitstream_claim",
+      "state": "blocked",
+      "summary": "Post-synthesis DRC and timing issues remain open in the FPGA closure state."
+    },
+    {
+      "blockerId": "implementation_incomplete",
+      "requiredBefore": "bitstream_or_board_smoke_claim",
+      "state": "blocked",
+      "summary": "Implementation is not complete, so hardware closure is not available."
+    },
+    {
+      "blockerId": "bitstream_not_generated",
+      "requiredBefore": "kv260_board_smoke_claim",
+      "state": "blocked",
+      "summary": "A generated bitstream is not proven by this launcher surface."
+    },
+    {
+      "blockerId": "gemma3n_e4b_runtime_evidence_absent",
+      "requiredBefore": "runtime_or_performance_claim",
+      "state": "blocked",
+      "summary": "Gemma 3N E4B has no KV260 hardware runtime evidence in this launcher fixture."
+    },
+    {
+      "blockerId": "throughput_measurement_absent",
+      "requiredBefore": "performance_claim",
+      "state": "blocked",
+      "summary": "Throughput measurement is unavailable."
+    }
+  ],
+  "boardInputState": "ready_for_inputs",
+  "compatibilityState": "blocked",
+  "coordinationNotes": {
+    "launcher": "The launcher provides data contracts first and does not add runtime integration in this phase.",
+    "pccxLab": "pccx-lab remains the future CLI/core diagnostics and verification backend; this launcher fixture does not invoke it.",
+    "systemverilogIde": "systemverilog-ide may consume launcher or lab data later as read-only context; this fixture does not invoke or control it."
+  },
+  "descriptorState": "evidence_present",
+  "evidenceRefs": [
+    {
+      "evidenceId": "launcher_model_runtime_descriptor_fixture",
+      "referenceKind": "repo_fixture_reference",
+      "state": "evidence_present",
+      "summary": "The launcher has a checked descriptor fixture for Gemma 3N E4B and the KV260 placeholder runtime."
+    },
+    {
+      "evidenceId": "fpga_v002_xsim_validation",
+      "referenceKind": "external_repo_state_summary",
+      "state": "evidence_present",
+      "summary": "pccx-FPGA-NPU-LLM-kv260 v002 repo-local xsim evidence reports 11 passed and 0 failed."
+    },
+    {
+      "evidenceId": "fpga_v002_vivado_synth",
+      "referenceKind": "external_repo_state_summary",
+      "state": "evidence_present",
+      "summary": "Vivado synthesis evidence exists, but this is not hardware closure."
+    },
+    {
+      "evidenceId": "fpga_post_synth_drc_timing",
+      "referenceKind": "external_repo_state_summary",
+      "state": "blocked",
+      "summary": "Post-synthesis DRC and timing issues are current closure blockers."
+    },
+    {
+      "evidenceId": "kv260_board_smoke",
+      "referenceKind": "future_evidence_required",
+      "state": "blocked",
+      "summary": "KV260 board smoke is blocked by missing board, model, bitstream, and runtime environment."
+    },
+    {
+      "evidenceId": "gemma3n_e4b_kv260_runtime",
+      "referenceKind": "future_evidence_required",
+      "state": "blocked",
+      "summary": "Gemma 3N E4B KV260 hardware runtime evidence is absent."
+    },
+    {
+      "evidenceId": "gemma3n_e4b_kv260_throughput",
+      "referenceKind": "future_measurement_required",
+      "state": "target",
+      "summary": "Throughput remains a target-only item until measured evidence exists."
+    }
+  ],
+  "evidenceState": "blocked",
+  "fixtureVersion": "runtime-readiness.gemma3n-e4b-kv260.2026-05-03",
+  "implementationState": "blocked",
+  "issueRefs": [
+    "pccxai/pccx-llm-launcher#3",
+    "pccxai/pccx-llm-launcher#5",
+    "pccxai/pccx-llm-launcher#12"
+  ],
+  "kv260SmokeState": "blocked",
+  "lastUpdatedSource": "pccx_evidence_boundary_2026-05-03",
+  "limitations": [
+    "Data-only runtime readiness surface; no runtime is executed.",
+    "No model assets are bundled, loaded, or referenced by path.",
+    "No KV260 hardware access, board smoke, bitstream programming, or provider call is performed.",
+    "xsim and Vivado synthesis evidence are recorded as evidence-aware status only, not hardware closure.",
+    "Timing, implementation, bitstream, KV260 smoke, runtime, and throughput evidence remain missing for this launcher fixture.",
+    "20 tok/s is a target only until measured evidence exists.",
+    "This is not a release, tag, versioned compatibility commitment, MCP, LSP, IDE, marketplace, or telemetry implementation."
+  ],
+  "modelFamily": "gemma3n",
+  "modelId": "gemma3n_e4b_placeholder",
+  "modelVariant": "e4b",
+  "modelWeightState": "ready_for_inputs",
+  "nextInputsRequired": [
+    {
+      "inputId": "external_model_assets",
+      "sourceBoundary": "user_or_future_runtime_integration",
+      "state": "ready_for_inputs",
+      "summary": "Gemma 3N E4B model assets remain external and are not loaded or referenced by path."
+    },
+    {
+      "inputId": "kv260_board_environment",
+      "sourceBoundary": "future_pccx_lab_or_core_handoff",
+      "state": "ready_for_inputs",
+      "summary": "KV260 board and runtime environment evidence must arrive from lower layers before smoke status changes."
+    },
+    {
+      "inputId": "timing_and_implementation_closure",
+      "sourceBoundary": "pccx_fpga_kv260_repo",
+      "state": "ready_for_inputs",
+      "summary": "Post-synthesis DRC, timing, implementation, and bitstream evidence must be supplied by FPGA closure work."
+    },
+    {
+      "inputId": "kv260_smoke_evidence",
+      "sourceBoundary": "future_pccx_lab_or_core_handoff",
+      "state": "ready_for_inputs",
+      "summary": "Board smoke evidence is required before KV260 runtime status can move beyond blocked."
+    },
+    {
+      "inputId": "throughput_measurement",
+      "sourceBoundary": "future_pccx_lab_or_core_handoff",
+      "state": "ready_for_inputs",
+      "summary": "Measured throughput evidence is required before any performance claim."
+    }
+  ],
+  "overallState": "blocked",
+  "performanceTargets": [
+    {
+      "achieved": false,
+      "measured": false,
+      "metricId": "decode_throughput",
+      "state": "target",
+      "summary": "20 tok/s remains a target until measured on the Gemma 3N E4B plus KV260 path.",
+      "target": "20 tok/s"
+    }
+  ],
+  "readinessId": "runtime_readiness_gemma3n_e4b_kv260",
+  "readinessState": "blocked",
+  "runtimeEvidenceState": "blocked",
+  "safetyFlags": {
+    "automaticUpload": false,
+    "dataOnly": true,
+    "descriptorOnly": true,
+    "deterministic": true,
+    "executesPccxLab": false,
+    "executesSystemverilogIde": false,
+    "generatedBlobsIncluded": false,
+    "hardwareDumpsIncluded": false,
+    "kv260Access": false,
+    "lspImplemented": false,
+    "marketplaceFlow": false,
+    "mcpServerImplemented": false,
+    "modelExecution": false,
+    "modelLoaded": false,
+    "modelWeightPathsIncluded": false,
+    "networkCalls": false,
+    "privatePathsIncluded": false,
+    "providerCalls": false,
+    "readOnly": true,
+    "runtimeExecution": false,
+    "secretsIncluded": false,
+    "stableApiAbiClaim": false,
+    "telemetry": false,
+    "tokensIncluded": false,
+    "touchesHardware": false,
+    "writeBack": false,
+    "writesArtifacts": false
+  },
+  "schemaVersion": "pccx.runtimeReadiness.v0",
+  "simulationEvidenceState": "evidence_present",
+  "stateVocabulary": {
+    "blocked": "A required input, artifact, closure step, or runtime evidence item is missing.",
+    "evidence_present": "Checked non-runtime evidence exists for this item.",
+    "measured": "A runtime or hardware measurement exists. The current fixture does not use this state for Gemma 3N E4B on KV260.",
+    "ready_for_inputs": "The launcher can describe the required input without bundling or reading it.",
+    "target": "Named planned target only."
+  },
+  "statusAnswer": "blocked_not_yet_evidence_backed",
+  "targetBoard": "xilinx_kria_kv260",
+  "targetDevice": "kv260",
+  "targetState": "target",
+  "throughputEvidenceState": "target",
+  "timingEvidenceState": "blocked",
+  "vivadoSynthState": "evidence_present"
+}

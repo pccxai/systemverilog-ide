@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import {
   createLauncherStatusContractStatus,
 } from "./launcher-status-contract.mjs";
@@ -10,6 +13,12 @@ import {
 import {
   createDiagnosticsHandoffStatusSurface,
 } from "./diagnostics-handoff-status-surface.mjs";
+import {
+  createRuntimeReadinessConsumerBoundaryStatus,
+} from "./runtime-readiness-consumer.mjs";
+import {
+  createRuntimeReadinessStatusSurface,
+} from "./runtime-readiness-status-surface.mjs";
 
 export const LOCAL_WORKFLOW_STATUS_VERSION = "pccx.localWorkflowStatus.v0";
 
@@ -46,6 +55,7 @@ function contextBundleEstimate(input = {}) {
       input.validationHistoryCount ?? 0,
       input.launcherStatusCount ?? 0,
       input.labStatusCount ?? 0,
+      input.runtimeReadinessBlockerCount ?? 0,
     ].reduce((sum, value) => sum + Math.max(0, Number.isInteger(value) ? value : 0), 0),
     diagnosticCount: contextSummary?.diagnosticCount ?? input.diagnosticCount ?? 0,
     snippetCount: contextSummary?.snippetCount ?? input.snippetCount ?? 0,
@@ -60,6 +70,10 @@ export function createLocalWorkflowStatus(config = {}, input = {}) {
   const diagnosticsHandoffBoundary = createDiagnosticsHandoffConsumerBoundaryStatus();
   const diagnosticsHandoffSurface = createDiagnosticsHandoffStatusSurface(
     input.diagnosticsHandoffSummary,
+  );
+  const runtimeReadinessBoundary = createRuntimeReadinessConsumerBoundaryStatus();
+  const runtimeReadinessSurface = createRuntimeReadinessStatusSurface(
+    input.runtimeReadinessSummary,
   );
   const validationCache = validationStatusFromCache(input.validationResultCache);
   const extensionMode = typeof config.mode === "string" ? config.mode : "checkedExample";
@@ -101,14 +115,51 @@ export function createLocalWorkflowStatus(config = {}, input = {}) {
       summaryAvailable: diagnosticsHandoffSurface.readiness.summaryAvailable === true,
       diagnosticCount: diagnosticsHandoffSurface.diagnostics.count,
     },
-    contextBundle: contextBundleEstimate(input),
+    runtimeReadinessBoundary: {
+      supportedSchemaVersion: runtimeReadinessBoundary.supportedSchemaVersion,
+      expectedStatusAnswer: runtimeReadinessBoundary.expectedStatusAnswer,
+      fixtureConsumer: runtimeReadinessBoundary.fixtureConsumer === true,
+      readOnly: runtimeReadinessBoundary.readOnly === true,
+      invokesLauncher: runtimeReadinessBoundary.invokesLauncher === true,
+      invokesPccxLab: runtimeReadinessBoundary.invokesPccxLab === true,
+      accessesFpgaRepo: runtimeReadinessBoundary.accessesFpgaRepo === true,
+      kv260RuntimeExecution: runtimeReadinessBoundary.kv260RuntimeExecution === true,
+      modelExecution: runtimeReadinessBoundary.modelExecution === true,
+      providerCalls: runtimeReadinessBoundary.providerCalls === true,
+      mcpCalls: runtimeReadinessBoundary.mcpCalls === true,
+      lspImplemented: runtimeReadinessBoundary.lspImplemented === true,
+      statusSurfaceVersion: runtimeReadinessSurface.version,
+      surfaceStatus: runtimeReadinessSurface.readiness.status,
+      summaryAvailable: runtimeReadinessSurface.readiness.summaryAvailable === true,
+      statusAnswer: runtimeReadinessSurface.readiness.statusAnswer,
+      readinessState: runtimeReadinessSurface.readiness.readinessState,
+      evidenceState: runtimeReadinessSurface.readiness.evidenceState,
+      targetModelId: runtimeReadinessSurface.target.model.modelId,
+      targetDevice: runtimeReadinessSurface.target.device,
+      timingState: runtimeReadinessSurface.states.timing,
+      bitstreamState: runtimeReadinessSurface.states.bitstream,
+      implementationState: runtimeReadinessSurface.states.implementation,
+      kv260SmokeState: runtimeReadinessSurface.states.kv260Smoke,
+      runtimeEvidenceState: runtimeReadinessSurface.states.runtimeEvidence,
+      throughputState: runtimeReadinessSurface.states.throughput,
+      blockerCount: runtimeReadinessSurface.blockers.count,
+    },
+    contextBundle: contextBundleEstimate({
+      ...input,
+      runtimeReadinessBlockerCount: runtimeReadinessSurface.blockers.count,
+    }),
     safety: {
       providerCalls: false,
       launcherCalls: false,
       pccxLabExecution: false,
+      fpgaRepoAccess: false,
+      kv260RuntimeExecution: false,
       mcpCalls: false,
       lspImplemented: false,
       marketplaceFlow: false,
+      telemetry: false,
+      automaticUpload: false,
+      writeBack: false,
     },
   };
 }
@@ -124,7 +175,9 @@ export function formatLocalWorkflowStatus(status) {
     `launcherBoundary: ${status.launcherBoundary.state} fixtureOnly=${status.launcherBoundary.fixtureOnly ? "yes" : "no"}`,
     `diagnosticsHandoffBoundary: ${status.diagnosticsHandoffBoundary.supportedSchemaVersion} readOnly=${status.diagnosticsHandoffBoundary.readOnly ? "yes" : "no"}`,
     `diagnosticsHandoffSummary: ${status.diagnosticsHandoffBoundary.surfaceStatus} diagnostics=${status.diagnosticsHandoffBoundary.diagnosticCount}`,
+    `runtimeReadinessBoundary: ${status.runtimeReadinessBoundary.supportedSchemaVersion} readOnly=${status.runtimeReadinessBoundary.readOnly ? "yes" : "no"}`,
+    `runtimeReadinessSummary: ${status.runtimeReadinessBoundary.statusAnswer} readiness=${status.runtimeReadinessBoundary.readinessState} blockers=${status.runtimeReadinessBoundary.blockerCount}`,
     `contextBundleItems: ${status.contextBundle.itemCount}`,
-    "safety: no provider calls, no launcher calls, no pccx-lab execution",
+    "safety: no provider calls, no launcher calls, no pccx-lab execution, no FPGA repo access, no KV260 runtime",
   ].join("\n");
 }

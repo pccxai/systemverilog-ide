@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -148,6 +151,8 @@ async function testProposalAndStatusModulesAreDataOnly() {
     resolve(EXTENSION_ROOT, "src/launcher-status-contract.mjs"),
     resolve(EXTENSION_ROOT, "src/diagnostics-handoff-consumer.mjs"),
     resolve(EXTENSION_ROOT, "src/diagnostics-handoff-status-surface.mjs"),
+    resolve(EXTENSION_ROOT, "src/runtime-readiness-consumer.mjs"),
+    resolve(EXTENSION_ROOT, "src/runtime-readiness-status-surface.mjs"),
     resolve(EXTENSION_ROOT, "src/local-workflow-status.mjs"),
     resolve(EXTENSION_ROOT, "src/context-bundle-audit.mjs"),
     resolve(EXTENSION_ROOT, "src/pccx-lab-status.mjs"),
@@ -168,6 +173,8 @@ async function testProposalAndStatusModulesAreDataOnly() {
   assert.match(proposalAndStatusSource, /auditOnly/);
   assert.match(proposalAndStatusSource, /appliesPatches: false/);
   assert.match(proposalAndStatusSource, /backendCommandExecuted: false/);
+  assert.match(proposalAndStatusSource, /accessesFpgaRepo: false/);
+  assert.match(proposalAndStatusSource, /kv260RuntimeExecution: false/);
 }
 
 async function testApprovedValidationRunnerUsesOnlyAllowlistedExecution() {

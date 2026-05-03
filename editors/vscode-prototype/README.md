@@ -219,6 +219,26 @@ read raw handoff JSON in the UI layer, does not invoke launcher or
 pccx-lab, does not run the pccx-lab validator command, and does not add
 provider, runtime, MCP, LSP, telemetry, upload, or marketplace behavior.
 
+`src/runtime-readiness-consumer.mjs` is a read-only adapter for the
+launcher runtime readiness JSON shape. It validates the checked
+`pccx.runtimeReadiness.v0` Gemma 3N E4B plus KV260 fixture as data and
+returns a deterministic bounded summary. The current consumed answer is
+`blocked_not_yet_evidence_backed`: timing, implementation, bitstream,
+KV260 smoke, runtime evidence, and measured throughput remain unavailable
+or blocked, while throughput is target-only.
+
+`src/runtime-readiness-status-surface.mjs` exposes that consumer summary
+as local status data. The context bundle can include the same summary
+when a readiness status surface or consumer summary is supplied. It
+records the readiness/evidence states, target model/device, timing,
+bitstream, implementation, KV260 smoke, runtime evidence, throughput,
+bounded blockers, and read-only safety flags. Missing or invalid
+readiness data stays unavailable or invalid context. This path does not
+execute launcher, pccx-lab, FPGA repository access, KV260 runtime, model
+weight loading, provider calls, MCP, LSP, marketplace, telemetry, upload,
+or write-back behavior. The boundary notes are tracked in
+[`docs/runtime-readiness-consumer.md`](./docs/runtime-readiness-consumer.md).
+
 `src/command-handlers.mjs` is the experimental local command-handler
 scaffold.  It maps command ID -> normalized prototype settings -> known
 facade argument array -> facade JSON result -> testable UI action model.
@@ -466,6 +486,7 @@ Now:
 - recent validation summary and cache status command
 - pccx-lab backend status command
 - diagnostics handoff summary status command
+- runtime readiness consumer and context status data
 
 Next:
 
@@ -512,6 +533,8 @@ node editors/vscode-prototype/test/pccx-lab-command-descriptor.test.mjs
 node editors/vscode-prototype/test/launcher-status-contract.test.mjs
 node editors/vscode-prototype/test/diagnostics-handoff-consumer.test.mjs
 node editors/vscode-prototype/test/diagnostics-handoff-status-surface.test.mjs
+node editors/vscode-prototype/test/runtime-readiness-consumer.test.mjs
+node editors/vscode-prototype/test/runtime-readiness-status-surface.test.mjs
 node editors/vscode-prototype/test/local-workflow-status.test.mjs
 node editors/vscode-prototype/test/context-bundle-audit.test.mjs
 node editors/vscode-prototype/test/validation-result-summary.test.mjs
