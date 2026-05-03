@@ -183,6 +183,9 @@ the UI layer, echo raw log lines into context bundles, run xsim or
 Vivado, invoke pccx-lab or the launcher, touch hardware, or implement
 MCP/LSP.  The surface is documented in
 `editors/vscode-prototype/docs/xsim-diagnostics-status-surface.md`.
+The planning boundary for the shared diagnostic schema draft, read-only
+xsim path, and text surface sketches is documented in
+[`docs/DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md`](./DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md).
 
 ## Limitations
 

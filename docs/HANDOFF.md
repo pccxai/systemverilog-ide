@@ -18,6 +18,8 @@ Tracked handoff paths:
 
 Direction and style rules for preserving those boundaries are pinned in
 [`PROJECT_DIRECTION_AND_STYLE.md`](./PROJECT_DIRECTION_AND_STYLE.md).
+The diagnostics/xsim planning boundary for issue #3 is tracked in
+[`DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md`](./DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md).
 
 ---
 
@@ -199,6 +201,9 @@ state.
 The pccx-lab CLI/core boundary remains the owner for reusable
 verification and diagnostics behavior. This IDE status surface is only a
 small presentation/context summary over already-produced local JSON.
+The schema draft, read-only xsim path, and text surface sketches are
+recorded in
+[`DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md`](./DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md).
 
 ---
 
