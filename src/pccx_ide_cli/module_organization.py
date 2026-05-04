@@ -162,6 +162,16 @@ VALIDATION_PLAN_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+REVIEW_PACKET_LIMITATIONS: tuple[str, ...] = (
+    "proposal-only refactor review packet metadata",
+    "summary-only bundle over existing scanner-based views",
+    "does not include command argv; use validation-plan for command descriptors",
+    "does not execute validation commands or shell commands",
+    "does not apply refactors, write files, move files, or generate patches",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 _REFACTOR_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "rename-module": ("new_name",),
     "extract-port": ("port_name", "direction"),
@@ -295,6 +305,28 @@ def _validation_plan_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "emits_command_descriptors": True,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _review_packet_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "summarizes_command_descriptors": True,
+        "emits_command_descriptors": False,
         "writes_files": False,
         "moves_files": False,
         "applies_refactor": False,
@@ -1710,6 +1742,124 @@ def build_refactor_validation_plan(
     }
 
 
+def _review_context_summary(context: dict[str, Any]) -> dict[str, Any]:
+    dependency = context["dependency_context"]
+    port = context["port_context"]
+    refactor = context["refactor_context"]
+    summary = context["summary_context"]
+    return {
+        "context_state": context["context_state"],
+        "direct_dependency_count": dependency["direct_dependency_count"],
+        "direct_dependent_count": dependency["direct_dependent_count"],
+        "port_count": port["port_count"],
+        "review_target_count": refactor["review_target_count"],
+        "summary_available": summary is not None,
+        "summary_readiness": (
+            summary["readiness"]["state"]
+            if summary is not None
+            else "unavailable"
+        ),
+        "unresolved_dependency_count": dependency["unresolved_dependency_count"],
+        "usage_site_count": port["usage_site_count"],
+    }
+
+
+def _review_validation_summary(validation: dict[str, Any]) -> dict[str, Any]:
+    phases = []
+    for group in validation["validation_groups"]:
+        phases.append({
+            "blocked_by": list(group["blocked_by"]),
+            "command_ids": [
+                command["id"]
+                for command in group["commands"]
+            ],
+            "phase": group["phase"],
+            "status": group["status"],
+        })
+    return {
+        "command_descriptor_count": validation["command_descriptor_count"],
+        "phases": phases,
+        "validation_state": validation["validation_state"],
+    }
+
+
+def build_refactor_review_packet(
+    source: str,
+    path: Path,
+    action: str,
+    module_name: str,
+    *,
+    new_name: str | None = None,
+    port_name: str | None = None,
+    direction: str | None = None,
+    width: str | None = None,
+    destination: str | None = None,
+) -> dict[str, Any]:
+    proposal = build_refactor_proposal(
+        source,
+        path,
+        action,
+        module_name,
+        new_name=new_name,
+        port_name=port_name,
+        direction=direction,
+        width=width,
+        destination=destination,
+    )
+    context = build_module_context_bundle(source, path, module_name)
+    validation = build_refactor_validation_plan(
+        source,
+        path,
+        action,
+        module_name,
+        new_name=new_name,
+        port_name=port_name,
+        direction=direction,
+        width=width,
+        destination=destination,
+    )
+    preflight = proposal["preflight"]
+
+    return {
+        "action": action,
+        "approval": {
+            "requires_explicit_user_approval_before_run": True,
+            "requires_explicit_user_approval_before_write": True,
+        },
+        "context_summary": _review_context_summary(context),
+        "kind": "module-refactor-review-packet",
+        "limitations": list(REVIEW_PACKET_LIMITATIONS),
+        "module": proposal["module"],
+        "packet_state": "proposal-only",
+        "preflight": {
+            "reasons": list(preflight["reasons"]),
+            "requires_approval_before_write": preflight[
+                "requires_approval_before_write"
+            ],
+            "requires_explicit_approval_before_run": True,
+            "status": preflight["status"],
+        },
+        "proposal_summary": {
+            "planned_step_count": len(proposal["planned_steps"]),
+            "planned_steps": proposal["planned_steps"],
+            "requested_change": proposal["requested_change"],
+            "writes_files": proposal["writes_files"],
+        },
+        "review_state": (
+            "blocked"
+            if preflight["status"] == "blocked"
+            else "ready-for-review"
+        ),
+        "safety": _review_packet_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "target": module_name,
+        "tool": "pccx-ide-cli",
+        "validation_summary": _review_validation_summary(validation),
+        "writes_files": False,
+    }
+
+
 def format_refactor_proposal_text(proposal: dict[str, Any]) -> str:
     lines = [
         f"source: {proposal['source']}",
@@ -1759,6 +1909,49 @@ def format_refactor_validation_plan_text(plan: dict[str, Any]) -> str:
     lines.append(
         "no validation, shell, refactor, patch, file write, lab, launcher, "
         "vendor tool, provider, or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_refactor_review_packet_text(packet: dict[str, Any]) -> str:
+    context = packet["context_summary"]
+    validation = packet["validation_summary"]
+    lines = [
+        f"source: {packet['source']}",
+        f"target: {packet['target']}",
+        f"action: {packet['action']}",
+        f"review packet: {packet['packet_state']}",
+        f"review state: {packet['review_state']}",
+        f"preflight: {packet['preflight']['status']}",
+        "writes files: no",
+        "runs validation: no",
+        f"context: {context['context_state']}",
+        f"summary: {context['summary_readiness']}",
+        (
+            f"dependencies: {context['direct_dependency_count']}; "
+            f"dependents: {context['direct_dependent_count']}; "
+            f"unresolved: {context['unresolved_dependency_count']}"
+        ),
+        (
+            f"ports: {context['port_count']}; "
+            f"usage sites: {context['usage_site_count']}; "
+            f"review targets: {context['review_target_count']}"
+        ),
+        f"validation descriptors: {validation['command_descriptor_count']}",
+    ]
+    for phase in validation["phases"]:
+        command_ids = ", ".join(phase["command_ids"]) or "none"
+        lines.append(
+            f"validation phase: {phase['phase']} "
+            f"({phase['status']}): {command_ids}"
+        )
+    for step in packet["proposal_summary"]["planned_steps"]:
+        lines.append(f"plan: {step}")
+    for reason in packet["preflight"]["reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(
+        "summary-only: no command argv, validation, shell, refactor, patch, "
+        "file write, lab, launcher, vendor tool, provider, or hardware execution"
     )
     return "\n".join(lines) + "\n"
 

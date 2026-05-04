@@ -52,6 +52,7 @@ python -m pccx_ide_cli port-usage <path> --module <name> --format json
 python -m pccx_ide_cli module-context <path> --module <name> --format json
 python -m pccx_ide_cli refactor-impact <path> --module <name> --format json
 python -m pccx_ide_cli validation-plan <path> --action rename-module --module <name> --new-name <name> --format json
+python -m pccx_ide_cli refactor-review <path> --action rename-module --module <name> --new-name <name> --format json
 
 # Opt-in pccx-lab diagnostics backend
 python -m pccx_ide_cli check <sv-file> --backend pccx-lab --format json
@@ -208,6 +209,12 @@ refactor requests. It returns fixed argument-array command descriptors with
 validation, run shell commands, apply edits, invoke pccx-lab or the launcher,
 run vendor tools, call providers, touch hardware, or perform automatic
 repository actions.
+`refactor-review` emits a summary-only review packet over module context,
+refactor proposal, and validation-plan metadata. It summarizes validation
+descriptor phases and command IDs, but does not include command argv, execute
+validation, run shell commands, apply edits, invoke pccx-lab or the launcher,
+run vendor tools, call providers, touch hardware, or perform automatic
+repository actions.
 
 For existing xsim logs, the VS Code prototype can consume the checked
 `problems from-xsim-log` JSON as a read-only status/context summary.  The
@@ -226,8 +233,9 @@ xsim path, and text surface sketches is documented in
 - Scanner-based scaffolds, not full SystemVerilog parsing.
 - Module organization, header/port summaries, port usage summaries,
   refactor impact review, refactor planning, and validation planning are
-  scanner-based; they are not semantic elaboration and do not apply
-  refactors or execute validation.
+  scanner-based; refactor review packets are summary-only over those surfaces.
+  They are not semantic elaboration and do not apply refactors or execute
+  validation.
 - No LSP server in this repository today.
 - No published editor extension or marketplace packaging is implemented
   here.

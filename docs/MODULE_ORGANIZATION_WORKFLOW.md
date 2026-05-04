@@ -4,13 +4,13 @@
 
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
-`module-summary`, `port-usage`, `module-context`, `refactor-impact`, and
-`validation-plan` CLI surfaces that report module boundary spans,
+`module-summary`, `port-usage`, `module-context`, `refactor-impact`,
+`validation-plan`, and `refactor-review` CLI surfaces that report module boundary spans,
 scanner-based hierarchy data, direct dependency impact data, conservative
 module header/port summaries, target port usage summaries, target module
 context bundles, target-specific refactor impact data, and proposal-only
-validation command descriptors for editor navigation and reviewed
-refactoring planning.
+validation command descriptors plus a summary-only review packet for editor
+navigation and reviewed refactoring planning.
 
 It is not a full SystemVerilog parser, not semantic elaboration, not an LSP
 implementation, and not a write-capable refactoring engine.
@@ -38,6 +38,9 @@ python -m pccx_ide_cli refactor-plan <path> --action move-module --module <name>
 python -m pccx_ide_cli validation-plan <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli validation-plan <path> --action extract-port --module <name> --port-name <name> --direction input --format text
 python -m pccx_ide_cli validation-plan <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
+python -m pccx_ide_cli refactor-review <path> --action rename-module --module <name> --new-name <name> --format json
+python -m pccx_ide_cli refactor-review <path> --action extract-port --module <name> --port-name <name> --direction input --format text
+python -m pccx_ide_cli refactor-review <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
 ```
 
 `<path>` may be a `.sv` / `.v` file or a directory. Directory scans follow the
@@ -551,6 +554,60 @@ generate patches, invoke `pccx-lab`, invoke the launcher, run vendor tools,
 call providers, touch hardware, upload telemetry, or perform automatic
 repository actions.
 
+## Refactor Review Packet
+
+`refactor-review` adds a summary-only review packet over the existing
+`module-context`, `refactor-plan`, and `validation-plan` boundaries. It is a
+one-call packet for editor review panes and maintainer handoff notes before
+any write-capable helper exists.
+
+Example shape:
+
+```json
+{
+  "kind": "module-refactor-review-packet",
+  "packet_state": "proposal-only",
+  "review_state": "ready-for-review",
+  "action": "rename-module",
+  "writes_files": false,
+  "context_summary": {
+    "context_state": "available_as_data",
+    "summary_available": true,
+    "review_target_count": 2,
+    "usage_site_count": 1
+  },
+  "proposal_summary": {
+    "planned_step_count": 4,
+    "writes_files": false
+  },
+  "validation_summary": {
+    "validation_state": "proposal-only",
+    "command_descriptor_count": 8,
+    "phases": []
+  },
+  "safety": {
+    "read_only": true,
+    "summarizes_command_descriptors": true,
+    "emits_command_descriptors": false,
+    "writes_files": false,
+    "runs_validation": false,
+    "runs_shell": false,
+    "invokes_pccx_lab": false,
+    "invokes_launcher": false,
+    "hardware_access": false
+  }
+}
+```
+
+The packet intentionally summarizes validation descriptors by phase and command
+ID only. It does not include command argv; consumers that need the fixed-argv
+descriptor list should call `validation-plan` directly.
+
+This boundary does not write files, apply refactors, move files, generate
+patches, run validation, execute shell commands, invoke `pccx-lab`, invoke the
+launcher, run vendor tools, call providers, touch hardware, upload telemetry,
+or perform automatic repository actions.
+
 ## Limitations
 
 - Scanner-based module declarations and `endmodule` matching only.
@@ -568,4 +625,4 @@ with read-only module boundary detection, a focused hierarchy view, a
 direct dependency view, conservative module header/port summaries,
 target-specific port usage summaries, target-specific module context
 bundles, target-specific refactor impact review data, and a
-proposal-only refactoring and validation planning boundary.
+proposal-only refactoring, validation planning, and review packet boundary.
