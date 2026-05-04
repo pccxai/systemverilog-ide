@@ -1,7 +1,7 @@
-# AI-Assisted SystemVerilog Workflow
+# SystemVerilog Workflow Boundary
 
-This document is a planning boundary for the future AI-assisted
-SystemVerilog development workflow hosted by `systemverilog-ide`. The
+This document is a planning boundary for the future SystemVerilog workflow
+hosted by `systemverilog-ide`. The
 IDE remains an editor cockpit over controlled data and command contracts;
 reusable analysis, validation, and simulation behavior stays behind the
 `pccx-lab` CLI/core boundary.
@@ -21,7 +21,7 @@ validation.
 - [`EVOLUTIONARY_LOOP_PLAN.md`](./EVOLUTIONARY_LOOP_PLAN.md) sketches the
   deferred generate / simulate / evaluate / refine loop.
 - [`pccx-lab#22`](https://github.com/pccxai/pccx-lab/issues/22) tracks
-  the controlled MCP/tool interface that future automation should use.
+  the controlled tool interface that future automation should use.
 
 ## Roles
 
@@ -31,7 +31,7 @@ validation.
   renders proposals, and records local validation summaries.
 - pccx-lab: owns reusable analysis, verification, trace/report handling,
   and any future controlled tool execution boundary.
-- pccx-llm-launcher: remains a future local assistant/backend candidate;
+- pccx-llm-launcher: remains a future local runtime/backend candidate;
   this repository does not call it today.
 
 ## Workflow
@@ -44,7 +44,7 @@ validation.
    repository-wide dumps.
 
 2. Propose a change.
-   AI-assisted tooling may return a proposal object with repository-
+   Workflow tooling may return a proposal object with repository-
    relative paths, bounded hunk previews, rationale, affected symbols,
    and suggested validation. The proposal is data only. It does not write
    files, apply patches, run commands, or create commits.
@@ -79,7 +79,7 @@ validation.
 | Run pccx-lab | Blocked | Future reviewed CLI/core boundary only |
 | Run xsim or Vivado | Blocked | Future reviewed validation boundary only |
 | Call pccx-llm-launcher | Blocked | Future reviewed launcher contract only |
-| Call an AI provider | Blocked | Outside this repository's current scope |
+| Call provider/runtime services | Blocked | Outside this repository's current scope |
 | Implement MCP runtime | Blocked | Tracked separately by pccx-lab #22 |
 | Commit, push, merge, release, or tag | Blocked | User-owned repository action |
 | Access secrets or staging notes | Blocked | Never part of the IDE workflow |
@@ -94,12 +94,12 @@ validation.
 - Keep patch previews and validation summaries local and summary-only.
 - Keep pccx-lab command descriptors as data until the owning repo exposes
   a reviewed CLI/core command map.
-- Keep MCP/tool integration as a future pccx-lab-owned boundary rather
+- Keep controlled tool integration as a future pccx-lab-owned boundary rather
   than an IDE-owned back channel.
 
 ## Non-Goals
 
-- No vendor-specific AI naming in public user-facing docs.
+- No provider-specific naming in public user-facing docs.
 - No autonomous merge, push, release, or tag flow.
 - No automatic file writes from proposal data.
 - No raw shell execution.
@@ -115,4 +115,4 @@ validation.
 This document addresses
 [`systemverilog-ide#4`](https://github.com/pccxai/systemverilog-ide/issues/4)
 by recording the workflow steps, stating the permission boundary, and
-linking the future controlled MCP/tool boundary in `pccx-lab#22`.
+linking the future controlled tool boundary in `pccx-lab#22`.

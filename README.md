@@ -23,8 +23,8 @@ repository SPDX/Copyright header.
 
 The initial Now / Next / Later roadmap is tracked in
 [`docs/ROADMAP.md`](./docs/ROADMAP.md).
-The AI-assisted SystemVerilog workflow planning boundary is tracked in
-[`docs/AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md`](./docs/AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md).
+The SystemVerilog workflow boundary is tracked in
+[`docs/SYSTEMVERILOG_WORKFLOW_BOUNDARY.md`](./docs/SYSTEMVERILOG_WORKFLOW_BOUNDARY.md).
 The evolutionary generate / simulate / evaluate / refine loop plan is
 tracked in [`docs/EVOLUTIONARY_LOOP_PLAN.md`](./docs/EVOLUTIONARY_LOOP_PLAN.md).
 The later-track external editor integration plan is tracked in
@@ -35,15 +35,15 @@ The module organization workflow is tracked in
 ## Integration model
 
 `pccx-lab` is **CLI-first**. The IDE consumes the same CLI / core
-contract that the lab CLI itself uses. VS Code extensions and any
-MCP-controlled flows ride on top of the same contract; they do not get a
-private back channel into the lab internals.
+contract that the lab CLI itself uses. VS Code extensions and other
+integration surfaces ride on top of the same contract; they do not get a
+private back channel into lab internals.
 
 Development order is fixed:
 
 1. CLI / core boundary first (in `pccx-lab`).
 2. IDE GUI surface second (in this repo).
-3. VS Code extension and MCP-controlled flows on top.
+3. VS Code extension and controlled CLI/core boundary integrations on top.
 
 If a feature would need a side channel that bypasses the CLI / core
 contract, that is a signal the contract needs to grow first — not a
@@ -62,9 +62,9 @@ launcher/lab execution island.
   analysis and validation behavior should flow through the facade and
   CLI/core contract instead of being duplicated here.
 - `pccx-llm-launcher` is a future local LLM/chat backend candidate for
-  local coding-assistant mode. This repository currently contains only
-  boundary work for AI-assisted SystemVerilog development workflow
-  experiments: AI assistant status/context commands, no AI provider calls,
+  local workflow mode. This repository currently contains only
+  boundary work for SystemVerilog workflow experiments: workflow boundary
+  status/context commands, no provider/runtime calls,
   no pccx-llm-launcher runtime calls yet, and no MCP server implementation.
 
 ## Initial track (near-term)
@@ -264,9 +264,9 @@ hierarchy views, dependency views, module header/port summaries, and
 target-specific refactor impact review data plus proposal-only
 refactoring planning, including the target module context bundle, is documented in
 [`docs/MODULE_ORGANIZATION_WORKFLOW.md`](./docs/MODULE_ORGANIZATION_WORKFLOW.md).
-The planned AI-assisted SystemVerilog workflow, permission boundary, and
-pccx-lab controlled MCP/tool dependency are documented in
-[`docs/AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md`](./docs/AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md).
+The planned SystemVerilog workflow boundary, permission boundary, and
+pccx-lab controlled tool dependency are documented in
+[`docs/SYSTEMVERILOG_WORKFLOW_BOUNDARY.md`](./docs/SYSTEMVERILOG_WORKFLOW_BOUNDARY.md).
 The deferred evolutionary loop plan and fitness-criteria sketch are
 documented in [`docs/EVOLUTIONARY_LOOP_PLAN.md`](./docs/EVOLUTIONARY_LOOP_PLAN.md).
 The external editor integration direction for VS Code and other editor
@@ -280,7 +280,7 @@ The experimental VS Code prototype under
 [`editors/vscode-prototype`](./editors/vscode-prototype) keeps
 checked-example mode as the safe default. Live workspace commands are
 opt-in and require an explicit configuration gate; the current local
-coding-assistant mode work is limited to AI assistant status and
+workflow mode work is limited to workflow boundary status and
 token-saving context bundle commands with no provider calls.  The
 guarded Extension Host runtime smoke uses only the controlled fixture
 under `editors/vscode-prototype/test/fixtures/live-workspace`.
@@ -328,7 +328,7 @@ providers, upload telemetry, or write back state.
 
 ## Later track (deferred)
 
-- Local coding-assistant mode can propose interactions with `pccx-lab`
+- Local workflow mode can propose interactions with `pccx-lab`
   through a controlled tool boundary; the IDE surfaces those flows but
   does not own the reusable analysis contract.
 - Evolutionary generate / simulate / evaluate / refine loop, again

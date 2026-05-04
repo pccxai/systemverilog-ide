@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import assert from "node:assert/strict";
 
 import {
@@ -29,7 +32,7 @@ const UNSUPPORTED_READINESS_PATTERN = new RegExp([
   ["stable", " API"],
   ["stable", " ABI"],
   ["MCP", " ready"],
-  ["AI provider", " ready"],
+  ["provider/runtime", " ready"],
   ["KV260 inference", " works"],
   ["provider", " ready"],
   ["runtime", " ready"],

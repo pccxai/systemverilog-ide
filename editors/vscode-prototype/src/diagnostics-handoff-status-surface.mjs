@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import {
   DIAGNOSTICS_HANDOFF_CATEGORIES,
   DIAGNOSTICS_HANDOFF_CONSUMER_VERSION,
@@ -67,7 +70,7 @@ export const DEFAULT_DIAGNOSTICS_HANDOFF_CONSUMER_SUMMARY = Object.freeze({
     "No launcher runtime execution, model execution, provider call, or network call is performed.",
     "No KV260 hardware access is performed.",
     "No telemetry, automatic upload, or auto write-back is included.",
-    "No raw full logs, prompts, source code, private paths, secrets, tokens, provider configuration, generated blobs, or model weight paths are included.",
+    "No raw full logs, user request text, source code, private paths, secrets, tokens, provider configuration, generated blobs, or model weight paths are included.",
     "The contract is not a versioned compatibility commitment.",
   ]),
 });
@@ -86,7 +89,7 @@ const UNSUPPORTED_MARKER_PARTS = Object.freeze([
   ["gemma 3n e4b runs on ", "kv260"],
   ["20 tok/s ", "achieved"],
   ["timing ", "closed"],
-  ["autonomous coding ", "system"],
+  ["unreviewed automation ", "system"],
 ]);
 
 function clone(value) {

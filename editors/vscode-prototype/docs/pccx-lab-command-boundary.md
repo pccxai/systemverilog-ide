@@ -2,7 +2,7 @@
 
 This document defines a pccx-lab command descriptor contract for the
 experimental local VS Code prototype.  It is data-only and does not execute
-pccx-lab, spawn a process, call a launcher, call a provider, implement MCP,
+pccx-lab, spawn a process, call a launcher, call provider/runtime services, implement MCP,
 or implement LSP.
 
 ## Descriptor Shape

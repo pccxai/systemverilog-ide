@@ -321,7 +321,7 @@ function normalizeConfiguration(configuration) {
     return {
       mode: "unknown",
       liveWorkspace: { enabled: false },
-    aiAssistant: { enabled: false, backend: "none" },
+    workflowBoundary: { enabled: false, backend: "none" },
     pccxLab: { commandBoundary: "pccx_ide_cli" },
     validationRunner: { enabled: false, mode: "disabled" },
   };
@@ -331,9 +331,9 @@ function normalizeConfiguration(configuration) {
     liveWorkspace: {
       enabled: configuration.liveWorkspace?.enabled === true,
     },
-    aiAssistant: {
-      enabled: configuration.aiAssistant?.enabled === true,
-      backend: scrubText(configuration.aiAssistant?.backend ?? "none", 80),
+    workflowBoundary: {
+      enabled: configuration.workflowBoundary?.enabled === true,
+      backend: scrubText(configuration.workflowBoundary?.backend ?? "none", 80),
     },
     pccxLab: {
       commandBoundary: scrubText(configuration.pccxLab?.commandBoundary ?? "pccx_ide_cli", 120),

@@ -172,7 +172,7 @@ function fixtureInput() {
     configuration: {
       mode: "checkedExample",
       liveWorkspace: { enabled: false },
-      aiAssistant: { enabled: false, backend: "none" },
+      workflowBoundary: { enabled: false, backend: "none" },
       pccxLab: { commandBoundary: "pccx_ide_cli" },
       validationRunner: {
         enabled: false,
@@ -310,7 +310,7 @@ function testStableBoundedShape() {
   assert.equal(bundle.version, CONTEXT_BUNDLE_VERSION);
   assert.equal(bundle.source, "pccx-systemverilog-ide");
   assert.equal(bundle.configuration.mode, "checkedExample");
-  assert.equal(bundle.configuration.aiAssistant.backend, "none");
+  assert.equal(bundle.configuration.workflowBoundary.backend, "none");
   assert.deepEqual(bundle.selectedFile, { path: "rtl/top.sv" });
   assert.deepEqual(Object.keys(bundle.symbols.selected), ["name", "kind", "path", "range"]);
   assert.equal(bundle.symbols.selected.name, "top");

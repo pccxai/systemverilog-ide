@@ -1,10 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  AI_ASSISTANT_BACKENDS,
+  WORKFLOW_BOUNDARY_BACKENDS,
   DECLARATION_KINDS,
   FACADE_COMMAND_IDS,
   MODES,
@@ -22,8 +25,8 @@ const REQUIRED_SETTINGS = new Map([
   ["pccxSystemVerilog.mode", { type: "string", default: "checkedExample" }],
   ["pccxSystemVerilog.liveWorkspace.enabled", { type: "boolean", default: false }],
   ["pccxSystemVerilog.pccxLab.command", { type: "string", default: "pccx_ide_cli" }],
-  ["pccxSystemVerilog.aiAssistant.enabled", { type: "boolean", default: false }],
-  ["pccxSystemVerilog.aiAssistant.backend", { type: "string", default: "none" }],
+  ["pccxSystemVerilog.workflowBoundary.enabled", { type: "boolean", default: false }],
+  ["pccxSystemVerilog.workflowBoundary.backend", { type: "string", default: "none" }],
   ["pccxSystemVerilog.validationRunner.enabled", { type: "boolean", default: false }],
   ["pccxSystemVerilog.validationRunner.mode", { type: "string", default: "disabled" }],
   ["pccxSystemVerilog.validationRunner.defaultWorkingDirectory", { type: "string", default: "repo-root" }],
@@ -68,8 +71,8 @@ async function testPackageConfigurationSchema() {
 
   assert.deepEqual(configuration.properties["pccxSystemVerilog.mode"].enum, MODES);
   assert.deepEqual(
-    configuration.properties["pccxSystemVerilog.aiAssistant.backend"].enum,
-    AI_ASSISTANT_BACKENDS,
+    configuration.properties["pccxSystemVerilog.workflowBoundary.backend"].enum,
+    WORKFLOW_BOUNDARY_BACKENDS,
   );
   assert.deepEqual(
     configuration.properties["pccxSystemVerilog.defaultDeclarationKind"].enum,
@@ -94,7 +97,7 @@ function testDefaultConfig() {
     pccxLab: {
       command: "pccx_ide_cli",
     },
-    aiAssistant: {
+    workflowBoundary: {
       enabled: false,
       backend: "none",
     },
@@ -128,8 +131,8 @@ function testNormalizeConfigRejectsInvalidSettings() {
     /pccxSystemVerilog\.pccxLab\.command must be a command name or path without arguments/,
   );
   assert.throws(
-    () => normalizeConfig({ aiAssistant: { backend: "openai" } }),
-    /pccxSystemVerilog\.aiAssistant\.backend must be one of: none, pccx-llm-launcher, mcp/,
+    () => normalizeConfig({ workflowBoundary: { backend: "openai" } }),
+    /pccxSystemVerilog\.workflowBoundary\.backend must be one of: none, pccx-llm-launcher, mcp/,
   );
   assert.throws(
     () => normalizeConfig({ validationRunner: { enabled: "yes" } }),

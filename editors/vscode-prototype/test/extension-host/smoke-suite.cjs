@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const path = require("node:path");
@@ -35,8 +38,8 @@ async function updatePrototypeConfig(key, value) {
 async function resetPrototypeConfig() {
   await updatePrototypeConfig("mode", "checkedExample");
   await updatePrototypeConfig("liveWorkspace.enabled", false);
-  await updatePrototypeConfig("aiAssistant.enabled", false);
-  await updatePrototypeConfig("aiAssistant.backend", "none");
+  await updatePrototypeConfig("workflowBoundary.enabled", false);
+  await updatePrototypeConfig("workflowBoundary.backend", "none");
   await updatePrototypeConfig("validationRunner.enabled", false);
   await updatePrototypeConfig("validationRunner.mode", "disabled");
   await updatePrototypeConfig("validationRunner.defaultWorkingDirectory", "repo-root");
@@ -64,8 +67,8 @@ async function run() {
     "pccxSystemVerilog.showNavigationExample",
     "pccxSystemVerilog.runDiagnosticsLive",
     "pccxSystemVerilog.runNavigationLive",
-    "pccxSystemVerilog.showAIAssistantStatus",
-    "pccxSystemVerilog.buildAIContextBundle",
+    "pccxSystemVerilog.showWorkflowBoundaryStatus",
+    "pccxSystemVerilog.buildWorkflowContextBundle",
     "pccxSystemVerilog.proposeValidationCommand",
     "pccxSystemVerilog.auditValidationProposalPreflight",
     "pccxSystemVerilog.runApprovedValidationCommand",
@@ -306,7 +309,7 @@ async function run() {
   );
 
   const aiStatus = await vscode.commands.executeCommand(
-    "pccxSystemVerilog.showAIAssistantStatus",
+    "pccxSystemVerilog.showWorkflowBoundaryStatus",
   );
   assert.equal(aiStatus.ok, true);
   assert.equal(aiStatus.status.status, "disabled");
@@ -326,10 +329,10 @@ async function run() {
   const liveEditor = await vscode.window.showTextDocument(liveDocument, { preview: false });
   liveEditor.selection = new vscode.Selection(0, 7, 0, 15);
   const contextResult = await vscode.commands.executeCommand(
-    "pccxSystemVerilog.buildAIContextBundle",
+    "pccxSystemVerilog.buildWorkflowContextBundle",
   );
   assert.equal(contextResult.ok, true);
-  assert.equal(contextResult.kind, "ai-context-bundle");
+  assert.equal(contextResult.kind, "workflow-context-bundle");
   assert.equal(contextResult.status, "disabled");
   assert.equal(contextResult.backend, "none");
   assert.equal(contextResult.providerCalls, false);
@@ -338,8 +341,8 @@ async function run() {
     path: "top.sv",
   });
   assert.equal(contextResult.contextBundle.configuration.mode, "liveWorkspace");
-  assert.equal(contextResult.contextBundle.configuration.aiAssistant.enabled, false);
-  assert.equal(contextResult.contextBundle.configuration.aiAssistant.backend, "none");
+  assert.equal(contextResult.contextBundle.configuration.workflowBoundary.enabled, false);
+  assert.equal(contextResult.contextBundle.configuration.workflowBoundary.backend, "none");
   assert.equal(contextResult.contextBundle.symbols.selected.name, "live_top");
   assert.equal(contextResult.contextBundle.symbols.selected.kind, "module");
   assert.equal(contextResult.contextBundle.symbols.selectedContext.symbolText, "live_top");
@@ -501,7 +504,7 @@ async function run() {
     assert.equal(approvedValidationRun.resultSummary.proposalId, "vscodeAdapterSmoke");
 
     const postValidationContext = await vscode.commands.executeCommand(
-      "pccxSystemVerilog.buildAIContextBundle",
+      "pccxSystemVerilog.buildWorkflowContextBundle",
     );
     assert.equal(postValidationContext.ok, true);
     assert.equal(postValidationContext.contextBundle.validation.recent.proposalId, "vscodeAdapterSmoke");

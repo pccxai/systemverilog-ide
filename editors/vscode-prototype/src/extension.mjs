@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import { execFile } from "node:child_process";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,9 +31,9 @@ import {
   registerCheckedExampleDefinitionProvider,
 } from "./definition-provider.mjs";
 import {
-  createAssistantBoundaryStatus,
-  createAssistantRequest,
-} from "./ai-assistant-boundary.mjs";
+  createWorkflowBoundaryStatus,
+  createWorkflowContextRequest,
+} from "./workflow-boundary.mjs";
 import {
   buildSelectedSymbolContext,
 } from "./selected-symbol-context.mjs";
@@ -82,10 +85,10 @@ export const LIVE_WORKSPACE_NAVIGATION_COMMAND =
   "pccxSystemVerilog.showLiveWorkspaceNavigation";
 export const RUN_LIVE_NAVIGATION_COMMAND =
   "pccxSystemVerilog.runNavigationLive";
-export const AI_ASSISTANT_STATUS_COMMAND =
-  "pccxSystemVerilog.showAIAssistantStatus";
-export const AI_CONTEXT_BUNDLE_COMMAND =
-  "pccxSystemVerilog.buildAIContextBundle";
+export const WORKFLOW_BOUNDARY_STATUS_COMMAND =
+  "pccxSystemVerilog.showWorkflowBoundaryStatus";
+export const WORKFLOW_CONTEXT_BUNDLE_COMMAND =
+  "pccxSystemVerilog.buildWorkflowContextBundle";
 export const VALIDATION_PROPOSAL_COMMAND =
   "pccxSystemVerilog.proposeValidationCommand";
 export const AUDIT_VALIDATION_PREFLIGHT_COMMAND =
@@ -353,7 +356,7 @@ function appendCommandOutput(outputChannel, commandId, result) {
 
   outputChannel.appendLine(`[${commandId}]`);
   if (result.status?.status && result.status?.kind !== "pccx-lab-backend-status") {
-    outputChannel.appendLine(`AI assistant status: ${result.status.status}`);
+    outputChannel.appendLine(`workflow boundary status: ${result.status.status}`);
   }
   if (result.contextSummary) {
     outputChannel.appendLine(JSON.stringify(result.contextSummary, null, 2));
@@ -597,9 +600,9 @@ function contextConfiguration(config) {
     liveWorkspace: {
       enabled: config.liveWorkspace.enabled,
     },
-    aiAssistant: {
-      enabled: config.aiAssistant.enabled,
-      backend: config.aiAssistant.backend,
+    workflowBoundary: {
+      enabled: config.workflowBoundary.enabled,
+      backend: config.workflowBoundary.backend,
     },
     pccxLab: {
       commandBoundary: config.pccxLab.command === defaultPccxLabCommand
@@ -757,10 +760,10 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
   return async (input) => {
     const rawConfig = readRawExtensionConfig(vscodeApi);
 
-    if (commandId === AI_ASSISTANT_STATUS_COMMAND) {
+    if (commandId === WORKFLOW_BOUNDARY_STATUS_COMMAND) {
       let result;
       try {
-        const status = createAssistantBoundaryStatus(rawConfig);
+        const status = createWorkflowBoundaryStatus(rawConfig);
         result = { ok: true, commandId, status };
       } catch (error) {
         result = { ok: false, commandId, error: error.message };
@@ -770,12 +773,12 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
       return result;
     }
 
-    if (commandId === AI_CONTEXT_BUNDLE_COMMAND) {
+    if (commandId === WORKFLOW_CONTEXT_BUNDLE_COMMAND) {
       let result;
       try {
         const config = normalizeConfig(rawConfig);
         const context = collectActiveDocumentContext(vscodeApi, runtime, config);
-        const request = createAssistantRequest(config, context.input, {
+        const request = createWorkflowContextRequest(config, context.input, {
           workspaceRoot: context.workspaceRoot,
         });
         result = {
@@ -794,7 +797,7 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
     if (commandId === VALIDATION_PROPOSAL_COMMAND) {
       let result;
       try {
-        const request = createAssistantRequest(rawConfig, {
+        const request = createWorkflowContextRequest(rawConfig, {
           diagnosticsHandoffStatus: diagnosticsHandoffStatusFromRuntime(runtime),
         });
         result = {
@@ -817,7 +820,7 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
     if (commandId === AUDIT_VALIDATION_PREFLIGHT_COMMAND) {
       let result;
       try {
-        const request = createAssistantRequest(rawConfig, {
+        const request = createWorkflowContextRequest(rawConfig, {
           diagnosticsHandoffStatus: diagnosticsHandoffStatusFromRuntime(runtime),
         });
         let auditInput = input;
@@ -1021,7 +1024,7 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
         let contextSummary = null;
         try {
           const context = collectActiveDocumentContext(vscodeApi, runtime, config);
-          const request = createAssistantRequest(config, context.input, {
+          const request = createWorkflowContextRequest(config, context.input, {
             workspaceRoot: context.workspaceRoot,
           });
           contextSummary = request.contextSummary;
@@ -1058,7 +1061,7 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
       try {
         const config = normalizeConfig(rawConfig);
         const context = collectActiveDocumentContext(vscodeApi, runtime, config);
-        const request = createAssistantRequest(config, context.input, {
+        const request = createWorkflowContextRequest(config, context.input, {
           workspaceRoot: context.workspaceRoot,
         });
         const audit = createContextBundleAudit(request.contextBundle);

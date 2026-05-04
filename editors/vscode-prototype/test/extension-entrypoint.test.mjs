@@ -1,8 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import assert from "node:assert/strict";
 
 import {
-  AI_CONTEXT_BUNDLE_COMMAND,
-  AI_ASSISTANT_STATUS_COMMAND,
+  WORKFLOW_CONTEXT_BUNDLE_COMMAND,
+  WORKFLOW_BOUNDARY_STATUS_COMMAND,
   AUDIT_VALIDATION_PREFLIGHT_COMMAND,
   APPROVED_VALIDATION_RUNNER_COMMAND,
   CLEAR_PATCH_PROPOSAL_PREVIEW_COMMAND,
@@ -226,8 +229,8 @@ function testResolveCommandRequestUsesVsCodeSettings() {
     ["mode", "liveWorkspace"],
     ["liveWorkspace.enabled", true],
     ["pccxLab.command", "pccx_ide_cli"],
-    ["aiAssistant.enabled", false],
-    ["aiAssistant.backend", "none"],
+    ["workflowBoundary.enabled", false],
+    ["workflowBoundary.backend", "none"],
     ["validationRunner.enabled", false],
     ["validationRunner.mode", "disabled"],
     ["validationRunner.defaultWorkingDirectory", "repo-root"],
@@ -261,7 +264,7 @@ function testResolveCommandRequestUsesVsCodeSettings() {
     pccxLab: {
       command: "pccx_ide_cli",
     },
-    aiAssistant: {
+    workflowBoundary: {
       enabled: false,
       backend: "none",
     },
@@ -289,7 +292,7 @@ function testResolveCommandRequestUsesVsCodeSettings() {
       pccxLab: {
         command: "pccx_ide_cli",
       },
-      aiAssistant: {
+      workflowBoundary: {
         enabled: false,
         backend: "none",
       },
@@ -318,7 +321,7 @@ function testResolveCommandRequestUsesVsCodeSettings() {
       pccxLab: {
         command: "pccx_ide_cli",
       },
-      aiAssistant: {
+      workflowBoundary: {
         enabled: false,
         backend: "none",
       },
@@ -347,7 +350,7 @@ function testResolveCommandRequestUsesVsCodeSettings() {
       pccxLab: {
         command: "pccx_ide_cli",
       },
-      aiAssistant: {
+      workflowBoundary: {
         enabled: false,
         backend: "none",
       },
@@ -509,8 +512,8 @@ async function testLiveWorkspaceNavigationCommandReturnsLocationsWithoutQuickPic
     ["mode", "liveWorkspace"],
     ["liveWorkspace.enabled", true],
     ["pccxLab.command", "pccx_ide_cli"],
-    ["aiAssistant.enabled", false],
-    ["aiAssistant.backend", "none"],
+    ["workflowBoundary.enabled", false],
+    ["workflowBoundary.backend", "none"],
     ["validationRunner.enabled", false],
     ["validationRunner.mode", "disabled"],
     ["validationRunner.defaultWorkingDirectory", "repo-root"],
@@ -565,7 +568,7 @@ async function testLiveWorkspaceNavigationCommandReturnsLocationsWithoutQuickPic
       showErrorMessage() {},
       showQuickPick(...args) {
         quickPickCalls.push(args);
-        throw new Error("live navigation smoke must not prompt QuickPick");
+        throw new Error("live navigation smoke must not dialog QuickPick");
       },
     },
   };
@@ -780,13 +783,13 @@ async function testCommandHandlerCanBeUsedWithoutRealVsCode() {
   assert.equal(result.ok, true);
 }
 
-async function testAIStatusCommandReturnsDisabledBackendNone() {
-  const handler = createCommandHandler(AI_ASSISTANT_STATUS_COMMAND, null, {});
+async function testWorkflowStatusCommandReturnsDisabledBackendNone() {
+  const handler = createCommandHandler(WORKFLOW_BOUNDARY_STATUS_COMMAND, null, {});
 
   const result = await handler();
 
   assert.equal(result.ok, true);
-  assert.equal(result.commandId, AI_ASSISTANT_STATUS_COMMAND);
+  assert.equal(result.commandId, WORKFLOW_BOUNDARY_STATUS_COMMAND);
   assert.equal(result.status.status, "disabled");
   assert.equal(result.status.backend, "none");
   assert.equal(result.status.providerCalls, false);
@@ -811,7 +814,7 @@ async function testAIStatusCommandReturnsDisabledBackendNone() {
   assert.ok(result.status.disallowedActions.includes("accessSecrets"));
 }
 
-async function testAIContextBundleCommandUsesActiveEditorSelectionAndDiagnostics() {
+async function testWorkflowContextBundleCommandUsesActiveEditorSelectionAndDiagnostics() {
   const document = {
     uri: { fsPath: "/repo/rtl/top.sv" },
     languageId: "systemverilog",
@@ -890,13 +893,13 @@ async function testAIContextBundleCommandUsesActiveEditorSelectionAndDiagnostics
       navigationItemCount: 0,
     },
   };
-  const handler = createCommandHandler(AI_CONTEXT_BUNDLE_COMMAND, vscodeApi, runtime);
+  const handler = createCommandHandler(WORKFLOW_CONTEXT_BUNDLE_COMMAND, vscodeApi, runtime);
 
   const result = await handler();
 
   assert.equal(result.ok, true);
-  assert.equal(result.commandId, AI_CONTEXT_BUNDLE_COMMAND);
-  assert.equal(result.kind, "ai-context-bundle");
+  assert.equal(result.commandId, WORKFLOW_CONTEXT_BUNDLE_COMMAND);
+  assert.equal(result.kind, "workflow-context-bundle");
   assert.equal(result.status, "disabled");
   assert.equal(result.backend, "none");
   assert.equal(result.providerCalls, false);
@@ -904,7 +907,7 @@ async function testAIContextBundleCommandUsesActiveEditorSelectionAndDiagnostics
   assert.deepEqual(result.contextBundle.selectedFile, { path: "rtl/top.sv" });
   assert.equal(result.contextBundle.selectedRange.start.line, 0);
   assert.equal(result.contextBundle.configuration.mode, "checkedExample");
-  assert.equal(result.contextBundle.configuration.aiAssistant.enabled, false);
+  assert.equal(result.contextBundle.configuration.workflowBoundary.enabled, false);
   assert.equal(result.contextBundle.configuration.validationRunner.enabled, false);
   assert.equal(result.contextBundle.configuration.validationRunner.mode, "disabled");
   assert.equal(result.contextBundle.diagnostics.length, 1);
@@ -1022,8 +1025,8 @@ async function testApprovedValidationRunnerBlocksByDefaultAndUpdatesContext() {
     ["mode", "checkedExample"],
     ["liveWorkspace.enabled", false],
     ["pccxLab.command", "pccx_ide_cli"],
-    ["aiAssistant.enabled", false],
-    ["aiAssistant.backend", "none"],
+    ["workflowBoundary.enabled", false],
+    ["workflowBoundary.backend", "none"],
     ["validationRunner.enabled", false],
     ["validationRunner.mode", "disabled"],
     ["validationRunner.defaultWorkingDirectory", "repo-root"],
@@ -1073,8 +1076,8 @@ async function testApprovedValidationRunnerRequiresProposalIdWhenEnabled() {
     ["mode", "checkedExample"],
     ["liveWorkspace.enabled", false],
     ["pccxLab.command", "pccx_ide_cli"],
-    ["aiAssistant.enabled", false],
-    ["aiAssistant.backend", "none"],
+    ["workflowBoundary.enabled", false],
+    ["workflowBoundary.backend", "none"],
     ["validationRunner.enabled", true],
     ["validationRunner.mode", "allowlisted"],
     ["validationRunner.defaultWorkingDirectory", "repo-root"],
@@ -1123,8 +1126,8 @@ async function testApprovedValidationRunnerExecutesAllowlistedProposalWhenEnable
     ["mode", "checkedExample"],
     ["liveWorkspace.enabled", false],
     ["pccxLab.command", "pccx_ide_cli"],
-    ["aiAssistant.enabled", false],
-    ["aiAssistant.backend", "none"],
+    ["workflowBoundary.enabled", false],
+    ["workflowBoundary.backend", "none"],
     ["validationRunner.enabled", true],
     ["validationRunner.mode", "allowlisted"],
     ["validationRunner.defaultWorkingDirectory", "repo-root"],
@@ -1177,8 +1180,8 @@ async function testValidationResultCacheCommandsShowAndClear() {
     ["mode", "checkedExample"],
     ["liveWorkspace.enabled", false],
     ["pccxLab.command", "pccx_ide_cli"],
-    ["aiAssistant.enabled", false],
-    ["aiAssistant.backend", "none"],
+    ["workflowBoundary.enabled", false],
+    ["workflowBoundary.backend", "none"],
     ["validationRunner.enabled", true],
     ["validationRunner.mode", "allowlisted"],
     ["validationRunner.defaultWorkingDirectory", "repo-root"],
@@ -1502,8 +1505,8 @@ async function testPccxLabBackendStatusCommandReturnsStatusOnly() {
     ["mode", "checkedExample"],
     ["liveWorkspace.enabled", false],
     ["pccxLab.command", "custom-lab"],
-    ["aiAssistant.enabled", false],
-    ["aiAssistant.backend", "none"],
+    ["workflowBoundary.enabled", false],
+    ["workflowBoundary.backend", "none"],
     ["validationRunner.enabled", false],
     ["validationRunner.mode", "disabled"],
     ["validationRunner.defaultWorkingDirectory", "repo-root"],
@@ -1560,8 +1563,8 @@ await testCheckedExampleDefinitionProviderReturnsLocations();
 await testActivationRegistersCheckedExampleDefinitionProvider();
 await testNoVsCodeRuntimeIsANoop();
 await testCommandHandlerCanBeUsedWithoutRealVsCode();
-await testAIStatusCommandReturnsDisabledBackendNone();
-await testAIContextBundleCommandUsesActiveEditorSelectionAndDiagnostics();
+await testWorkflowStatusCommandReturnsDisabledBackendNone();
+await testWorkflowContextBundleCommandUsesActiveEditorSelectionAndDiagnostics();
 await testValidationProposalCommandReturnsDataOnly();
 await testValidationPreflightAuditCommandReturnsAuditOnly();
 await testApprovedValidationRunnerBlocksByDefaultAndUpdatesContext();

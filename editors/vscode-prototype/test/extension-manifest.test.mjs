@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -14,8 +17,8 @@ const COMMAND_IDS = [
   "pccxSystemVerilog.showNavigationExample",
   "pccxSystemVerilog.runDiagnosticsLive",
   "pccxSystemVerilog.runNavigationLive",
-  "pccxSystemVerilog.showAIAssistantStatus",
-  "pccxSystemVerilog.buildAIContextBundle",
+  "pccxSystemVerilog.showWorkflowBoundaryStatus",
+  "pccxSystemVerilog.buildWorkflowContextBundle",
   "pccxSystemVerilog.proposeValidationCommand",
   "pccxSystemVerilog.auditValidationProposalPreflight",
   "pccxSystemVerilog.runApprovedValidationCommand",
@@ -120,10 +123,10 @@ async function testDocsKeepExperimentalScope() {
   assert.match(combined, /not a product claim/i);
   assert.match(combined, /checked-example remains the default/i);
   assert.match(combined, /live workspace .*opt-in/i);
-  assert.match(combined, /AI-assisted SystemVerilog development workflow/i);
+  assert.match(combined, /SystemVerilog workflow boundary/i);
   assert.match(combined, /boundary-only/i);
   assert.match(combined, /context bundle command/i);
-  assert.match(combined, /AI assistant status command/i);
+  assert.match(combined, /workflow boundary status command/i);
   assert.match(combined, /validation command proposal/i);
   assert.match(combined, /validation proposal preflight audit/i);
   assert.match(combined, /patch proposal contract/i);
@@ -136,7 +139,7 @@ async function testDocsKeepExperimentalScope() {
   assert.match(combined, /allowlisted proposal IDs/i);
   assert.match(combined, /pccx-lab backend status/i);
   assert.match(combined, /showDiagnosticsHandoffSummary/);
-  assert.match(combined, /no AI provider calls/i);
+  assert.match(combined, /no provider\/runtime calls/i);
   assert.match(combined, /no MCP server implementation/i);
 }
 

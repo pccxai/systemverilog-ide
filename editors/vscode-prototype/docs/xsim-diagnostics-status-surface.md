@@ -26,7 +26,7 @@ The surface validates the `editor-problems` payload shape for
 - read-only safety flags
 - bounded limitations for context bundle use
 
-`pccxSystemVerilog.buildAIContextBundle` can include the same summary as
+`pccxSystemVerilog.buildWorkflowContextBundle` can include the same summary as
 an `xsimDiagnostics` section. That context section is summary-only and
 does not include raw xsim log lines, full logs, private paths, secrets,
 model artifact paths, or hardware dumps.

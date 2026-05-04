@@ -26,10 +26,10 @@ handoff should flow through the existing facade and CLI/core boundary
 rather than being duplicated inside this extension scaffold.
 
 `pccx-llm-launcher` is a future local LLM/chat/model backend candidate.
-This prototype only adds AI assistant status and context bundle commands
+This prototype only adds workflow boundary status and context bundle commands
 behind a controlled tool boundary, plus a validation command proposal
 surface that returns data only and a disabled-by-default approved
-validation runner for allowlisted proposal IDs.  There are no AI provider calls, no
+validation runner for allowlisted proposal IDs.  There are no provider/runtime calls, no
 pccx-llm-launcher runtime calls, and no MCP server implementation in this
 scaffold.
 
@@ -86,7 +86,7 @@ experimental opt-in aliases for now.  A controlled tiny fixture workspace
 lives at `test/fixtures/live-workspace`; the opt-in runtime smoke uses
 that fixture only and does not scan a user workspace.  The runtime smoke
 now covers live diagnostics and live navigation against that fixture; live
-navigation returns Location-style data and avoids QuickPick prompts in the
+navigation returns Location-style data and avoids QuickPick dialogs in the
 smoke path.
 
 ## Command Facade
@@ -134,8 +134,8 @@ The contributed commands are:
 - `pccxSystemVerilog.showNavigationExample`
 - `pccxSystemVerilog.runDiagnosticsLive`
 - `pccxSystemVerilog.runNavigationLive`
-- `pccxSystemVerilog.showAIAssistantStatus`
-- `pccxSystemVerilog.buildAIContextBundle`
+- `pccxSystemVerilog.showWorkflowBoundaryStatus`
+- `pccxSystemVerilog.buildWorkflowContextBundle`
 - `pccxSystemVerilog.proposeValidationCommand`
 - `pccxSystemVerilog.runApprovedValidationCommand`
 - `pccxSystemVerilog.showRecentValidationResults`
@@ -153,8 +153,8 @@ The prototype-only settings are:
 - `pccxSystemVerilog.mode`, default `checkedExample`
 - `pccxSystemVerilog.liveWorkspace.enabled`, default `false`
 - `pccxSystemVerilog.pccxLab.command`, default `pccx_ide_cli`
-- `pccxSystemVerilog.aiAssistant.enabled`, default `false`
-- `pccxSystemVerilog.aiAssistant.backend`, default `none`
+- `pccxSystemVerilog.workflowBoundary.enabled`, default `false`
+- `pccxSystemVerilog.workflowBoundary.backend`, default `none`
 - `pccxSystemVerilog.validationRunner.enabled`, default `false`
 - `pccxSystemVerilog.validationRunner.mode`, default `disabled`
 - `pccxSystemVerilog.validationRunner.defaultWorkingDirectory`, default `repo-root`
@@ -277,7 +277,7 @@ navigation facade boundary used by
 VS Code `Location` results mapped from
 `navigation --mode example --source declarations`; it does not implement
 LSP, does not scan the live workspace by default, and does not silently
-switch modes.  It also does not call AI providers, pccx-llm-launcher, or
+switch modes.  It also does not call provider/runtimes, pccx-llm-launcher, or
 chat services.  Semantic cursor and symbol resolution are not complete
 in this phase, so the provider may ignore the cursor position and return
 the checked-example declaration location.  Live navigation remains an
@@ -305,7 +305,7 @@ registration, confirms live workspace commands fail clearly while
 disabled, runs live diagnostics against the controlled fixture only, and
 executes live navigation against the same fixture without QuickPick
 blocking.  It also executes the checked-example diagnostics/navigation
-command paths plus the provider smoke.  It checks the AI assistant status
+command paths plus the provider-boundary smoke.  It checks the workflow boundary status
 command, selected-symbol context bundle command, validation command
 proposal, disabled approved validation runner behavior, one explicit
 allowlisted validation run, validation summary handoff into the context
@@ -316,10 +316,10 @@ marketplace flow.  Extension Host gates are
 tracked in
 [`docs/EXTENSION_HOST_READINESS.md`](./docs/EXTENSION_HOST_READINESS.md).
 
-## AI Assistant Boundary and Context Bundle
+## Workflow Boundary and Context Bundle
 
-`src/ai-assistant-boundary.mjs` models a future local coding-assistant
-mode as proposals only.  `pccxSystemVerilog.showAIAssistantStatus`
+`src/workflow-boundary.mjs` models a future local workflow
+mode as proposals only.  `pccxSystemVerilog.showWorkflowBoundaryStatus`
 returns the local status, configured backend, and proposal boundaries.
 Allowed proposal kinds are `explainDiagnostics`, `proposePatch`,
 `proposeValidationCommand`, `summarizeLog`, `askForMoreContext`, and
@@ -329,8 +329,8 @@ actions are disallowed.  User approval remains required before any patch,
 validation command, or commit is executed outside this proposal boundary.
 
 `src/context-bundle.mjs` is a token-saving context bundle contract for
-future AI-assisted SystemVerilog development workflow experiments.
-`pccxSystemVerilog.buildAIContextBundle` returns a bounded JSON object
+future SystemVerilog workflow boundary experiments.
+`pccxSystemVerilog.buildWorkflowContextBundle` returns a bounded JSON object
 for the active editor state without calling a provider.  It prefers the
 current file path, selected range, bounded lexical selected-symbol
 context, active diagnostics near the selection, recent navigation
@@ -356,11 +356,11 @@ references files by path/range instead of including whole workspaces,
 excludes dependency caches, generated test runtime directories, lockfiles,
 agent instruction files, binary-like content, and internal instruction
 paths, and redacts secret-like assignment lines.  This is a
-JSON contract only: no AI provider calls, no
+JSON contract only: no provider/runtime calls, no
 pccx-llm-launcher runtime calls yet, no MCP server implementation, no
 direct file modification, and no stable API claim.
 The boundary notes are tracked in
-[`docs/LIVE_WORKSPACE_AND_AI_BOUNDARY.md`](./docs/LIVE_WORKSPACE_AND_AI_BOUNDARY.md).
+[`docs/LIVE_WORKSPACE_BOUNDARY.md`](./docs/LIVE_WORKSPACE_BOUNDARY.md).
 
 `src/patch-proposal-contract.mjs` defines a provider-free patch proposal
 contract for future user-reviewed edits.  The contract accepts only
@@ -369,7 +369,7 @@ validation plan text, explicit risk level, and `requiresUserReview=true`.
 It rejects private paths, secret-like assignments, shell commands,
 generated artifacts, model files, raw provider output, unknown command
 fields, and auto-apply flags.  It does not apply patches, write files,
-execute validation, call pccx-lab, call pccx-llm-launcher, call an AI
+execute validation, call pccx-lab, call pccx-llm-launcher, call provider/runtime services
 provider, implement MCP, implement LSP, package the extension, create a
 release, or create a tag.  The contract notes are tracked in
 [`docs/patch-proposal-contract.md`](./docs/patch-proposal-contract.md).
@@ -426,7 +426,7 @@ local diagnostics handoff preflight context derived from the normalized
 context-bundle `diagnosticsHandoff` section.  That context reports
 available, unavailable, or invalid handoff status and bounded notes for UI
 display.  It does not parse raw handoff JSON in the proposal layer, spawn
-a process, call pccx-lab, call an AI provider, write files, or run git
+a process, call pccx-lab, call provider/runtime services, write files, or run git
 operations.
 
 `pccxSystemVerilog.auditValidationProposalPreflight` is a review-only
@@ -453,10 +453,10 @@ are `vscodeAdapterSmoke`, `editorBridgeSmoke`, `exampleDriftCheck`, and
 inside the runner.  The runner uses fixed executable and argument arrays
 with `shell=false`, enforces a timeout, bounds stdout/stderr summaries,
 and returns JSON with safety metadata.  The runner does not add a UI
-approval prompt in this prototype; callers should invoke it only after a
+approval dialog in this prototype; callers should invoke it only after a
 user-approved validation proposal.  It does not execute destructive
 commands, git write operations, release/tag/settings/secrets commands,
-patch proposals, AI provider calls, pccx-llm-launcher runtime calls, MCP
+patch proposals, provider/runtime calls, pccx-llm-launcher runtime calls, MCP
 server operations, or pccx-lab commands.
 
 Approved validation summaries are cached in memory only and kept brief.
@@ -469,7 +469,7 @@ shows the small recent cache through VS Code-native surfaces, and
 max size, latest status, and redaction/truncation flags through a
 summary-only validation output channel.
 `pccxSystemVerilog.clearValidationResultCache` clears the in-memory cache.
-This cache boundary does not add AI provider calls, MCP, LSP, marketplace
+This cache boundary does not add provider/runtime calls, MCP, LSP, marketplace
 packaging, pccx-llm-launcher calls, real pccx-lab execution, releases, or
 tags.
 
@@ -498,7 +498,7 @@ Now:
 - checked-example diagnostics, navigation, and DefinitionProvider smoke
 - explicit live workspace boundary with controlled fixture diagnostics
 - fixture-backed live navigation smoke
-- AI assistant status command and bounded context bundle command
+- workflow boundary status command and bounded context bundle command
 - selected-symbol context
 - validation command proposal
 - validation proposal preflight audit
@@ -513,13 +513,13 @@ Now:
 Next:
 
 - selected-symbol to declaration context through live navigation
-- diagnostics-aware prompt builder
+- diagnostics-aware context builder
 - patch proposal format
 - pccx-lab command palette execution with allowlisted commands
 
 Later:
 
-- pccx-llm-launcher local assistant backend behind a reviewed contract
+- pccx-llm-launcher local workflow backend behind a reviewed contract
 - MCP controlled tool boundary
 - richer editor UI/panels
 - optional theme presets through host/user theme tokens
@@ -527,13 +527,13 @@ Later:
 ## Prototype Daily-Driver Loop
 
 1. Inspect checked-example or explicit live workspace diagnostics and navigation.
-2. Build a selected-symbol AI context bundle for the active editor state.
+2. Build a selected-symbol workflow context bundle for the active editor state.
 3. Propose a validation command as data with `pccxSystemVerilog.proposeValidationCommand`.
 4. Audit the proposal handoff with `pccxSystemVerilog.auditValidationProposalPreflight`.
 5. User approves an allowlisted validation proposal ID.
 6. Run `pccxSystemVerilog.runApprovedValidationCommand` only after the runner is explicitly enabled.
 7. Inspect the bounded validation cache status and feed the summary back into the context bundle.
-8. Future local coding-assistant mode can propose a patch or next validation step, but does not execute either directly.
+8. Future local workflow mode can propose a patch or next validation step, but does not execute either directly.
 
 ## Local Smoke
 
@@ -545,7 +545,7 @@ node editors/vscode-prototype/test/extension-manifest.test.mjs
 node editors/vscode-prototype/test/extension-config.test.mjs
 node editors/vscode-prototype/test/context-bundle.test.mjs
 node editors/vscode-prototype/test/selected-symbol-context.test.mjs
-node editors/vscode-prototype/test/ai-assistant-boundary.test.mjs
+node editors/vscode-prototype/test/workflow-boundary.test.mjs
 node editors/vscode-prototype/test/validation-proposals.test.mjs
 node editors/vscode-prototype/test/validation-proposal-preflight-audit.test.mjs
 node editors/vscode-prototype/test/patch-proposal-contract.test.mjs
