@@ -5,7 +5,7 @@
       "blockerId": "board_model_bitstream_runtime_environment_missing",
       "requiredBefore": "kv260_smoke_or_runtime_claim",
       "state": "blocked",
-      "summary": "KV260 board, model assets, generated bitstream, and runtime environment are not provided by this launcher fixture."
+      "summary": "KV260 board, model assets, bitstream artifact, and runtime environment are not provided by this launcher fixture."
     },
     {
       "blockerId": "post_synth_drc_timing_open",
@@ -20,10 +20,10 @@
       "summary": "Implementation is not complete, so hardware closure is not available."
     },
     {
-      "blockerId": "bitstream_not_generated",
+      "blockerId": "bitstream_not_available",
       "requiredBefore": "kv260_board_smoke_claim",
       "state": "blocked",
-      "summary": "A generated bitstream is not proven by this launcher surface."
+      "summary": "A bitstream artifact is not proven by this launcher surface."
     },
     {
       "blockerId": "gemma3n_e4b_runtime_evidence_absent",
@@ -166,7 +166,7 @@
     "deterministic": true,
     "executesPccxLab": false,
     "executesSystemverilogIde": false,
-    "generatedBlobsIncluded": false,
+    "artifactBlobsIncluded": false,
     "hardwareDumpsIncluded": false,
     "kv260Access": false,
     "lspImplemented": false,

@@ -70,7 +70,7 @@ python -m pccx_ide_cli check <sv-file> --backend pccx-lab --format json
 ## Checked Examples
 
 The pre-stable contract examples are checked in under
-`docs/examples/editor-bridge`.  They are generated from synthetic
+`docs/examples/editor-bridge`.  They are built from synthetic
 fixtures and are intended as adapter guidance, not a stable ABI/API.
 The example drift check is:
 

@@ -118,7 +118,7 @@ export const DEFAULT_DEVICE_SESSION_STATUS_CONSUMER_SUMMARY = Object.freeze({
     privatePathsIncluded: false,
     secretsIncluded: false,
     tokensIncluded: false,
-    generatedBlobsIncluded: false,
+    artifactBlobsIncluded: false,
     hardwareDumpsIncluded: false,
     providerCalls: false,
     telemetry: false,
@@ -449,10 +449,10 @@ function normalizeConsumerSummary(summary = DEFAULT_DEVICE_SESSION_STATUS_CONSUM
       ),
       secretsIncluded: boolField(safety.secretsIncluded, false, "safety.secretsIncluded", errors),
       tokensIncluded: boolField(safety.tokensIncluded, false, "safety.tokensIncluded", errors),
-      generatedBlobsIncluded: boolField(
-        safety.generatedBlobsIncluded,
+      artifactBlobsIncluded: boolField(
+        safety.artifactBlobsIncluded,
         false,
-        "safety.generatedBlobsIncluded",
+        "safety.artifactBlobsIncluded",
         errors,
       ),
       hardwareDumpsIncluded: boolField(

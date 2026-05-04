@@ -70,7 +70,7 @@ export const DEFAULT_DIAGNOSTICS_HANDOFF_CONSUMER_SUMMARY = Object.freeze({
     "No launcher runtime execution, model execution, provider call, or network call is performed.",
     "No KV260 hardware access is performed.",
     "No telemetry, automatic upload, or auto write-back is included.",
-    "No raw full logs, user request text, source code, private paths, secrets, tokens, provider configuration, generated blobs, or model weight paths are included.",
+    "No raw full logs, user request text, source code, private paths, secrets, tokens, provider configuration, artifact blobs, or model weight paths are included.",
     "The contract is not a versioned compatibility commitment.",
   ]),
 });

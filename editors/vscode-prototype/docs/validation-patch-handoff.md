@@ -53,7 +53,7 @@ call provider/runtime services, implement MCP, or implement LSP.
 - Private home paths and secret-like assignment lines are redacted.
 - Candidate files are repository-relative and come only from explicit
   context or bounded diagnostics.
-- Dependency caches, private instruction paths, generated outputs,
+- Dependency caches, private instruction paths, build outputs,
   lockfiles, and secret-like paths are excluded.
 - The handoff suggests validation only through approved validation proposal
   wording; it does not embed shell commands.

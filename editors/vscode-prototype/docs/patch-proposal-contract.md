@@ -49,7 +49,7 @@ call provider/runtime services, implement MCP, or implement LSP.
 - `requiresUserReview` must be `true`.
 - Paths must be repository-relative and single-line.
 - Paths must not target private instruction locations, dependency caches,
-  generated outputs, lockfiles, model files, bitstreams, binary archives, or
+  build outputs, lockfiles, model files, bitstreams, binary archives, or
   secret-like names.
 - Text fields are bounded and must not include secret-like assignments,
   private home paths, or shell commands.

@@ -77,7 +77,7 @@ launcher boundaries.
 
 The checked fixture is copied from the launcher/lab handoff shape and is
 manual for now. It is sanitized: no raw full logs, user request text, source code,
-private paths, secrets, tokens, provider configuration, generated blobs,
+private paths, secrets, tokens, provider configuration, artifact blobs,
 hardware dumps, or model weight paths.
 
 Future work may add UI presentation for this summary. That presentation

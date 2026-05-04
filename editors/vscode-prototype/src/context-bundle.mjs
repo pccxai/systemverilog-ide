@@ -924,7 +924,7 @@ function runtimeReadinessSafetyBase() {
     modelWeightPathsIncluded: false,
     privatePathsIncluded: false,
     credentialDataIncluded: false,
-    generatedBlobsIncluded: false,
+    artifactBlobsIncluded: false,
     hardwareDumpsIncluded: false,
     writesArtifacts: false,
     providerCalls: false,
@@ -1034,7 +1034,7 @@ function normalizeRuntimeReadinessStatusSurface(surface, limits) {
       privatePathsIncluded: surface.safety?.privatePathsIncluded === true,
       credentialDataIncluded: surface.safety?.secretsIncluded === true ||
         surface.safety?.tokensIncluded === true,
-      generatedBlobsIncluded: surface.safety?.generatedBlobsIncluded === true,
+      artifactBlobsIncluded: surface.safety?.artifactBlobsIncluded === true,
       hardwareDumpsIncluded: surface.safety?.hardwareDumpsIncluded === true,
       writesArtifacts: surface.safety?.writesArtifacts === true,
       providerCalls: surface.safety?.providerCalls === true,
@@ -1068,7 +1068,7 @@ function assertRuntimeReadinessContextSafety(context) {
     safety.modelWeightPathsIncluded === true ||
     safety.privatePathsIncluded === true ||
     safety.credentialDataIncluded === true ||
-    safety.generatedBlobsIncluded === true ||
+    safety.artifactBlobsIncluded === true ||
     safety.hardwareDumpsIncluded === true ||
     safety.writesArtifacts === true ||
     safety.providerCalls === true ||
@@ -1138,7 +1138,7 @@ function deviceSessionStatusSafetyBase() {
     modelWeightPathsIncluded: false,
     privatePathsIncluded: false,
     credentialDataIncluded: false,
-    generatedBlobsIncluded: false,
+    artifactBlobsIncluded: false,
     hardwareDumpsIncluded: false,
     providerCalls: false,
     mcpCalls: false,
@@ -1283,7 +1283,7 @@ function normalizeDeviceSessionStatusSurface(surface, limits) {
       privatePathsIncluded: surface.safety?.privatePathsIncluded === true,
       credentialDataIncluded: surface.safety?.secretsIncluded === true ||
         surface.safety?.tokensIncluded === true,
-      generatedBlobsIncluded: surface.safety?.generatedBlobsIncluded === true,
+      artifactBlobsIncluded: surface.safety?.artifactBlobsIncluded === true,
       hardwareDumpsIncluded: surface.safety?.hardwareDumpsIncluded === true,
       providerCalls: surface.safety?.providerCalls === true,
       mcpCalls: surface.safety?.mcpCalls === true,
@@ -1325,7 +1325,7 @@ function assertDeviceSessionStatusContextSafety(context) {
     safety.modelWeightPathsIncluded === true ||
     safety.privatePathsIncluded === true ||
     safety.credentialDataIncluded === true ||
-    safety.generatedBlobsIncluded === true ||
+    safety.artifactBlobsIncluded === true ||
     safety.hardwareDumpsIncluded === true ||
     safety.providerCalls === true ||
     safety.mcpCalls === true ||

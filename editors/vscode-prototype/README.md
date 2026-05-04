@@ -341,7 +341,7 @@ recent validation history: proposal ID, status, allowlist label, exit
 code, duration/timestamps, working-directory kind, command kind, bounded
 stdout/stderr summaries, truncation/redaction flags, failure hints, and
 safety metadata.  It does not include full logs, raw shell command
-strings, raw absolute private paths, generated artifacts, or bulk file
+strings, raw absolute private paths, build artifacts, or bulk file
 content.  The bundle can also include the diagnostics handoff summary
 section from `src/diagnostics-handoff-status-surface.mjs` as read-only
 adapter data.  That section carries counts, descriptor references,
@@ -353,7 +353,7 @@ context extracts simple SystemVerilog-like lexical cues such as the symbol
 text, current line, and nearby module/package/interface/parameter/function
 or task declaration; it is not full semantic analysis.  The bundle
 references files by path/range instead of including whole workspaces,
-excludes dependency caches, generated test runtime directories, lockfiles,
+excludes dependency caches, test runtime directories, lockfiles,
 agent instruction files, binary-like content, and internal instruction
 paths, and redacts secret-like assignment lines.  This is a
 JSON contract only: no provider/runtime calls, no
@@ -367,7 +367,7 @@ contract for future user-reviewed edits.  The contract accepts only
 repository-relative paths, bounded hunk previews, bounded rationale and
 validation plan text, explicit risk level, and `requiresUserReview=true`.
 It rejects private paths, secret-like assignments, shell commands,
-generated artifacts, model files, raw provider output, unknown command
+build artifacts, model files, raw provider output, unknown command
 fields, and auto-apply flags.  It does not apply patches, write files,
 execute validation, call pccx-lab, call pccx-llm-launcher, call provider/runtime services
 provider, implement MCP, implement LSP, package the extension, create a
@@ -383,7 +383,7 @@ summaries into bounded patch proposal context seeds.  Passing validation
 summaries produce no seed.  The helper carries proposal ID, status,
 bounded failure summary, related diagnostics, candidate file paths, and a
 suggested approved validation plan without full logs, private paths,
-generated artifacts, shell commands, patch generation, or patch
+build artifacts, shell commands, patch creation, or patch
 application.  The handoff notes are tracked in
 [`docs/validation-patch-handoff.md`](./docs/validation-patch-handoff.md).
 
@@ -462,7 +462,7 @@ server operations, or pccx-lab commands.
 Approved validation summaries are cached in memory only and kept brief.
 The cache stores summary-only, redacted entries for recent runner results;
 it does not persist to disk and does not store full stdout/stderr logs,
-secrets, tokens, private home paths, raw command strings, generated blobs,
+secrets, tokens, private home paths, raw command strings, artifact blobs,
 model paths, or pccx-lab outputs.  `pccxSystemVerilog.showRecentValidationResults`
 shows the small recent cache through VS Code-native surfaces, and
 `pccxSystemVerilog.showValidationCacheStatus` reports the cache count,

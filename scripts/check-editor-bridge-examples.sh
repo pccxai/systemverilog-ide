@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 pccxai
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -147,7 +149,7 @@ for filename, expected_kind, args in FLOWS:
             normalized(expected).splitlines(),
             normalized(actual).splitlines(),
             fromfile=str(path),
-            tofile=f"generated:{' '.join(args)}",
+            tofile=f"expected:{' '.join(args)}",
             lineterm="",
         )
         sys.stderr.write("\n".join(diff))

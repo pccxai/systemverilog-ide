@@ -95,7 +95,7 @@ const REQUIRED_FALSE_SAFETY_FLAGS = Object.freeze([
   "privatePathsIncluded",
   "secretsIncluded",
   "tokensIncluded",
-  "generatedBlobsIncluded",
+  "artifactBlobsIncluded",
   "hardwareDumpsIncluded",
   "networkCalls",
   "providerCalls",
@@ -116,7 +116,7 @@ const HOME_PATH_PATTERN = /(?:\/home\/[^/\s]+|\/Users\/[^/\s]+|[A-Za-z]:\\Users\
 const MODEL_ARTIFACT_PATTERN =
   /\.(?:gguf|safetensors|ckpt|pt|pth|onnx|xclbin|bit)(?:\s|$|["'])/i;
 const RAW_ARTIFACT_PATTERN =
-  /\b(?:raw[_-]?full[_-]?logs|hardware[_-]?dump|generated[_-]?blob)\b\s*[:=]/i;
+  /\b(?:raw[_-]?full[_-]?logs|hardware[_-]?dump|artifact[_-]?blob)\b\s*[:=]/i;
 const UNSUPPORTED_CLAIM_PATTERNS = Object.freeze([
   /\bproduction[- ]ready\b/i,
   /\bmarketplace[- ]ready\b/i,
@@ -334,7 +334,7 @@ function validateSafety(readiness, errors) {
     privatePathsIncluded: false,
     secretsIncluded: false,
     tokensIncluded: false,
-    generatedBlobsIncluded: false,
+    artifactBlobsIncluded: false,
     hardwareDumpsIncluded: false,
     writesArtifacts: false,
     networkCalls: false,

@@ -183,20 +183,20 @@ proposal ID, status, allowlist label, exit code, duration/timestamps,
 working-directory kind, command kind, bounded stdout/stderr summaries,
 truncation/redaction flags, and safety metadata.  It does not persist to
 disk and does not store full logs, raw shell command strings, secrets,
-tokens, private home paths, generated blobs, model paths, or pccx-lab
+tokens, private home paths, artifact blobs, model paths, or pccx-lab
 outputs.  The cache UX exposes recent entries and cache status through
 VS Code-native surfaces and a summary-only validation output channel.
 
 The context bundle can carry the latest cached validation summary and a
 small bounded recent validation history.  It does not include full logs,
-raw absolute private paths, generated artifacts, launcher calls, provider/runtime
+raw absolute private paths, build artifacts, launcher calls, provider/runtime
 provider calls, MCP, LSP, marketplace packaging, release/tag flow, or
 real pccx-lab execution.
 
 Patch proposals are contract-only in this prototype.  The checked
 contract accepts repository-relative paths and bounded hunk previews for
 future user review, rejects private paths, secrets, shell commands,
-generated artifacts, raw provider output, and auto-apply fields, and does
+build artifacts, raw provider output, and auto-apply fields, and does
 not apply changes.  The preview command shows checked proposal IDs only
 through VS Code-native output and the clear command removes only the
 in-memory preview result.

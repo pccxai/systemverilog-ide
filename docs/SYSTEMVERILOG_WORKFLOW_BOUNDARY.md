@@ -40,7 +40,7 @@ validation.
    The IDE builds bounded context from selected files, diagnostics,
    declarations, recent validation summaries, and checked handoff/status
    surfaces. Context excludes secret-like data, private paths where a
-   workspace root is known, full logs, generated blobs, model paths, and
+   workspace root is known, full logs, artifact blobs, model paths, and
    repository-wide dumps.
 
 2. Propose a change.
