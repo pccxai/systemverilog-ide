@@ -5,13 +5,14 @@
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 `module-summary`, `port-usage`, `module-context`, `refactor-impact`,
-`validation-plan`, `refactor-review`, and `refactor-approval` CLI surfaces
+`validation-plan`, `refactor-review`, `refactor-approval`, and
+`refactor-application` CLI surfaces
 that report module boundary spans, scanner-based hierarchy data, direct
 dependency impact data, conservative module header/port summaries, target port
 usage summaries, target module context bundles, target-specific refactor impact
 data, proposal-only validation command descriptors, a summary-only review
-packet, and approval decision metadata for editor navigation and reviewed
-refactoring planning.
+packet, approval decision metadata, and application request metadata for editor
+navigation and reviewed refactoring planning.
 
 It is not a full SystemVerilog parser, not semantic elaboration, not an LSP
 implementation, and not a write-capable refactoring engine.
@@ -45,6 +46,9 @@ python -m pccx_ide_cli refactor-review <path> --action move-module --module <nam
 python -m pccx_ide_cli refactor-approval <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-approval <path> --action extract-port --module <name> --port-name <name> --direction input --format text
 python -m pccx_ide_cli refactor-approval <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
+python -m pccx_ide_cli refactor-application <path> --action rename-module --module <name> --new-name <name> --format json
+python -m pccx_ide_cli refactor-application <path> --action extract-port --module <name> --port-name <name> --direction input --format text
+python -m pccx_ide_cli refactor-application <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
 ```
 
 `<path>` may be a `.sv` / `.v` file or a directory. Directory scans follow the
@@ -668,6 +672,68 @@ patches, run validation, execute shell commands, invoke `pccx-lab`, invoke the
 launcher, run vendor tools, call providers, touch hardware, upload telemetry,
 grant approval, or perform automatic repository actions.
 
+## Refactor Application Request
+
+`refactor-application` adds proposal-only application request metadata over the
+existing `refactor-approval` decision. It is a one-call gate for editor review
+panes and maintainer handoff notes to show that a reviewed refactor still has
+not been accepted for write execution and has not been applied.
+
+Example shape:
+
+```json
+{
+  "kind": "module-refactor-application-request",
+  "application_state": "not-accepted",
+  "action": "rename-module",
+  "writes_files": false,
+  "application_request": {
+    "accepted": false,
+    "applied": false,
+    "decision": "not-accepted",
+    "reason": "approval not granted",
+    "required_approval_decision": "not-approved",
+    "result": "not_applied",
+    "requires_explicit_user_approval_before_run": true,
+    "requires_explicit_user_approval_before_write": true
+  },
+  "approval_summary": {
+    "kind": "module-refactor-approval-decision",
+    "approved": false,
+    "decision_state": "not-approved",
+    "review_state": "ready-for-review",
+    "validation_state": "proposal-only",
+    "command_descriptor_count": 8,
+    "validation_phases": []
+  },
+  "safety": {
+    "read_only": true,
+    "application_metadata_only": true,
+    "approval_granted": false,
+    "request_accepted": false,
+    "summarizes_command_descriptors": true,
+    "emits_command_descriptors": false,
+    "writes_files": false,
+    "runs_validation": false,
+    "runs_shell": false,
+    "invokes_pccx_lab": false,
+    "invokes_launcher": false,
+    "hardware_access": false
+  }
+}
+```
+
+The request intentionally records `accepted: false` and `applied: false`.
+It summarizes the approval decision and validation descriptor phases by command
+ID only and does not include command argv; consumers that need the fixed-argv
+descriptor list should call `validation-plan` directly.
+
+This boundary does not write files, apply refactors, move files, generate
+patches, run validation, execute shell commands, invoke `pccx-lab`, invoke the
+launcher, run vendor tools, call providers, touch hardware, upload telemetry,
+accept an application request, apply a refactor, grant approval, or perform
+automatic repository actions.
+
 ## Limitations
 
 - Scanner-based module declarations and `endmodule` matching only.
@@ -685,4 +751,5 @@ with read-only module boundary detection, a focused hierarchy view, a
 direct dependency view, conservative module header/port summaries,
 target-specific port usage summaries, target-specific module context
 bundles, target-specific refactor impact review data, and a
-proposal-only refactoring, validation planning, and review packet boundary.
+proposal-only refactoring, validation planning, review packet, approval
+decision, and application request boundary.
