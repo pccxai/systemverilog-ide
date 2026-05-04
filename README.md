@@ -151,6 +151,7 @@ python -m pccx_ide_cli refactor-review fixtures/organization/hierarchy_top.sv --
 python -m pccx_ide_cli refactor-approval fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 python -m pccx_ide_cli refactor-application fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 python -m pccx_ide_cli refactor-result fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
+python -m pccx_ide_cli refactor-handoff fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 
 # xsim log handoff scaffold (parses existing log files only)
 python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format json
@@ -226,12 +227,15 @@ review steps, but it does not write files, apply patches, run validation,
 invoke `pccx-lab` or the launcher, call providers, touch hardware, or
 perform automatic repository actions.
 `validation-plan`, `refactor-review`, `refactor-approval`,
-`refactor-application`, and `refactor-result` extend that reviewed flow with
+`refactor-application`, `refactor-result`, and `refactor-handoff` extend that
+reviewed flow with
 proposal-only validation descriptors, summary-only review data, unapproved
 approval gates, not-accepted application request metadata, and not-applied
-result receipts. They do not execute validation, run shell commands, apply
-edits, generate patches, write files, invoke `pccx-lab` or the launcher, call
-providers, touch hardware, or perform automatic repository actions.
+result receipts, plus summary-only handoff metadata. They do not execute
+validation, run shell commands, apply edits, generate patches, write files,
+publish public text, create pull requests, write comments, mutate projects,
+invoke `pccx-lab` or the launcher, call providers, touch hardware, or perform
+automatic repository actions.
 
 `xsim-log` is an early handoff scaffold. It parses existing synthetic
 xsim-style log files into diagnostics-like JSON or text output. It does

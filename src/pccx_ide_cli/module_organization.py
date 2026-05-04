@@ -203,6 +203,18 @@ APPLICATION_RESULT_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+HANDOFF_SUMMARY_LIMITATIONS: tuple[str, ...] = (
+    "summary-only refactor handoff metadata",
+    "summarizes a not-applied application result for editor review and maintainer handoff",
+    "does not include command argv; use validation-plan for command descriptors",
+    "does not publish public text, create pull requests, write comments, or mutate projects",
+    "does not execute validation commands or shell commands",
+    "does not apply refactors, write files, move files, generate patches, "
+    "or roll back files",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 _REFACTOR_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "rename-module": ("new_name",),
     "extract-port": ("port_name", "direction"),
@@ -441,6 +453,37 @@ def _application_result_safety_flags() -> dict[str, bool]:
         "runs_validation": False,
         "runs_shell": False,
         "rollback_required": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _handoff_summary_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "handoff_summary_only": True,
+        "approval_granted": False,
+        "request_accepted": False,
+        "write_attempted": False,
+        "summarizes_command_descriptors": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "rollback_required": False,
+        "public_text_published": False,
+        "pull_request_created": False,
+        "comment_written": False,
+        "project_mutation": False,
         "invokes_pccx_lab": False,
         "invokes_launcher": False,
         "invokes_vendor_tools": False,
@@ -2266,6 +2309,152 @@ def build_refactor_application_result(
     }
 
 
+def _handoff_application_result_summary(
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    application = result["application_summary"]
+    phases = []
+    for phase in application["validation_phases"]:
+        phases.append({
+            "command_ids": list(phase["command_ids"]),
+            "phase": phase["phase"],
+            "status": phase["status"],
+        })
+    return {
+        "application_result": result["application_result"]["result"],
+        "approval_decision_state": application["approval_decision_state"],
+        "command_descriptor_count": application["command_descriptor_count"],
+        "file_change_count": result["application_result"]["file_change_count"],
+        "kind": result["kind"],
+        "patch_generated": result["application_result"]["patch_generated"],
+        "result_state": result["result_state"],
+        "review_state": application["review_state"],
+        "rollback_required": result["application_result"]["rollback_required"],
+        "validation_phases": phases,
+        "validation_result": result["application_result"]["validation_result"],
+        "validation_run": result["application_result"]["validation_run"],
+        "validation_state": application["validation_state"],
+        "write_attempted": result["application_result"]["write_attempted"],
+    }
+
+
+def build_refactor_handoff_summary(
+    source: str,
+    path: Path,
+    action: str,
+    module_name: str,
+    *,
+    new_name: str | None = None,
+    port_name: str | None = None,
+    direction: str | None = None,
+    width: str | None = None,
+    destination: str | None = None,
+) -> dict[str, Any]:
+    result = build_refactor_application_result(
+        source,
+        path,
+        action,
+        module_name,
+        new_name=new_name,
+        port_name=port_name,
+        direction=direction,
+        width=width,
+        destination=destination,
+    )
+    preflight = result["preflight"]
+    handoff_state = (
+        "blocked"
+        if preflight["status"] == "blocked"
+        else "ready-for-review"
+    )
+    recommended_next_step = (
+        "resolve refactor preflight blockers before handoff"
+        if handoff_state == "blocked"
+        else "review validation plan before any approval or application"
+    )
+
+    return {
+        "action": action,
+        "application_result_summary": _handoff_application_result_summary(
+            result
+        ),
+        "blocked_actions": [
+            "file-write",
+            "patch-generation",
+            "refactor-application",
+            "validation-run",
+            "shell-command",
+            "pull-request-create",
+            "comment-write",
+            "project-mutation",
+            "pccx-lab-invocation",
+            "launcher-invocation",
+            "vendor-tool-invocation",
+            "provider-call",
+            "hardware-access",
+        ],
+        "handoff_state": handoff_state,
+        "handoff_summary": {
+            "comment_ready": False,
+            "files_changed": 0,
+            "patch_generated": False,
+            "public_text_ready": False,
+            "pull_request_ready": False,
+            "ready_for_maintainer_review": preflight["status"] != "blocked",
+            "recommended_next_step": recommended_next_step,
+            "result": result["application_result"]["result"],
+            "result_state": result["result_state"],
+            "rollback_required": False,
+            "state": handoff_state,
+            "validation_run": False,
+            "write_attempted": False,
+        },
+        "kind": "module-refactor-handoff-summary",
+        "limitations": list(HANDOFF_SUMMARY_LIMITATIONS),
+        "module": result["module"],
+        "preflight": {
+            "reasons": list(preflight["reasons"]),
+            "requires_approval_before_write": preflight[
+                "requires_approval_before_write"
+            ],
+            "requires_explicit_approval_before_run": True,
+            "status": preflight["status"],
+        },
+        "proposal_summary": {
+            "planned_step_count": result["proposal_summary"][
+                "planned_step_count"
+            ],
+            "requested_change": result["proposal_summary"]["requested_change"],
+            "writes_files": result["proposal_summary"]["writes_files"],
+        },
+        "review_notes": [
+            {
+                "note_id": "approval-not-granted",
+                "state": result["application_summary"][
+                    "approval_decision_state"
+                ],
+                "summary": (
+                    "No approval has been granted for the requested refactor."
+                ),
+            },
+            {
+                "note_id": "no-write-attempt",
+                "state": "not_applied",
+                "summary": (
+                    "No write attempt, patch generation, validation run, "
+                    "or rollback occurred."
+                ),
+            },
+        ],
+        "safety": _handoff_summary_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "target": module_name,
+        "tool": "pccx-ide-cli",
+        "writes_files": False,
+    }
+
+
 def format_refactor_proposal_text(proposal: dict[str, Any]) -> str:
     lines = [
         f"source: {proposal['source']}",
@@ -2465,6 +2654,49 @@ def format_refactor_application_result_text(result: dict[str, Any]) -> str:
         "result metadata only: no command argv, validation, shell, "
         "refactor, patch, file write, rollback, lab, launcher, vendor tool, "
         "provider, or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_refactor_handoff_summary_text(summary: dict[str, Any]) -> str:
+    handoff = summary["handoff_summary"]
+    result = summary["application_result_summary"]
+    lines = [
+        f"source: {summary['source']}",
+        f"target: {summary['target']}",
+        f"action: {summary['action']}",
+        f"refactor handoff: {summary['handoff_state']}",
+        f"application result: {result['result_state']}",
+        f"result: {result['application_result']}",
+        "write attempted: no",
+        "patch generated: no",
+        "files changed: 0",
+        "validation run: no",
+        "rollback required: no",
+        "public text ready: no",
+        "pull request ready: no",
+        "comment ready: no",
+        f"approval decision: {result['approval_decision_state']}",
+        f"review state: {result['review_state']}",
+        f"preflight: {summary['preflight']['status']}",
+        "writes files: no",
+        "runs validation: no",
+        f"validation descriptors: {result['command_descriptor_count']}",
+    ]
+    for phase in result["validation_phases"]:
+        command_ids = ", ".join(phase["command_ids"]) or "none"
+        lines.append(
+            f"validation phase: {phase['phase']} "
+            f"({phase['status']}): {command_ids}"
+        )
+    for reason in summary["preflight"]["reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next step: {handoff['recommended_next_step']}")
+    lines.append(
+        "summary-only handoff: no command argv, public text, pull request, "
+        "comment, project mutation, validation, shell, refactor, patch, "
+        "file write, rollback, lab, launcher, vendor tool, provider, or "
+        "hardware execution"
     )
     return "\n".join(lines) + "\n"
 

@@ -6,14 +6,14 @@ This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 `module-summary`, `port-usage`, `module-context`, `refactor-impact`,
 `validation-plan`, `refactor-review`, `refactor-approval`, and
-`refactor-application`, and `refactor-result` CLI surfaces
+`refactor-application`, `refactor-result`, and `refactor-handoff` CLI surfaces
 that report module boundary spans, scanner-based hierarchy data, direct
 dependency impact data, conservative module header/port summaries, target port
 usage summaries, target module context bundles, target-specific refactor impact
 data, proposal-only validation command descriptors, a summary-only review
 packet, approval decision metadata, application request metadata, and
-application result metadata for editor navigation and reviewed refactoring
-planning.
+application result metadata plus refactor handoff metadata for editor
+navigation and reviewed refactoring planning.
 
 It is not a full SystemVerilog parser, not semantic elaboration, not an LSP
 implementation, and not a write-capable refactoring engine.
@@ -53,6 +53,9 @@ python -m pccx_ide_cli refactor-application <path> --action move-module --module
 python -m pccx_ide_cli refactor-result <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-result <path> --action extract-port --module <name> --port-name <name> --direction input --format text
 python -m pccx_ide_cli refactor-result <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
+python -m pccx_ide_cli refactor-handoff <path> --action rename-module --module <name> --new-name <name> --format json
+python -m pccx_ide_cli refactor-handoff <path> --action extract-port --module <name> --port-name <name> --direction input --format text
+python -m pccx_ide_cli refactor-handoff <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
 ```
 
 `<path>` may be a `.sv` / `.v` file or a directory. Directory scans follow the
@@ -809,6 +812,96 @@ launcher, run vendor tools, call providers, touch hardware, upload telemetry,
 accept an application request, apply a refactor, perform rollback, grant
 approval, or perform automatic repository actions.
 
+## Refactor Handoff Summary
+
+`refactor-handoff` adds summary-only refactor handoff metadata over the
+existing `refactor-result` receipt. It is intended for editor review panes and
+maintainer handoff notes that need a compact statement of what did not happen:
+no write attempt, no generated patch, no changed files, no validation run, no
+rollback requirement, no public text publication, no pull request creation, no
+comment writing, and no project mutation.
+
+Example shape:
+
+```json
+{
+  "kind": "module-refactor-handoff-summary",
+  "handoff_state": "ready-for-review",
+  "action": "rename-module",
+  "writes_files": false,
+  "handoff_summary": {
+    "state": "ready-for-review",
+    "result_state": "not-applied",
+    "result": "not_applied",
+    "recommended_next_step": "review validation plan before any approval or application",
+    "ready_for_maintainer_review": true,
+    "public_text_ready": false,
+    "pull_request_ready": false,
+    "comment_ready": false,
+    "files_changed": 0,
+    "write_attempted": false,
+    "patch_generated": false,
+    "validation_run": false,
+    "rollback_required": false
+  },
+  "application_result_summary": {
+    "kind": "module-refactor-application-result",
+    "result_state": "not-applied",
+    "application_result": "not_applied",
+    "write_attempted": false,
+    "patch_generated": false,
+    "file_change_count": 0,
+    "validation_run": false,
+    "validation_result": "not_run",
+    "rollback_required": false,
+    "approval_decision_state": "not-approved",
+    "review_state": "ready-for-review",
+    "validation_state": "proposal-only",
+    "command_descriptor_count": 8,
+    "validation_phases": []
+  },
+  "blocked_actions": [
+    "file-write",
+    "patch-generation",
+    "refactor-application",
+    "validation-run",
+    "shell-command",
+    "pull-request-create",
+    "comment-write",
+    "project-mutation"
+  ],
+  "safety": {
+    "read_only": true,
+    "handoff_summary_only": true,
+    "approval_granted": false,
+    "request_accepted": false,
+    "write_attempted": false,
+    "public_text_published": false,
+    "pull_request_created": false,
+    "comment_written": false,
+    "project_mutation": false,
+    "writes_files": false,
+    "generates_patch": false,
+    "runs_validation": false,
+    "runs_shell": false,
+    "invokes_pccx_lab": false,
+    "invokes_launcher": false,
+    "hardware_access": false
+  }
+}
+```
+
+The handoff intentionally summarizes validation descriptor phases by command ID
+only and does not include command argv; consumers that need the fixed-argv
+descriptor list should call `validation-plan` directly.
+
+This boundary does not write files, apply refactors, move files, generate
+patches, run validation, execute shell commands, invoke `pccx-lab`, invoke the
+launcher, run vendor tools, call providers, touch hardware, upload telemetry,
+publish public text, create pull requests, write comments, mutate projects,
+accept an application request, apply a refactor, perform rollback, grant
+approval, or perform automatic repository actions.
+
 ## Limitations
 
 - Scanner-based module declarations and `endmodule` matching only.
@@ -827,4 +920,5 @@ direct dependency view, conservative module header/port summaries,
 target-specific port usage summaries, target-specific module context
 bundles, target-specific refactor impact review data, and a
 proposal-only refactoring, validation planning, review packet, approval
-decision, application request, and application result boundary.
+decision, application request, application result, and handoff summary
+boundary.

@@ -27,6 +27,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_refactor_approval_decision,
     build_refactor_application_result,
     build_refactor_application_request,
+    build_refactor_handoff_summary,
     build_refactor_impact_view,
     build_refactor_proposal,
     build_refactor_review_packet,
@@ -34,6 +35,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_refactor_approval_decision_text,
     format_refactor_application_result_text,
     format_refactor_application_request_text,
+    format_refactor_handoff_summary_text,
     format_module_dependency_text,
     format_module_context_text,
     format_module_hierarchy_text,
@@ -770,6 +772,82 @@ def test_build_refactor_application_result_reports_blocked_preflight():
     assert phases["post-change-local-validation"]["command_ids"] == []
 
 
+def test_build_refactor_handoff_summary_records_summary_only_handoff():
+    summary = build_refactor_handoff_summary(
+        str(FIXTURE),
+        FIXTURE,
+        "rename-module",
+        "leaf_mod",
+        new_name="leaf_mod_next",
+    )
+
+    assert summary["kind"] == "module-refactor-handoff-summary"
+    assert summary["handoff_state"] == "ready-for-review"
+    assert summary["handoff_summary"]["public_text_ready"] is False
+    assert summary["handoff_summary"]["pull_request_ready"] is False
+    assert summary["handoff_summary"]["comment_ready"] is False
+    assert summary["handoff_summary"]["files_changed"] == 0
+    assert summary["handoff_summary"]["write_attempted"] is False
+    assert summary["handoff_summary"]["patch_generated"] is False
+    assert summary["handoff_summary"]["validation_run"] is False
+    assert summary["handoff_summary"]["rollback_required"] is False
+    assert summary["application_result_summary"]["kind"] == (
+        "module-refactor-application-result"
+    )
+    assert summary["application_result_summary"]["application_result"] == (
+        "not_applied"
+    )
+    assert summary["application_result_summary"]["result_state"] == (
+        "not-applied"
+    )
+    assert summary["application_result_summary"]["write_attempted"] is False
+    assert summary["application_result_summary"]["patch_generated"] is False
+    assert summary["application_result_summary"]["file_change_count"] == 0
+    assert summary["application_result_summary"]["validation_run"] is False
+    assert summary["application_result_summary"]["rollback_required"] is False
+    assert "pull-request-create" in summary["blocked_actions"]
+    assert "comment-write" in summary["blocked_actions"]
+    assert "project-mutation" in summary["blocked_actions"]
+    assert summary["safety"]["read_only"] is True
+    assert summary["safety"]["handoff_summary_only"] is True
+    assert summary["safety"]["public_text_published"] is False
+    assert summary["safety"]["pull_request_created"] is False
+    assert summary["safety"]["comment_written"] is False
+    assert summary["safety"]["project_mutation"] is False
+    assert summary["safety"]["writes_files"] is False
+    assert summary["safety"]["generates_patch"] is False
+    assert summary["safety"]["runs_validation"] is False
+    assert summary["safety"]["runs_shell"] is False
+    assert summary["safety"]["invokes_pccx_lab"] is False
+    assert summary["safety"]["invokes_launcher"] is False
+    assert summary["safety"]["hardware_access"] is False
+    assert '"argv"' not in json.dumps(summary)
+
+
+def test_build_refactor_handoff_summary_reports_blocked_preflight():
+    summary = build_refactor_handoff_summary(
+        str(FIXTURE),
+        FIXTURE,
+        "extract-port",
+        "top_mod",
+        port_name="valid_i",
+    )
+
+    assert summary["handoff_state"] == "blocked"
+    assert summary["handoff_summary"]["ready_for_maintainer_review"] is False
+    assert summary["handoff_summary"]["recommended_next_step"] == (
+        "resolve refactor preflight blockers before handoff"
+    )
+    assert summary["application_result_summary"]["result_state"] == "blocked"
+    assert "missing required direction" in summary["preflight"]["reasons"]
+    phases = {
+        phase["phase"]: phase
+        for phase in summary["application_result_summary"]["validation_phases"]
+    }
+    assert phases["post-change-local-validation"]["status"] == "blocked"
+    assert phases["post-change-local-validation"]["command_ids"] == []
+
+
 def test_format_module_organization_text_mentions_boundary_and_hierarchy():
     export = build_module_organization_export(str(FIXTURE), FIXTURE)
     text = format_module_organization_text(export)
@@ -967,6 +1045,32 @@ def test_format_refactor_application_result_text_mentions_result_receipt():
     assert "writes files: no" in text
     assert "runs validation: no" in text
     assert "result metadata only: no command argv" in text
+
+
+def test_format_refactor_handoff_summary_text_mentions_summary_only_boundary():
+    summary = build_refactor_handoff_summary(
+        str(FIXTURE),
+        FIXTURE,
+        "move-module",
+        "leaf_mod",
+        destination="rtl/leaf_mod.sv",
+    )
+    text = format_refactor_handoff_summary_text(summary)
+
+    assert "refactor handoff: ready-for-review" in text
+    assert "application result: not-applied" in text
+    assert "write attempted: no" in text
+    assert "patch generated: no" in text
+    assert "files changed: 0" in text
+    assert "validation run: no" in text
+    assert "rollback required: no" in text
+    assert "public text ready: no" in text
+    assert "pull request ready: no" in text
+    assert "comment ready: no" in text
+    assert "approval decision: not-approved" in text
+    assert "writes files: no" in text
+    assert "runs validation: no" in text
+    assert "summary-only handoff: no command argv" in text
 
 
 def test_cli_organization_json():
@@ -1407,6 +1511,68 @@ def test_cli_refactor_result_text():
     assert "result metadata only: no command argv" in result.stdout
 
 
+def test_cli_refactor_handoff_json():
+    result = _run_cli(
+        "refactor-handoff",
+        str(FIXTURE),
+        "--action",
+        "rename-module",
+        "--module",
+        "leaf_mod",
+        "--new-name",
+        "leaf_mod_next",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-refactor-handoff-summary"
+    assert payload["handoff_state"] == "ready-for-review"
+    assert payload["handoff_summary"]["public_text_ready"] is False
+    assert payload["handoff_summary"]["pull_request_ready"] is False
+    assert payload["handoff_summary"]["comment_ready"] is False
+    assert payload["application_result_summary"]["kind"] == (
+        "module-refactor-application-result"
+    )
+    assert payload["application_result_summary"]["application_result"] == (
+        "not_applied"
+    )
+    assert payload["safety"]["handoff_summary_only"] is True
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["generates_patch"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert payload["safety"]["pull_request_created"] is False
+    assert payload["safety"]["comment_written"] is False
+    assert payload["safety"]["project_mutation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_refactor_handoff_text():
+    result = _run_cli(
+        "refactor-handoff",
+        str(FIXTURE),
+        "--action",
+        "extract-port",
+        "--module",
+        "top_mod",
+        "--port-name",
+        "valid_i",
+        "--format",
+        "text",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "refactor handoff: blocked" in result.stdout
+    assert "write attempted: no" in result.stdout
+    assert "patch generated: no" in result.stdout
+    assert "files changed: 0" in result.stdout
+    assert "validation run: no" in result.stdout
+    assert "public text ready: no" in result.stdout
+    assert "pull request ready: no" in result.stdout
+    assert "comment ready: no" in result.stdout
+    assert "blocked: missing required direction" in result.stdout
+    assert "summary-only handoff: no command argv" in result.stdout
+
+
 def test_cli_organization_missing_path_exits_nonzero():
     result = _run_cli("organization", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -1539,6 +1705,21 @@ def test_cli_refactor_result_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_refactor_handoff_missing_path_exits_nonzero():
+    result = _run_cli(
+        "refactor-handoff",
+        str(FIXTURE.parent / "missing.sv"),
+        "--action",
+        "rename-module",
+        "--module",
+        "leaf_mod",
+        "--new-name",
+        "leaf_mod_next",
+    )
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_docs_cover_organization_flow_and_limits():
     contract = CONTRACT_DOC.read_text(encoding="utf-8")
     workflow = WORKFLOW_DOC.read_text(encoding="utf-8")
@@ -1554,6 +1735,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "refactor-approval <path>" in contract
     assert "refactor-application <path>" in contract
     assert "refactor-result <path>" in contract
+    assert "refactor-handoff <path>" in contract
     assert "MODULE_ORGANIZATION_WORKFLOW.md" in contract
     assert "proposal-only" in workflow
     assert "module-hierarchy-view" in workflow
@@ -1567,10 +1749,12 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-refactor-approval-decision" in workflow
     assert "module-refactor-application-request" in workflow
     assert "module-refactor-application-result" in workflow
+    assert "module-refactor-handoff-summary" in workflow
     assert "proposed-not-run" in workflow
     assert "summary-only review packet" in workflow
     assert "approval decision metadata" in workflow
     assert "application request metadata" in workflow
     assert "application result metadata" in workflow
+    assert "refactor handoff metadata" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow
