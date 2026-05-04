@@ -4,10 +4,11 @@
 
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
-and `module-summary` CLI surfaces that report module boundary spans,
-scanner-based hierarchy data, direct dependency impact data, and
-conservative module header/port summaries for editor navigation and
-reviewed refactoring planning.
+`module-summary`, and `refactor-impact` CLI surfaces that report module
+boundary spans, scanner-based hierarchy data, direct dependency impact
+data, conservative module header/port summaries, and target-specific
+refactor impact data for editor navigation and reviewed refactoring
+planning.
 
 It is not a full SystemVerilog parser, not semantic elaboration, not an LSP
 implementation, and not a write-capable refactoring engine.
@@ -23,6 +24,8 @@ python -m pccx_ide_cli dependencies <path> --format json
 python -m pccx_ide_cli dependencies <path> --format text
 python -m pccx_ide_cli module-summary <path> --format json
 python -m pccx_ide_cli module-summary <path> --format text
+python -m pccx_ide_cli refactor-impact <path> --module <name> --format json
+python -m pccx_ide_cli refactor-impact <path> --module <name> --format text
 python -m pccx_ide_cli refactor-plan <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-plan <path> --action extract-port --module <name> --port-name <name> --direction input --format text
 python -m pccx_ide_cli refactor-plan <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
@@ -166,6 +169,42 @@ apply refactors, generate patches, run validation, execute shell
 commands, invoke `pccx-lab`, invoke the launcher, call providers, touch
 hardware, upload telemetry, or perform automatic repository actions.
 
+The refactor impact view reports target-specific review data for a module:
+
+```json
+{
+  "kind": "module-refactor-impact-view",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "target": "leaf_mod",
+  "impact_state": "available_as_data",
+  "writes_files": false,
+  "preflight": {
+    "status": "ready-for-review",
+    "requires_approval_before_write": true,
+    "reasons": []
+  },
+  "direct_dependencies": [],
+  "direct_dependents": ["top_mod"],
+  "dependent_edges": [],
+  "dependency_edges": [],
+  "review_targets": [],
+  "safety": {
+    "read_only": true,
+    "writes_files": false,
+    "applies_refactor": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The refactor impact view is review data only. It does not write files,
+apply refactors, move files, generate patches, run validation, execute
+shell commands, invoke `pccx-lab`, invoke the launcher, call providers,
+touch hardware, upload telemetry, or perform automatic repository actions.
+
 ## Module Boundary Detection
 
 Each `modules[]` record describes one scanner-detected `module` declaration:
@@ -229,6 +268,19 @@ non-ANSI body declarations, parameter elaboration, macros, interfaces,
 modports, packages, and semantic type resolution are outside this
 boundary.
 
+## Refactor Impact Review
+
+`refactor-impact` accepts a target module name and reports scanner-detected
+review targets for rename, extract-port, and move-module planning. It
+includes the target declaration when the target is unambiguous, direct
+dependent instantiation references, direct dependency instantiation
+references, unresolved dependency names, and preflight reasons when the
+target is missing, ambiguous, or has an incomplete boundary.
+
+This surface is intentionally target-specific review data. It does not
+prepare a patch, rewrite symbols, edit ports, move files, or execute
+validation. Write-capable helpers remain a separate future boundary.
+
 ## Refactoring Boundary
 
 Refactoring remains proposal-only. The current workflow provides candidate
@@ -238,6 +290,7 @@ inputs for later helpers:
 - scanner-based hierarchy edges
 - direct dependency and dependent summaries
 - conservative module header and port summaries
+- target-specific refactor impact review data
 - planned helper names for rename, extract-port, and move-module workflows
 
 The CLI does not write files, apply patches, rename symbols, move modules,
@@ -312,5 +365,6 @@ actions.
 This workflow advances
 [`systemverilog-ide#8`](https://github.com/pccxai/systemverilog-ide/issues/8)
 with read-only module boundary detection, a focused hierarchy view, a
-direct dependency view, conservative module header/port summaries, and a
-proposal-only refactoring boundary.
+direct dependency view, conservative module header/port summaries,
+target-specific refactor impact review data, and a proposal-only
+refactoring boundary.

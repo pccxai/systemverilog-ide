@@ -191,6 +191,29 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    refactor_impact_cmd = sub.add_parser(
+        "refactor-impact",
+        help=(
+            "Emit read-only scanner-based impact data for a refactor target."
+        ),
+    )
+    refactor_impact_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    refactor_impact_cmd.add_argument(
+        "--module",
+        required=True,
+        help="Exact module name to inspect for review impact.",
+    )
+    refactor_impact_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     refactor_plan_cmd = sub.add_parser(
         "refactor-plan",
         help=(
@@ -531,6 +554,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_module_summary_text(view))
+        return 0
+
+    if args.command == "refactor-impact":
+        from .module_organization import (
+            build_refactor_impact_view,
+            format_refactor_impact_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        view = build_refactor_impact_view(str(args.path), args.path, args.module)
+        if args.format == "json":
+            json.dump(view, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_refactor_impact_text(view))
         return 0
 
     if args.command == "refactor-plan":
