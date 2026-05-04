@@ -131,6 +131,10 @@ python -m pccx_ide_cli dependencies fixtures/organization/hierarchy_top.sv --for
 python -m pccx_ide_cli module-summary fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli module-summary fixtures/organization/hierarchy_top.sv --format text
 
+# Target-specific refactor impact view (pre-stable, read-only)
+python -m pccx_ide_cli refactor-impact fixtures/organization/hierarchy_top.sv --module leaf_mod --format json
+python -m pccx_ide_cli refactor-impact fixtures/organization/hierarchy_top.sv --module leaf_mod --format text
+
 # Refactoring proposal export (pre-stable, proposal-only)
 python -m pccx_ide_cli refactor-plan fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 python -m pccx_ide_cli refactor-plan fixtures/organization/hierarchy_top.sv --action extract-port --module top_mod --port-name valid_i --direction input --format text
@@ -190,10 +194,12 @@ renders the same scanner data as a focused read-only hierarchy view for
 editor tree consumers. `dependencies` renders direct module dependency,
 dependent, and impact summaries from the same scanner data.
 `module-summary` renders conservative module header and port summaries
-for editor sidebars and reviewed refactoring planning. These commands do
-not edit files, apply refactors, execute validation, run vendor tools,
-invoke `pccx-lab` or the launcher, or implement semantic elaboration. The
-output shapes are pre-stable and documented in
+for editor sidebars and reviewed refactoring planning. `refactor-impact`
+renders target-specific declaration, dependent, and dependency review
+data for a named module. These commands do not edit files, apply
+refactors, execute validation, run vendor tools, invoke `pccx-lab` or the
+launcher, or implement semantic elaboration. The output shapes are
+pre-stable and documented in
 [`docs/MODULE_ORGANIZATION_WORKFLOW.md`](./docs/MODULE_ORGANIZATION_WORKFLOW.md).
 
 `refactor-plan` emits proposal-only rename-module, extract-port, and
@@ -243,7 +249,8 @@ surfaces, external editor planning, and later workflow tracks lives in
 [`docs/ROADMAP.md`](./docs/ROADMAP.md).
 The scanner-based module organization workflow for module boundaries,
 hierarchy views, dependency views, module header/port summaries, and
-proposal-only refactoring planning is documented in
+target-specific refactor impact review data plus proposal-only
+refactoring planning is documented in
 [`docs/MODULE_ORGANIZATION_WORKFLOW.md`](./docs/MODULE_ORGANIZATION_WORKFLOW.md).
 The planned AI-assisted SystemVerilog workflow, permission boundary, and
 pccx-lab controlled MCP/tool dependency are documented in

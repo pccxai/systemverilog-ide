@@ -105,6 +105,16 @@ MODULE_SUMMARY_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+REFACTOR_IMPACT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based target-specific refactor impact data only",
+    "module declarations and single-line instantiation candidates only",
+    "direct dependency and dependent references only",
+    "no symbol rewrite, port rewrite, file move, validation run, or patch generation",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 REFACTOR_ACTIONS: tuple[str, ...] = (
     "rename-module",
     "extract-port",
@@ -183,6 +193,24 @@ def _module_summary_safety_flags() -> dict[str, bool]:
         "read_only": True,
         "writes_files": False,
         "applies_refactor": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _refactor_impact_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "writes_files": False,
+        "applies_refactor": False,
+        "moves_files": False,
+        "applies_patch": False,
         "runs_validation": False,
         "runs_shell": False,
         "invokes_pccx_lab": False,
@@ -754,6 +782,126 @@ def build_module_summary_view(source: str, path: Path) -> dict[str, Any]:
     }
 
 
+def _refactor_impact_preflight(
+    module_name: str,
+    matches: list[dict[str, Any]],
+) -> dict[str, Any]:
+    reasons: list[str] = []
+    if len(matches) == 0:
+        reasons.append(f"module not found: {module_name}")
+    elif len(matches) > 1:
+        reasons.append(f"ambiguous module name: {module_name}")
+    elif not matches[0]["complete"]:
+        reasons.append(f"module boundary is incomplete: {module_name}")
+
+    return {
+        "reasons": reasons,
+        "requires_approval_before_write": True,
+        "status": "blocked" if reasons else "ready-for-review",
+    }
+
+
+def _edge_review_target(edge: dict[str, Any], kind: str) -> dict[str, Any]:
+    return {
+        "child": edge["child"],
+        "column": edge["column"],
+        "file": edge["file"],
+        "instance": edge["instance"],
+        "kind": kind,
+        "line": edge["line"],
+        "parent": edge["parent"],
+        "resolved": edge["resolved"],
+    }
+
+
+def _refactor_impact_review_targets(
+    module: dict[str, Any] | None,
+    dependent_edges: list[dict[str, Any]],
+    dependency_edges: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    targets: list[dict[str, Any]] = []
+    if module is not None:
+        targets.append({
+            "column": module["start_column"],
+            "file": module["file"],
+            "kind": "module-declaration",
+            "line": module["start_line"],
+            "module": module["name"],
+        })
+    targets.extend(
+        _edge_review_target(edge, "dependent-instantiation")
+        for edge in dependent_edges
+    )
+    targets.extend(
+        _edge_review_target(edge, "dependency-instantiation")
+        for edge in dependency_edges
+    )
+    return targets
+
+
+def build_refactor_impact_view(
+    source: str,
+    path: Path,
+    module_name: str,
+) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    matches = _module_lookup(modules, module_name)
+    selected_module = matches[0] if len(matches) == 1 else None
+    dependency_edges = [
+        edge
+        for edge in hierarchy["edges"]
+        if edge["parent"] == module_name
+    ]
+    dependent_edges = [
+        edge
+        for edge in hierarchy["edges"]
+        if edge["child"] == module_name
+    ]
+    direct_dependencies = sorted({
+        edge["child"]
+        for edge in dependency_edges
+        if edge["resolved"]
+    })
+    unresolved_dependencies = sorted({
+        edge["child"]
+        for edge in dependency_edges
+        if not edge["resolved"]
+    })
+    direct_dependents = sorted({
+        edge["parent"]
+        for edge in dependent_edges
+    })
+
+    return {
+        "dependency_edges": dependency_edges,
+        "dependent_edges": dependent_edges,
+        "direct_dependencies": direct_dependencies,
+        "direct_dependency_count": len(direct_dependencies),
+        "direct_dependents": direct_dependents,
+        "direct_dependent_count": len(direct_dependents),
+        "impact_state": "available_as_data",
+        "kind": "module-refactor-impact-view",
+        "limitations": list(REFACTOR_IMPACT_LIMITATIONS),
+        "module": selected_module,
+        "preflight": _refactor_impact_preflight(module_name, matches),
+        "review_targets": _refactor_impact_review_targets(
+            selected_module,
+            dependent_edges,
+            dependency_edges,
+        ),
+        "safety": _refactor_impact_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "target": module_name,
+        "tool": "pccx-ide-cli",
+        "unresolved_dependencies": unresolved_dependencies,
+        "unresolved_dependency_count": len(unresolved_dependencies),
+        "writes_files": False,
+    }
+
+
 def _requested_change(
     action: str,
     module_name: str,
@@ -1050,6 +1198,55 @@ def format_module_summary_text(view: dict[str, Any]) -> str:
             )
         for reason in module["readiness"]["reasons"]:
             lines.append(f"  blocked: {reason}")
+    lines.append(
+        "read-only: no file writes, refactors, validation, lab, launcher, "
+        "provider, or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_refactor_impact_text(view: dict[str, Any]) -> str:
+    lines = [
+        f"source: {view['source']}",
+        f"target: {view['target']}",
+        f"refactor impact: {view['impact_state']}",
+        f"preflight: {view['preflight']['status']}",
+        "writes files: no",
+    ]
+    module = view["module"]
+    if module is not None:
+        lines.append(
+            f"declaration: {module['file']}:{module['start_line']}:"
+            f"{module['start_column']}"
+        )
+
+    dependencies = ", ".join(view["direct_dependencies"]) or "none"
+    dependents = ", ".join(view["direct_dependents"]) or "none"
+    unresolved = ", ".join(view["unresolved_dependencies"]) or "none"
+    lines.append(f"dependencies: {dependencies}")
+    lines.append(f"dependents: {dependents}")
+    lines.append(f"unresolved dependencies: {unresolved}")
+
+    if view["dependent_edges"]:
+        lines.append("dependent references:")
+        for edge in view["dependent_edges"]:
+            state = "resolved" if edge["resolved"] else "unresolved"
+            lines.append(
+                f"  {edge['parent']} instantiates {edge['child']} "
+                f"as {edge['instance']} at {edge['file']}:"
+                f"{edge['line']}:{edge['column']} ({state})"
+            )
+    if view["dependency_edges"]:
+        lines.append("dependency references:")
+        for edge in view["dependency_edges"]:
+            state = "resolved" if edge["resolved"] else "unresolved"
+            lines.append(
+                f"  {edge['parent']} instantiates {edge['child']} "
+                f"as {edge['instance']} at {edge['file']}:"
+                f"{edge['line']}:{edge['column']} ({state})"
+            )
+    for reason in view["preflight"]["reasons"]:
+        lines.append(f"blocked: {reason}")
     lines.append(
         "read-only: no file writes, refactors, validation, lab, launcher, "
         "provider, or hardware execution"

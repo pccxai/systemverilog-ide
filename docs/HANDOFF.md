@@ -436,15 +436,17 @@ The output is pre-stable, scanner-based, and not semantic resolution.
 
 `pccx-ide organization` exposes scanner-based module boundary spans and a
 small hierarchy seed for editor/project organization workflows.
-`hierarchy`, `dependencies`, and `module-summary` expose focused
-read-only views for trees, dependency impact, and conservative
-header/port summaries. They build on the same local scanner used by
-`index`, `declarations`, and `locate`.
+`hierarchy`, `dependencies`, `module-summary`, and `refactor-impact`
+expose focused read-only views for trees, dependency impact,
+conservative header/port summaries, and target-specific refactor review
+data. They build on the same local scanner used by `index`,
+`declarations`, and `locate`.
 
 ```bash
 python -m pccx_ide_cli organization fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli organization fixtures/organization/hierarchy_top.sv --format text
 python -m pccx_ide_cli module-summary fixtures/organization/hierarchy_top.sv --format json
+python -m pccx_ide_cli refactor-impact fixtures/organization/hierarchy_top.sv --module leaf_mod --format json
 python -m pccx_ide_cli refactor-plan fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 ```
 
@@ -479,6 +481,9 @@ JSON output uses:
 The refactoring section is proposal-only and reports `writes_files: false`.
 `module-summary` reports scanner-detected module headers and simple
 ANSI-style port metadata as display data only.
+`refactor-impact` reports a target module declaration, dependent
+instantiation references, and direct dependency references as display
+data only.
 `refactor-plan` emits a separate proposal-only envelope for rename-module,
 extract-port, and move-module requests. These commands do not apply
 refactors, move files, execute validation, invoke `pccx-lab`, invoke the
