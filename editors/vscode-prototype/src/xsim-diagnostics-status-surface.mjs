@@ -34,7 +34,7 @@ const UNSUPPORTED_MARKER_PARTS = Object.freeze([
   ["gemma 3n e4b runs on ", "kv260"],
   ["20 tok/s ", "achieved"],
   ["timing ", "closed"],
-  ["autonomous coding ", "system"],
+  ["unreviewed automation ", "system"],
 ]);
 
 const DEFAULT_LIMITATIONS = Object.freeze([

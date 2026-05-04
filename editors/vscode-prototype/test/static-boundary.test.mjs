@@ -9,7 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const EXTENSION_ROOT = resolve(ROOT, "editors/vscode-prototype");
 const POSITIVE_CLAIM =
-  /\b(?:production[- ]ready|marketplace[- ]ready|(?<!pre-)stable\s+(?:plugin\s+)?(?:API|ABI|LSP)|(?<!pre-)stable\s+diagnostics\s+envelope|MCP\s+ready|AI\s+provider\s+ready|KV260\s+inference\s+(?:works|works\s+now|is\s+working|is\s+functional)|20\s*tok\/s\s+achieved|timing[- ]closed|autonomous\s+coding\s+product|vibe\s+coding|(?:Claude|GPT)\s+directly\s+controls|complete\s+AI\s+integration|fully\s+(?:validated|verified)|CI-covered|approved\s+runner\s+proves)\b/i;
+  /\b(?:production[- ]ready|marketplace[- ]ready|(?<!pre-)stable\s+(?:plugin\s+)?(?:API|ABI|LSP)|(?<!pre-)stable\s+diagnostics\s+envelope|MCP\s+ready|provider\/runtime\s+ready|KV260\s+inference\s+(?:works|works\s+now|is\s+working|is\s+functional)|20\s*tok\/s\s+achieved|timing[- ]closed|unreviewed\s+automation\s+product|unreviewed\s+coding|external\s+(?:tool|runtime)\s+directly\s+controls|complete\s+provider\s+integration|fully\s+(?:validated|verified)|CI-covered|approved\s+runner\s+proves)\b/i;
 const POSITIVE_CLAIM_NEGATION =
   /\b(?:no|not|never|without|does not|is not|are not|avoid|do not|forbidden|unsupported)\b/i;
 
@@ -275,14 +275,14 @@ function testPositiveClaimGuardCoversRoadmapPhrases() {
     "stable ABI",
     "stable LSP",
     "MCP ready",
-    "AI provider ready",
+    "provider/runtime ready",
     "KV260 inference works",
     "20 tok/s achieved",
     "timing closed",
-    "autonomous coding product",
-    "vibe coding",
-    "Claude directly controls",
-    "GPT directly controls",
+    "unreviewed automation product",
+    "unreviewed coding",
+    "external tool directly controls",
+    "external runtime directly controls",
   ].forEach((claim) => {
     assert.equal(hasPositiveClaimWithoutNegation(claim, claim), true);
   });

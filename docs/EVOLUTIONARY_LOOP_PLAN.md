@@ -12,7 +12,7 @@ simulation/tool execution boundary.
 
 ## Related Boundaries
 
-- [`AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md`](./AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md)
+- [`SYSTEMVERILOG_WORKFLOW_BOUNDARY.md`](./SYSTEMVERILOG_WORKFLOW_BOUNDARY.md)
   defines the proposal and permission model.
 - [`ROADMAP.md`](./ROADMAP.md) records the repository roadmap.
 - [`HANDOFF.md`](./HANDOFF.md) records the pccx-lab handoff boundaries.

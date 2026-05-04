@@ -3,7 +3,7 @@
 This document describes the deterministic handoff from a validation summary
 to a patch proposal context seed.  It is contract-only: it does not generate
 patches, apply patches, write files, call pccx-lab, call pccx-llm-launcher,
-call a provider, implement MCP, or implement LSP.
+call provider/runtime services, implement MCP, or implement LSP.
 
 ## Seed Shape
 
@@ -53,7 +53,7 @@ call a provider, implement MCP, or implement LSP.
 - Private home paths and secret-like assignment lines are redacted.
 - Candidate files are repository-relative and come only from explicit
   context or bounded diagnostics.
-- Dependency caches, private instruction paths, generated outputs,
+- Dependency caches, private instruction paths, build outputs,
   lockfiles, and secret-like paths are excluded.
 - The handoff suggests validation only through approved validation proposal
   wording; it does not embed shell commands.

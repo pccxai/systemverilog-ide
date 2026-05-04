@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import { isAbsolute } from "node:path";
 
 export const PATCH_PROPOSAL_CONTRACT_VERSION = "pccx.patchProposalContract.v0";
@@ -155,7 +158,7 @@ function normalizeRelativePath(value, path, errors) {
     MODEL_OR_BINARY_ARTIFACT_PATTERN.test(normalized) ||
     SECRET_LIKE_PATTERN.test(normalized)
   ) {
-    addError(errors, path, "must not target private, generated, secret-like, or binary artifact paths");
+    addError(errors, path, "must not target private, derived, secret-like, or binary artifact paths");
   }
   return normalized;
 }

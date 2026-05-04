@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 export const DIAGNOSTICS_HANDOFF_CONSUMER_VERSION =
   "pccx.ideDiagnosticsHandoffConsumer.v0";
 export const DIAGNOSTICS_HANDOFF_SCHEMA_VERSION = "pccx.diagnosticsHandoff.v0";
@@ -67,7 +70,7 @@ const HOME_PATH_PATTERN = /(?:\/home\/[^/\s]+|\/Users\/[^/\s]+|[A-Za-z]:\\Users\
 const MODEL_ARTIFACT_PATTERN =
   /\.(?:gguf|safetensors|ckpt|pt|pth|onnx|xclbin|bit)(?:\s|$|["'])/i;
 const RAW_ARTIFACT_PATTERN =
-  /\b(?:raw[_-]?full[_-]?logs|hardware[_-]?dump|generated[_-]?blob|bitstream)\b\s*[:=]/i;
+  /\b(?:raw[_-]?full[_-]?logs|hardware[_-]?dump|artifact[_-]?blob|bitstream)\b\s*[:=]/i;
 
 const UNSUPPORTED_MARKER_PARTS = Object.freeze([
   ["production", "ready"],
@@ -78,7 +81,7 @@ const UNSUPPORTED_MARKER_PARTS = Object.freeze([
   ["gemma 3n e4b runs on ", "kv260"],
   ["20 tok/s ", "achieved"],
   ["timing ", "closed"],
-  ["autonomous coding ", "system"],
+  ["unreviewed automation ", "system"],
 ]);
 
 function addError(errors, path, message) {
@@ -338,14 +341,14 @@ function validateSafety(handoff, errors) {
   [
     ["privacyFlags", "automaticUpload"],
     ["privacyFlags", "rawFullLogsIncluded"],
-    ["privacyFlags", "userPromptsIncluded"],
+    ["privacyFlags", "userRequestsIncluded"],
     ["privacyFlags", "userSourceCodeIncluded"],
     ["privacyFlags", "privatePathsIncluded"],
     ["privacyFlags", "secretsIncluded"],
     ["privacyFlags", "tokensIncluded"],
     ["privacyFlags", "providerConfigsIncluded"],
     ["privacyFlags", "modelWeightPathsIncluded"],
-    ["privacyFlags", "generatedBlobsIncluded"],
+    ["privacyFlags", "artifactBlobsIncluded"],
     ["safetyFlags", "executesPccxLab"],
     ["safetyFlags", "executesLauncher"],
     ["safetyFlags", "runtimeExecution"],
@@ -452,7 +455,7 @@ export function consumeDiagnosticsHandoff(handoff = {}) {
   ensureValue(handoff.handoffKind, "read_only_handoff", "handoffKind", errors);
   ensureValue(
     stringPath(handoff, ["producer", "role"], errors),
-    "launcher_generated_summary",
+    "launcher_summary",
     "producer.role",
     errors,
   );

@@ -3,7 +3,7 @@
 This is a provider-free, proposal-only patch contract for the experimental
 local VS Code prototype.  It describes possible edits for user review; it
 does not apply patches, write files, call pccx-lab, call pccx-llm-launcher,
-call an AI provider, implement MCP, or implement LSP.
+call provider/runtime services, implement MCP, or implement LSP.
 
 ## Shape
 
@@ -49,7 +49,7 @@ call an AI provider, implement MCP, or implement LSP.
 - `requiresUserReview` must be `true`.
 - Paths must be repository-relative and single-line.
 - Paths must not target private instruction locations, dependency caches,
-  generated outputs, lockfiles, model files, bitstreams, binary archives, or
+  build outputs, lockfiles, model files, bitstreams, binary archives, or
   secret-like names.
 - Text fields are bounded and must not include secret-like assignments,
   private home paths, or shell commands.

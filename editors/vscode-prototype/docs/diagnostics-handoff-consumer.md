@@ -39,7 +39,7 @@ It is experimental and local-only. It does not read raw handoff JSON in
 the UI layer, does not execute launcher or pccx-lab, and does not invoke
 the pccx-lab validator command.
 
-`pccxSystemVerilog.buildAIContextBundle` can include a bounded
+`pccxSystemVerilog.buildWorkflowContextBundle` can include a bounded
 `diagnosticsHandoff` section from the same status surface. That context
 section is summary-only: schema ID, handoff ID, diagnostic counts,
 descriptor references, transport kinds, and read-only safety flags.
@@ -76,8 +76,8 @@ launcher boundaries.
 ## Fixture Sync
 
 The checked fixture is copied from the launcher/lab handoff shape and is
-manual for now. It is sanitized: no raw full logs, prompts, source code,
-private paths, secrets, tokens, provider configuration, generated blobs,
+manual for now. It is sanitized: no raw full logs, user request text, source code,
+private paths, secrets, tokens, provider configuration, artifact blobs,
 hardware dumps, or model weight paths.
 
 Future work may add UI presentation for this summary. That presentation

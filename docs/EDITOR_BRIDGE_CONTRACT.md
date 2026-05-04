@@ -70,7 +70,7 @@ python -m pccx_ide_cli check <sv-file> --backend pccx-lab --format json
 ## Checked Examples
 
 The pre-stable contract examples are checked in under
-`docs/examples/editor-bridge`.  They are generated from synthetic
+`docs/examples/editor-bridge`.  They are built from synthetic
 fixtures and are intended as adapter guidance, not a stable ABI/API.
 The example drift check is:
 
@@ -102,11 +102,11 @@ Checked-example remains the default.  Live workspace mode is explicit
 opt-in and requires both `pccxSystemVerilog.mode=liveWorkspace` and
 `pccxSystemVerilog.liveWorkspace.enabled=true`; disabled live workspace
 commands fail clearly instead of falling back to examples.  The current
-AI-assisted SystemVerilog development workflow work is boundary-only:
-AI assistant status and context bundle commands expose local status,
+SystemVerilog workflow boundary work is boundary-only:
+workflow boundary status and context bundle commands expose local status,
 bounded context, selected-symbol context, validation command proposal
 data, disabled-by-default approved validation runner status/result data,
-summary-only validation cache status, and proposal actions, with no AI
+summary-only validation cache status, and proposal actions, with no provider/runtime
 provider calls, no pccx-llm-launcher runtime calls yet, and no MCP server
 implementation.
 
@@ -154,7 +154,7 @@ VS Code command
   -> diagnostics/navigation records
 ```
 
-Future local coding-assistant mode should use the same controlled data
+Future local workflow mode should use the same controlled data
 path.  Context bundle records should carry selected file/range,
 bounded lexical selected-symbol context, diagnostics, declaration
 references, recent command status, current mode, validation summaries, and
@@ -227,7 +227,7 @@ xsim path, and text surface sketches is documented in
 - No stable schema yet.
 - No real xsim or Vivado execution.
 - No hardware access or hardware correctness claim.
-- No AI provider calls or local chat backend integration in this repo
+- No provider/runtime calls or local chat backend integration in this repo
   today.
 - No MCP server implementation in this repo today.
 - No pccx-llm-launcher runtime call yet; future integration requires an

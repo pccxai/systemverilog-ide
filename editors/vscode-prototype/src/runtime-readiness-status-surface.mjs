@@ -41,7 +41,7 @@ export const DEFAULT_RUNTIME_READINESS_CONSUMER_SUMMARY = Object.freeze({
       blockerId: "board_model_bitstream_runtime_environment_missing",
       state: "blocked",
       requiredBefore: "kv260_smoke_or_runtime_claim",
-      summary: "KV260 board, model assets, generated bitstream, and runtime environment are not provided by this launcher fixture.",
+      summary: "KV260 board, model assets, bitstream artifact, and runtime environment are not provided by this launcher fixture.",
     }),
     Object.freeze({
       blockerId: "post_synth_drc_timing_open",
@@ -56,10 +56,10 @@ export const DEFAULT_RUNTIME_READINESS_CONSUMER_SUMMARY = Object.freeze({
       summary: "Implementation is not complete, so hardware closure is not available.",
     }),
     Object.freeze({
-      blockerId: "bitstream_not_generated",
+      blockerId: "bitstream_not_available",
       state: "blocked",
       requiredBefore: "kv260_board_smoke_claim",
-      summary: "A generated bitstream is not proven by this launcher surface.",
+      summary: "A bitstream artifact is not proven by this launcher surface.",
     }),
     Object.freeze({
       blockerId: "gemma3n_e4b_runtime_evidence_absent",
@@ -91,7 +91,7 @@ export const DEFAULT_RUNTIME_READINESS_CONSUMER_SUMMARY = Object.freeze({
     privatePathsIncluded: false,
     secretsIncluded: false,
     tokensIncluded: false,
-    generatedBlobsIncluded: false,
+    artifactBlobsIncluded: false,
     hardwareDumpsIncluded: false,
     writesArtifacts: false,
     networkCalls: false,
@@ -300,10 +300,10 @@ function normalizeConsumerSummary(summary = DEFAULT_RUNTIME_READINESS_CONSUMER_S
     ),
     secretsIncluded: boolField(safety.secretsIncluded, false, "safety.secretsIncluded", errors),
     tokensIncluded: boolField(safety.tokensIncluded, false, "safety.tokensIncluded", errors),
-    generatedBlobsIncluded: boolField(
-      safety.generatedBlobsIncluded,
+    artifactBlobsIncluded: boolField(
+      safety.artifactBlobsIncluded,
       false,
-      "safety.generatedBlobsIncluded",
+      "safety.artifactBlobsIncluded",
       errors,
     ),
     hardwareDumpsIncluded: boolField(

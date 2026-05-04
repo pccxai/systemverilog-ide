@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { constants } from "node:fs";
@@ -100,8 +103,8 @@ async function testReadinessDocsAndCiPolicy() {
   assert.match(`${readme}\n${readiness}`, /command-first navigation/i);
   assert.match(`${readme}\n${readiness}`, /live workspace .*opt-in/i);
   assert.match(`${readme}\n${readiness}`, /controlled fixture/i);
-  assert.match(`${readme}\n${readiness}`, /showAIAssistantStatus/);
-  assert.match(`${readme}\n${readiness}`, /buildAIContextBundle/);
+  assert.match(`${readme}\n${readiness}`, /showWorkflowBoundaryStatus/);
+  assert.match(`${readme}\n${readiness}`, /buildWorkflowContextBundle/);
   assert.match(`${readme}\n${readiness}`, /selected-symbol context/i);
   assert.match(`${readme}\n${readiness}`, /proposeValidationCommand/);
   assert.match(`${readme}\n${readiness}`, /auditValidationProposalPreflight/);
@@ -123,7 +126,7 @@ async function testReadinessDocsAndCiPolicy() {
   assert.match(`${readme}\n${readiness}`, /pccx-lab command descriptor contract/i);
   assert.match(`${readme}\n${readiness}`, /launcher status contract/i);
   assert.match(`${readme}\n${readiness}`, /pccx-lab backend status/i);
-  assert.match(`${readme}\n${readiness}`, /AI assistant .*boundary/i);
+  assert.match(`${readme}\n${readiness}`, /workflow boundary .*boundary/i);
   assert.match(`${readme}\n${readiness}`, /pccx-llm-launcher .*future local LLM\/chat backend/i);
   assert.match(`${readme}\n${readiness}`, /no LSP provider/i);
   assert.match(`${readme}\n${readiness}`, /host theme first/i);
@@ -167,8 +170,8 @@ async function testRuntimeRunnerIsPinnedAndBounded() {
   assert.match(suite, /live_top/);
   assert.match(suite, /live workspace commands require/);
   assert.match(suite, /broken_missing_endmodule\.sv/);
-  assert.match(suite, /showAIAssistantStatus/);
-  assert.match(suite, /buildAIContextBundle/);
+  assert.match(suite, /showWorkflowBoundaryStatus/);
+  assert.match(suite, /buildWorkflowContextBundle/);
   assert.match(suite, /selectedContext/);
   assert.match(suite, /proposeValidationCommand/);
   assert.match(suite, /auditValidationProposalPreflight/);

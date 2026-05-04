@@ -38,9 +38,9 @@ cross-repo handoff notes live in [`HANDOFF.md`](./HANDOFF.md).
 - Continue diagnostics/xsim handoff planning through existing local JSON
   and text surfaces; reusable xsim execution remains owned by pccx-lab.
 - Add editor-facing workflow notes for validation proposal preflight,
-  result summary, and reviewed patch handoff. The AI-assisted workflow
+  result summary, and reviewed patch handoff. The workflow-boundary workflow
   planning boundary is tracked in
-  [`AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md`](./AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md).
+  [`SYSTEMVERILOG_WORKFLOW_BOUNDARY.md`](./SYSTEMVERILOG_WORKFLOW_BOUNDARY.md).
 - Cross-link IDE workflow planning to the pccx-lab roadmap items:
   - [`pccx-lab#21`](https://github.com/pccxai/pccx-lab/issues/21) for the
     future plugin-system boundary
@@ -51,7 +51,7 @@ cross-repo handoff notes live in [`HANDOFF.md`](./HANDOFF.md).
 
 ## Later
 
-- Plan a local coding-assistant workflow that uses bounded context,
+- Plan a local workflow mode that uses bounded context,
   reviewed proposals, and user-approved validation steps.
 - Plan an evolutionary generate / simulate / evaluate / refine loop on top
   of the pccx-lab CLI/core boundary. The loop architecture and
@@ -74,7 +74,7 @@ cross-repo handoff notes live in [`HANDOFF.md`](./HANDOFF.md).
 - No pccx-lab execution from this repository unless a later PR explicitly
   extends an allowlisted, reviewed boundary.
 - No MCP runtime implementation in this repository.
-- No AI provider integration.
+- No provider/runtime integration.
 - No KV260 runtime integration, hardware access, model loading, or
   throughput/performance claim.
 - No automatic merge, public push, release, tag, upload, telemetry, or

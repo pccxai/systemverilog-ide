@@ -1,11 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 export const CONFIG_SECTION = "pccxSystemVerilog";
 
 export const CONFIG_KEYS = Object.freeze([
   "mode",
   "liveWorkspace.enabled",
   "pccxLab.command",
-  "aiAssistant.enabled",
-  "aiAssistant.backend",
+  "workflowBoundary.enabled",
+  "workflowBoundary.backend",
   "validationRunner.enabled",
   "validationRunner.mode",
   "validationRunner.defaultWorkingDirectory",
@@ -30,9 +33,9 @@ export const FACADE_COMMAND_IDS = Object.freeze([
   "pccxSystemVerilog.runNavigationLive",
 ]);
 
-export const AI_COMMAND_IDS = Object.freeze([
-  "pccxSystemVerilog.showAIAssistantStatus",
-  "pccxSystemVerilog.buildAIContextBundle",
+export const WORKFLOW_COMMAND_IDS = Object.freeze([
+  "pccxSystemVerilog.showWorkflowBoundaryStatus",
+  "pccxSystemVerilog.buildWorkflowContextBundle",
   "pccxSystemVerilog.proposeValidationCommand",
   "pccxSystemVerilog.auditValidationProposalPreflight",
   "pccxSystemVerilog.runApprovedValidationCommand",
@@ -55,13 +58,13 @@ export const DIAGNOSTICS_HANDOFF_COMMAND_IDS = Object.freeze([
 
 export const COMMAND_IDS = Object.freeze([
   ...FACADE_COMMAND_IDS,
-  ...AI_COMMAND_IDS,
+  ...WORKFLOW_COMMAND_IDS,
   ...PCCX_LAB_COMMAND_IDS,
   ...DIAGNOSTICS_HANDOFF_COMMAND_IDS,
 ]);
 
 export const MODES = Object.freeze(["checkedExample", "liveWorkspace"]);
-export const AI_ASSISTANT_BACKENDS = Object.freeze(["none", "pccx-llm-launcher", "mcp"]);
+export const WORKFLOW_BOUNDARY_BACKENDS = Object.freeze(["none", "pccx-llm-launcher", "mcp"]);
 export const DECLARATION_KINDS = Object.freeze(["module", "package", "interface", "any"]);
 export const VALIDATION_RUNNER_MODES = Object.freeze(["disabled", "allowlisted"]);
 export const VALIDATION_RUNNER_CWD_KINDS = Object.freeze(["repo-root", "workspace"]);
@@ -80,7 +83,7 @@ const DEFAULT_CONFIG = Object.freeze({
   pccxLab: Object.freeze({
     command: "pccx_ide_cli",
   }),
-  aiAssistant: Object.freeze({
+  workflowBoundary: Object.freeze({
     enabled: false,
     backend: "none",
   }),
@@ -187,7 +190,7 @@ export function defaultConfig() {
     ...DEFAULT_CONFIG,
     liveWorkspace: { ...DEFAULT_CONFIG.liveWorkspace },
     pccxLab: { ...DEFAULT_CONFIG.pccxLab },
-    aiAssistant: { ...DEFAULT_CONFIG.aiAssistant },
+    workflowBoundary: { ...DEFAULT_CONFIG.workflowBoundary },
     validationRunner: { ...DEFAULT_CONFIG.validationRunner },
   };
 }
@@ -205,17 +208,17 @@ export function normalizeConfig(rawConfig = {}) {
     pccxLab: {
       command: commandSetting(rawConfig, "pccxLab.command", DEFAULT_CONFIG.pccxLab.command),
     },
-    aiAssistant: {
+    workflowBoundary: {
       enabled: booleanSetting(
         rawConfig,
-        "aiAssistant.enabled",
-        DEFAULT_CONFIG.aiAssistant.enabled,
+        "workflowBoundary.enabled",
+        DEFAULT_CONFIG.workflowBoundary.enabled,
       ),
       backend: enumSetting(
         rawConfig,
-        "aiAssistant.backend",
-        DEFAULT_CONFIG.aiAssistant.backend,
-        AI_ASSISTANT_BACKENDS,
+        "workflowBoundary.backend",
+        DEFAULT_CONFIG.workflowBoundary.backend,
+        WORKFLOW_BOUNDARY_BACKENDS,
       ),
     },
     validationRunner: {

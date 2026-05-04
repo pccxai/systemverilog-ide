@@ -1,20 +1,23 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import assert from "node:assert/strict";
 
 import {
-  AI_ASSISTANT_BOUNDARY_VERSION,
-  AI_ASSISTANT_STATUSES,
-  AI_PROPOSAL_KINDS,
-  DISALLOWED_AI_ACTIONS,
-  createAssistantBoundaryStatus,
-  createAssistantRequest,
+  WORKFLOW_BOUNDARY_VERSION,
+  WORKFLOW_BOUNDARY_STATUSES,
+  WORKFLOW_PROPOSAL_KINDS,
+  DISALLOWED_WORKFLOW_ACTIONS,
+  createWorkflowBoundaryStatus,
+  createWorkflowContextRequest,
   createCommandProposal,
-} from "../src/ai-assistant-boundary.mjs";
+} from "../src/workflow-boundary.mjs";
 
 function testDisabledByDefault() {
-  const status = createAssistantBoundaryStatus();
+  const status = createWorkflowBoundaryStatus();
 
-  assert.equal(status.version, AI_ASSISTANT_BOUNDARY_VERSION);
-  assert.equal(status.status, AI_ASSISTANT_STATUSES.DISABLED);
+  assert.equal(status.version, WORKFLOW_BOUNDARY_VERSION);
+  assert.equal(status.status, WORKFLOW_BOUNDARY_STATUSES.DISABLED);
   assert.equal(status.backend, "none");
   assert.equal(status.providerCalls, false);
   assert.equal(status.runtimeCalls, false);
@@ -24,29 +27,29 @@ function testDisabledByDefault() {
   assert.equal(status.proposalOnly, true);
   assert.deepEqual(
     status.allowedActions.map((action) => action.kind),
-    AI_PROPOSAL_KINDS,
+    WORKFLOW_PROPOSAL_KINDS,
   );
-  assert.deepEqual(status.disallowedActions, DISALLOWED_AI_ACTIONS);
+  assert.deepEqual(status.disallowedActions, DISALLOWED_WORKFLOW_ACTIONS);
 }
 
 function testEnabledButNoBackendIsNotConfigured() {
-  const status = createAssistantBoundaryStatus({
-    aiAssistant: {
+  const status = createWorkflowBoundaryStatus({
+    workflowBoundary: {
       enabled: true,
       backend: "none",
     },
   });
 
-  assert.equal(status.status, AI_ASSISTANT_STATUSES.NOT_CONFIGURED);
+  assert.equal(status.status, WORKFLOW_BOUNDARY_STATUSES.NOT_CONFIGURED);
   assert.equal(status.backend, "none");
   assert.equal(status.providerCalls, false);
   assert.equal(status.runtimeCalls, false);
 }
 
 function testLauncherBackendRemainsProposalBoundary() {
-  const request = createAssistantRequest(
+  const request = createWorkflowContextRequest(
     {
-      aiAssistant: {
+      workflowBoundary: {
         enabled: true,
         backend: "pccx-llm-launcher",
       },
@@ -62,20 +65,20 @@ function testLauncherBackendRemainsProposalBoundary() {
     { workspaceRoot: "/repo" },
   );
 
-  assert.equal(request.status, AI_ASSISTANT_STATUSES.PROPOSAL_BOUNDARY);
+  assert.equal(request.status, WORKFLOW_BOUNDARY_STATUSES.PROPOSAL_BOUNDARY);
   assert.equal(request.backend, "pccx-llm-launcher");
   assert.equal(request.providerCalls, false);
   assert.equal(request.runtimeCalls, false);
   assert.deepEqual(
     request.allowedActions.map((action) => action.kind),
-    AI_PROPOSAL_KINDS,
+    WORKFLOW_PROPOSAL_KINDS,
   );
   assert.ok(request.allowedActions.every((action) => action.execution === "proposalOnly"));
-  assert.deepEqual(request.disallowedActions, DISALLOWED_AI_ACTIONS);
+  assert.deepEqual(request.disallowedActions, DISALLOWED_WORKFLOW_ACTIONS);
   assert.ok(request.disallowedActions.includes("writeFile"));
   assert.ok(request.disallowedActions.includes("commit"));
   assert.ok(request.disallowedActions.includes("accessSecrets"));
-  assert.equal(request.kind, "ai-context-bundle");
+  assert.equal(request.kind, "workflow-context-bundle");
   assert.equal(request.contextSummary.selectedFile.path, "rtl/top.sv");
   assert.equal(request.contextSummary.diagnosticCount, 1);
 }
@@ -91,7 +94,7 @@ function testCommandProposalsAreProposalOnly() {
   );
   assert.throws(
     () => createCommandProposal("writeFile"),
-    /unsupported AI assistant proposal kind/,
+    /unsupported workflow boundary proposal kind/,
   );
 }
 
@@ -100,4 +103,4 @@ testEnabledButNoBackendIsNotConfigured();
 testLauncherBackendRemainsProposalBoundary();
 testCommandProposalsAreProposalOnly();
 
-console.log("vscode AI assistant boundary tests ok");
+console.log("vscode workflow boundary tests ok");

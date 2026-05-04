@@ -24,7 +24,7 @@ node editors/vscode-prototype/test/extension-manifest.test.mjs
 node editors/vscode-prototype/test/extension-config.test.mjs
 node editors/vscode-prototype/test/context-bundle.test.mjs
 node editors/vscode-prototype/test/selected-symbol-context.test.mjs
-node editors/vscode-prototype/test/ai-assistant-boundary.test.mjs
+node editors/vscode-prototype/test/workflow-boundary.test.mjs
 node editors/vscode-prototype/test/validation-proposals.test.mjs
 node editors/vscode-prototype/test/validation-proposal-preflight-audit.test.mjs
 node editors/vscode-prototype/test/patch-proposal-contract.test.mjs

@@ -21,8 +21,8 @@
     "onCommand:pccxSystemVerilog.showNavigationExample",
     "onCommand:pccxSystemVerilog.runDiagnosticsLive",
     "onCommand:pccxSystemVerilog.runNavigationLive",
-    "onCommand:pccxSystemVerilog.showAIAssistantStatus",
-    "onCommand:pccxSystemVerilog.buildAIContextBundle",
+    "onCommand:pccxSystemVerilog.showWorkflowBoundaryStatus",
+    "onCommand:pccxSystemVerilog.buildWorkflowContextBundle",
     "onCommand:pccxSystemVerilog.proposeValidationCommand",
     "onCommand:pccxSystemVerilog.auditValidationProposalPreflight",
     "onCommand:pccxSystemVerilog.runApprovedValidationCommand",
@@ -71,12 +71,12 @@
         "title": "PCCX SystemVerilog: Run Navigation Live (Experimental, Opt-In Alias)"
       },
       {
-        "command": "pccxSystemVerilog.showAIAssistantStatus",
-        "title": "PCCX SystemVerilog: Show AI Assistant Status (Experimental)"
+        "command": "pccxSystemVerilog.showWorkflowBoundaryStatus",
+        "title": "PCCX SystemVerilog: Show Workflow Boundary Status (Experimental)"
       },
       {
-        "command": "pccxSystemVerilog.buildAIContextBundle",
-        "title": "PCCX SystemVerilog: Build AI Context Bundle (Experimental)"
+        "command": "pccxSystemVerilog.buildWorkflowContextBundle",
+        "title": "PCCX SystemVerilog: Build Workflow Context Bundle (Experimental)"
       },
       {
         "command": "pccxSystemVerilog.proposeValidationCommand",
@@ -149,12 +149,12 @@
           "default": "pccx_ide_cli",
           "description": "Experimental local prototype command-boundary name for the pccx-lab CLI-first backend; no arguments, no direct internals, and not a stable API."
         },
-        "pccxSystemVerilog.aiAssistant.enabled": {
+        "pccxSystemVerilog.workflowBoundary.enabled": {
           "type": "boolean",
           "default": false,
-          "description": "Experimental local prototype opt-in flag reserved for future AI-assisted SystemVerilog development workflow boundaries; no provider calls and not a stable API."
+          "description": "Experimental local prototype opt-in flag reserved for future SystemVerilog workflow boundaries; no provider calls and not a stable API."
         },
-        "pccxSystemVerilog.aiAssistant.backend": {
+        "pccxSystemVerilog.workflowBoundary.backend": {
           "type": "string",
           "enum": [
             "none",
@@ -162,7 +162,7 @@
             "mcp"
           ],
           "default": "none",
-          "description": "Experimental local prototype AI assistant backend selector for future controlled tool boundaries; no runtime calls in this scaffold and not a stable API."
+          "description": "Experimental local prototype workflow boundary backend selector for future controlled tool boundaries; no runtime calls in this scaffold and not a stable API."
         },
         "pccxSystemVerilog.validationRunner.enabled": {
           "type": "boolean",

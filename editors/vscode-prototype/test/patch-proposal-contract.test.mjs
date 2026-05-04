@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import assert from "node:assert/strict";
 
 import {
@@ -111,14 +114,14 @@ function testRejectsUnsafePathsAndArtifacts() {
     safeProposal({
       files: [
         {
-          path: "node_modules/pkg/generated.js",
+          path: "node_modules/pkg/artifact.js",
           changeKind: "modify",
           reason: "Generated dependency path.",
           hunks: [{ oldStart: 1, oldLines: 1, newStart: 1, newLines: 1, preview: "@@" }],
         },
       ],
     }),
-    /private, generated, secret-like, or binary artifact paths/,
+    /private, derived, secret-like, or binary artifact paths/,
   );
   assertInvalid(
     safeProposal({
@@ -131,7 +134,7 @@ function testRejectsUnsafePathsAndArtifacts() {
         },
       ],
     }),
-    /private, generated, secret-like, or binary artifact paths/,
+    /private, derived, secret-like, or binary artifact paths/,
   );
 }
 

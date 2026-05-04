@@ -8,7 +8,7 @@ published, has no marketplace packaging, is not LSP, and is not a stable ABI/API
 Feasibility decision for this phase: Option A, local-only.  A limited
 Extension Host runtime smoke is enabled behind
 `PCCX_RUN_EXTENSION_HOST_SMOKE=1` after adding the exact dev dependency
-`@vscode/test-electron@2.5.2` and the generated prototype package
+`@vscode/test-electron@2.5.2` and the built prototype package
 lockfile.  CI remains limited to deterministic static/mock smoke coverage
 because the runtime path downloads VS Code/Electron on first use and
 should earn CI promotion separately.
@@ -21,8 +21,8 @@ should earn CI promotion separately.
   require both `mode=liveWorkspace` and `liveWorkspace.enabled=true`.
 - Known facade argument arrays.
 - Command handlers and UI action models.
-- AI assistant status/context commands and token-saving context bundle
-  unit tests.  The current AI assistant work is boundary-only.
+- workflow boundary status/context commands and token-saving context bundle
+  unit tests.  The current workflow boundary work is boundary-only.
 - Presenter behavior with mocked VS Code-like dependencies.
 - Real VS Code `DiagnosticCollection` population for the checked-example
   diagnostics command when the local runtime smoke is explicitly enabled.
@@ -40,7 +40,7 @@ should earn CI promotion separately.
   Host runtime smoke.
 - Fixture-backed live navigation in the opt-in Extension Host runtime
   smoke, returning Location-style records without QuickPick/UI blocking.
-- AI assistant status and context bundle command smoke with provider and
+- workflow boundary status and context bundle command smoke with provider and
   runtime calls reported as unimplemented.
 - Selected-symbol context smoke for the context bundle.  The selected
   symbol context is lexical and bounded, not full semantic analysis.
@@ -73,7 +73,7 @@ should earn CI promotion separately.
 - Marketplace install.
 - Enabled live workspace scanning, watchers, check-on-save, or arbitrary
   project indexing.
-- AI provider calls, pccx-llm-launcher runtime calls, chat backend
+- provider/runtime calls, pccx-llm-launcher runtime calls, chat backend
   calls, or MCP server implementation.
 
 The runtime smoke is limited coverage for the activation, command facade,
@@ -123,8 +123,8 @@ from that fixture rather than checked examples.  It also runs
 navigation root and `live_top` as the requested module, verifies
 Location-style records, and checks that the result did not fall back to
 checked-example symbols.  It executes
-`pccxSystemVerilog.showAIAssistantStatus`,
-`pccxSystemVerilog.buildAIContextBundle`,
+`pccxSystemVerilog.showWorkflowBoundaryStatus`,
+`pccxSystemVerilog.buildWorkflowContextBundle`,
 `pccxSystemVerilog.proposeValidationCommand`, and
 `pccxSystemVerilog.auditValidationProposalPreflight`,
 `pccxSystemVerilog.runApprovedValidationCommand`,
@@ -141,12 +141,12 @@ status-only pccx-lab boundary data, diagnostics handoff summary data, and
 no provider/runtime calls.  This is not LSP, and there is no LSP provider
 yet.
 
-## AI Assistant Boundary
+## Workflow Boundary
 
-The prototype has a future AI-assisted SystemVerilog development workflow
+The prototype has a future SystemVerilog workflow boundary
 boundary, not a model integration.  pccx-llm-launcher is a future local LLM/chat backend candidate, and any later integration must use a reviewed
-contract.  The current extension code makes no AI provider calls, no
-pccx-llm-launcher runtime calls, and implements no MCP server.  AI
+contract.  The current extension code makes no provider/runtime calls, no
+pccx-llm-launcher runtime calls, and implements no MCP server. Workflow
 actions are modeled as proposals, including command proposal and
 validation proposal shapes, plus a checked patch proposal contract for
 future user-reviewed edits, rather than direct execution.  User approval
@@ -172,7 +172,7 @@ diagnostics handoff adapter summary as a local status surface. It consumes
 adapter output as data, does not read raw handoff JSON in the UI layer,
 does not execute launcher or pccx-lab, and does not invoke the pccx-lab
 validator command.
-The same summary can flow into `pccxSystemVerilog.buildAIContextBundle`
+The same summary can flow into `pccxSystemVerilog.buildWorkflowContextBundle`
 as a bounded `diagnosticsHandoff` context section. Missing or invalid
 handoff data is kept as local unavailable/invalid context and does not
 start a backend command.
@@ -198,12 +198,12 @@ summary-only entries through VS Code-native surfaces, and
 count, max size, latest status, and redaction/truncation flags.
 `pccxSystemVerilog.clearValidationResultCache` clears that local cache.
 The cache does not persist to disk and does not store full logs, raw
-shell command strings, secrets, tokens, private home paths, generated
+shell command strings, secrets, tokens, private home paths, build
 blobs, model paths, or pccx-lab outputs.  It does not execute raw command
 strings, destructive commands, git write operations,
-release/tag/settings/secrets commands, pccx-lab commands, AI provider calls,
+release/tag/settings/secrets commands, pccx-lab commands, provider/runtime calls,
 pccx-llm-launcher runtime calls, MCP server operations, LSP, marketplace
-packaging, releases, or tags.  It does not add a UI approval prompt in
+packaging, releases, or tags.  It does not add a UI approval dialog in
 this prototype; callers should invoke it only after a user-approved
 validation proposal.
 
@@ -234,7 +234,7 @@ system.
 
 - The prototype package has one exact dev dependency:
   `@vscode/test-electron@2.5.2`.
-- `editors/vscode-prototype/package-lock.json` is generated by npm and
+- `editors/vscode-prototype/package-lock.json` is managed by npm and
   keeps the runtime smoke dependency graph reviewable.
 - There is no root lockfile, publisher metadata, `vsce`, packaging
   script, marketplace flow, LSP server, or stable ABI/API claim.
@@ -259,7 +259,7 @@ system.
    marketplace flow.
 7. Do not make a marketplace, published-extension, or stable API claim.
 8. Do not make live workspace mode the default.
-9. Do not add AI provider calls, pccx-llm-launcher runtime calls, or MCP
+9. Do not add provider/runtime calls, pccx-llm-launcher runtime calls, or MCP
    server implementation without a separate contract review.
 10. Keep approved validation execution disabled by default and restricted
     to allowlisted proposal IDs.

@@ -1,10 +1,10 @@
-# Live Workspace and AI Boundary
+# Live Workspace Boundary
 
 ## Status
 
 This is experimental boundary documentation for the local VS Code
 prototype.  It is not a production promise, not a stable API/ABI, not
-LSP, has no marketplace packaging, and the AI surface is status/context
+LSP, has no marketplace packaging, and the workflow boundary surface is status/context
 and proposal data only.
 
 Checked-example remains the default.  Live workspace mode is opt-in and
@@ -13,10 +13,10 @@ requires both:
 - `pccxSystemVerilog.mode=liveWorkspace`
 - `pccxSystemVerilog.liveWorkspace.enabled=true`
 
-AI assistant behavior is disabled by default:
+workflow boundary behavior is disabled by default:
 
-- `pccxSystemVerilog.aiAssistant.enabled=false`
-- `pccxSystemVerilog.aiAssistant.backend=none`
+- `pccxSystemVerilog.workflowBoundary.enabled=false`
+- `pccxSystemVerilog.workflowBoundary.backend=none`
 
 Approved validation execution is disabled by default:
 
@@ -32,7 +32,7 @@ VS Code editor cockpit
   -> pccx_ide_cli JSON contract
   -> pccx-lab CLI/core boundary where configured
 
-Future local coding-assistant mode
+Future local workflow mode
   -> bounded context bundle
   -> command proposal / validation proposal
   -> controlled tool boundary
@@ -73,14 +73,14 @@ Extension Host runtime smoke opens that fixture, explicitly enables live
 workspace mode, runs live diagnostics against the tiny broken fixture
 file, runs live navigation for `live_top`, and asserts the results did
 not come from checked examples.  Live navigation returns structured
-Location-style records in the smoke path and avoids QuickPick/UI prompts.
+Location-style records in the smoke path and avoids QuickPick/UI dialogs.
 This does not make live mode a production promise.
 
-## AI Assistant Proposal Boundary
+## Workflow Boundary Proposal Boundary
 
-The current AI assistant boundary is a proposal model only.
-`pccxSystemVerilog.showAIAssistantStatus` returns local status and
-proposal boundaries.  `pccxSystemVerilog.buildAIContextBundle` returns a
+The current workflow boundary is a proposal model only.
+`pccxSystemVerilog.showWorkflowBoundaryStatus` returns local status and
+proposal boundaries.  `pccxSystemVerilog.buildWorkflowContextBundle` returns a
 bounded context bundle for the active editor state.
 `pccxSystemVerilog.proposeValidationCommand` returns allowlisted
 validation command proposals as data and does not execute them.
@@ -89,7 +89,7 @@ validation runner command.  It only runs after explicit configuration and
 only accepts allowlisted proposal IDs, not raw command strings.
 `pccxSystemVerilog.showPccxLabBackendStatus` reports the configured
 pccx-lab command boundary and future controlled operations without
-running pccx-lab.  There are no AI provider calls, no external API keys,
+running pccx-lab.  There are no provider/runtime calls, no external API keys,
 no pccx-llm-launcher runtime calls yet, and no MCP server implementation.
 
 Allowed proposal kinds:
@@ -161,7 +161,7 @@ handoff preflight context from the normalized context-bundle
 bounded: it reports available, unavailable, or invalid handoff status plus
 short preflight/issue notes.  The command returns JSON data only: it does
 not parse raw handoff JSON in the proposal layer, spawn a process, call
-pccx-lab, call an AI provider, write files, or run git commands.
+pccx-lab, call provider/runtime services, write files, or run git commands.
 
 The approved validation runner re-resolves proposal IDs through an
 internal allowlist.  Runnable initial IDs are `vscodeAdapterSmoke`,
@@ -172,7 +172,7 @@ stdout/stderr, a timeout, and JSON-serializable status.  It blocks
 unknown IDs, raw command strings, destructive command patterns, git write
 operations, release/tag/settings/secrets commands, patch proposals,
 provider calls, pccx-llm-launcher runtime calls, MCP server operations,
-and pccx-lab execution.  The runner does not add a UI approval prompt in
+and pccx-lab execution.  The runner does not add a UI approval dialog in
 this prototype; callers should invoke it only after a user-approved
 validation proposal.
 
@@ -183,20 +183,20 @@ proposal ID, status, allowlist label, exit code, duration/timestamps,
 working-directory kind, command kind, bounded stdout/stderr summaries,
 truncation/redaction flags, and safety metadata.  It does not persist to
 disk and does not store full logs, raw shell command strings, secrets,
-tokens, private home paths, generated blobs, model paths, or pccx-lab
+tokens, private home paths, artifact blobs, model paths, or pccx-lab
 outputs.  The cache UX exposes recent entries and cache status through
 VS Code-native surfaces and a summary-only validation output channel.
 
 The context bundle can carry the latest cached validation summary and a
 small bounded recent validation history.  It does not include full logs,
-raw absolute private paths, generated artifacts, launcher calls, AI
+raw absolute private paths, build artifacts, launcher calls, provider/runtime
 provider calls, MCP, LSP, marketplace packaging, release/tag flow, or
 real pccx-lab execution.
 
 Patch proposals are contract-only in this prototype.  The checked
 contract accepts repository-relative paths and bounded hunk previews for
 future user review, rejects private paths, secrets, shell commands,
-generated artifacts, raw provider output, and auto-apply fields, and does
+build artifacts, raw provider output, and auto-apply fields, and does
 not apply changes.  The preview command shows checked proposal IDs only
 through VS Code-native output and the clear command removes only the
 in-memory preview result.
@@ -229,12 +229,12 @@ provider.
 ## Prototype Daily-Driver Loop
 
 1. Inspect diagnostics and navigation.
-2. Build a selected-symbol AI context bundle.
+2. Build a selected-symbol workflow context bundle.
 3. Propose a validation command.
 4. User approves an allowlisted validation command.
 5. The runner executes bounded validation after explicit enablement.
 6. The validation-result cache summary flows back into the context bundle.
-7. Future AI-assisted SystemVerilog development workflow can propose a patch or next validation, but does not execute directly.
+7. Future SystemVerilog workflow boundary can propose a patch or next validation, but does not execute directly.
 
 ## Daily-Driver Roadmap
 
@@ -260,13 +260,13 @@ Now:
 Next:
 
 - selected-symbol to declaration context through live navigation
-- diagnostics-aware prompt builder
+- diagnostics-aware context builder
 - patch proposal format
 - pccx-lab command palette execution with allowlisted commands
 
 Later:
 
-- pccx-llm-launcher local assistant backend
+- pccx-llm-launcher local workflow backend
 - MCP controlled tool boundary
 - richer editor UI/panels
 - optional theme presets via tokens

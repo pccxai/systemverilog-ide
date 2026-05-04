@@ -226,7 +226,7 @@
     "executesPccxLab": false,
     "executesSystemverilogIde": false,
     "firmwareFlashing": false,
-    "generatedBlobsIncluded": false,
+    "artifactBlobsIncluded": false,
     "hardwareDumpsIncluded": false,
     "kv260Access": false,
     "modelExecution": false,

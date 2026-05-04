@@ -84,7 +84,7 @@ async function testReadinessStatesAndBlockersAreBounded() {
     "board_model_bitstream_runtime_environment_missing",
     "post_synth_drc_timing_open",
     "implementation_incomplete",
-    "bitstream_not_generated",
+    "bitstream_not_available",
     "gemma3n_e4b_runtime_evidence_absent",
     "throughput_measurement_absent",
   ]);
@@ -111,7 +111,7 @@ async function testSafetyFlagsProveDataOnlyBoundary() {
     privatePathsIncluded: false,
     secretsIncluded: false,
     tokensIncluded: false,
-    generatedBlobsIncluded: false,
+    artifactBlobsIncluded: false,
     hardwareDumpsIncluded: false,
     writesArtifacts: false,
     networkCalls: false,

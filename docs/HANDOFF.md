@@ -18,8 +18,8 @@ Tracked handoff paths:
 
 Direction and style rules for preserving those boundaries are pinned in
 [`PROJECT_DIRECTION_AND_STYLE.md`](./PROJECT_DIRECTION_AND_STYLE.md).
-The AI-assisted SystemVerilog workflow planning boundary is documented in
-[`AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md`](./AI_ASSISTED_SYSTEMVERILOG_WORKFLOW.md).
+The SystemVerilog workflow planning boundary is documented in
+[`SYSTEMVERILOG_WORKFLOW_BOUNDARY.md`](./SYSTEMVERILOG_WORKFLOW_BOUNDARY.md).
 The evolutionary loop planning boundary is documented in
 [`EVOLUTIONARY_LOOP_PLAN.md`](./EVOLUTIONARY_LOOP_PLAN.md).
 The external editor integration planning boundary is documented in
@@ -150,7 +150,7 @@ summary as data, returns JSON for tests or future UI code, and writes a
 small local text summary to the prototype output channel. It does not
 read raw handoff JSON in the UI layer.
 
-The local AI/context bundle can include the same diagnostics handoff
+The local workflow context bundle can include the same diagnostics handoff
 summary as bounded context. It records the schema and handoff IDs,
 diagnostic counts, descriptor references, transport kinds, and read-only
 safety flags. Missing or invalid handoff data remains local unavailable
@@ -195,7 +195,7 @@ fields: source kind, tool, total problem count, counts by severity,
 located and unlocated problem counts, coded problem count, relative file
 counts, limitations, and safety flags.
 
-The local AI/context bundle can include the same summary as
+The local workflow context bundle can include the same summary as
 `xsimDiagnostics`. That context section is summary-only and does not
 include raw xsim log lines or full logs.
 
@@ -603,10 +603,10 @@ python -m pccx_ide_cli problems from-xsim-log fixtures/xsim/mixed.log --format t
   the diagnostics envelope.
 - Whether the `additionalProperties: false` constraint on diagnostics
   should relax at v1 to allow forward-compatible extension fields.
-- How a future local coding-assistant mode should pass token-saving
+- How a future local workflow mode should pass token-saving
   context bundles to pccx-llm-launcher or an MCP-style controlled tool
   boundary.  The current VS Code prototype only has boundary types,
-  status/context commands, and tests: no AI provider calls, no local chat
+  status/context commands, and tests: no provider/runtime calls, no local chat
   backend runtime calls, no MCP server implementation, and no direct
   execution of command or validation proposals.  Validation proposal
   preflight audit remains a bounded review step before any approved
@@ -617,6 +617,6 @@ These are intentionally unresolved while both sides mature.
 ---
 
 *See also*:
-[AI-assisted engineering discipline](https://github.com/pccxai/pccxai/blob/main/docs/AI_ASSISTED_ENGINEERING.md) —
+[engineering discipline](https://github.com/pccxai/pccxai/blob/main/docs/ENGINEERING_DISCIPLINE.md) —
 org-level rules covering interface-first work and gray-box delegation that govern
-how AI-assisted work interacts with the pccx-lab boundary from this IDE layer.
+how workflow-boundary work interacts with the pccx-lab boundary from this IDE layer.
