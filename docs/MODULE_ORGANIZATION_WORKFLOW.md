@@ -5,12 +5,13 @@
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 `module-summary`, `port-usage`, `module-context`, `refactor-impact`,
-`validation-plan`, and `refactor-review` CLI surfaces that report module boundary spans,
-scanner-based hierarchy data, direct dependency impact data, conservative
-module header/port summaries, target port usage summaries, target module
-context bundles, target-specific refactor impact data, and proposal-only
-validation command descriptors plus a summary-only review packet for editor
-navigation and reviewed refactoring planning.
+`validation-plan`, `refactor-review`, and `refactor-approval` CLI surfaces
+that report module boundary spans, scanner-based hierarchy data, direct
+dependency impact data, conservative module header/port summaries, target port
+usage summaries, target module context bundles, target-specific refactor impact
+data, proposal-only validation command descriptors, a summary-only review
+packet, and approval decision metadata for editor navigation and reviewed
+refactoring planning.
 
 It is not a full SystemVerilog parser, not semantic elaboration, not an LSP
 implementation, and not a write-capable refactoring engine.
@@ -41,6 +42,9 @@ python -m pccx_ide_cli validation-plan <path> --action move-module --module <nam
 python -m pccx_ide_cli refactor-review <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-review <path> --action extract-port --module <name> --port-name <name> --direction input --format text
 python -m pccx_ide_cli refactor-review <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
+python -m pccx_ide_cli refactor-approval <path> --action rename-module --module <name> --new-name <name> --format json
+python -m pccx_ide_cli refactor-approval <path> --action extract-port --module <name> --port-name <name> --direction input --format text
+python -m pccx_ide_cli refactor-approval <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
 ```
 
 `<path>` may be a `.sv` / `.v` file or a directory. Directory scans follow the
@@ -607,6 +611,62 @@ This boundary does not write files, apply refactors, move files, generate
 patches, run validation, execute shell commands, invoke `pccx-lab`, invoke the
 launcher, run vendor tools, call providers, touch hardware, upload telemetry,
 or perform automatic repository actions.
+
+## Refactor Approval Decision
+
+`refactor-approval` adds proposal-only approval decision metadata over the
+existing `refactor-review` packet. It is a one-call gate for editor review
+panes and maintainer handoff notes to show that no approval has been recorded,
+or that the preflight is blocked, before any write-capable helper exists.
+
+Example shape:
+
+```json
+{
+  "kind": "module-refactor-approval-decision",
+  "decision_state": "not-approved",
+  "action": "rename-module",
+  "writes_files": false,
+  "approval_decision": {
+    "approved": false,
+    "approver": "not-recorded",
+    "decision": "not-approved",
+    "reason": "explicit approval not recorded",
+    "requires_explicit_user_approval_before_run": true,
+    "requires_explicit_user_approval_before_write": true
+  },
+  "packet_summary": {
+    "kind": "module-refactor-review-packet",
+    "review_state": "ready-for-review",
+    "validation_state": "proposal-only",
+    "command_descriptor_count": 8,
+    "validation_phases": []
+  },
+  "safety": {
+    "read_only": true,
+    "decision_metadata_only": true,
+    "approval_granted": false,
+    "summarizes_command_descriptors": true,
+    "emits_command_descriptors": false,
+    "writes_files": false,
+    "runs_validation": false,
+    "runs_shell": false,
+    "invokes_pccx_lab": false,
+    "invokes_launcher": false,
+    "hardware_access": false
+  }
+}
+```
+
+The decision intentionally records `approved: false`. It summarizes validation
+descriptor phases by command ID only and does not include command argv;
+consumers that need the fixed-argv descriptor list should call
+`validation-plan` directly.
+
+This boundary does not write files, apply refactors, move files, generate
+patches, run validation, execute shell commands, invoke `pccx-lab`, invoke the
+launcher, run vendor tools, call providers, touch hardware, upload telemetry,
+grant approval, or perform automatic repository actions.
 
 ## Limitations
 

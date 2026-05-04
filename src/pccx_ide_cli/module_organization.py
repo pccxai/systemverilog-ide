@@ -172,6 +172,16 @@ REVIEW_PACKET_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+APPROVAL_DECISION_LIMITATIONS: tuple[str, ...] = (
+    "proposal-only refactor approval decision metadata",
+    "records an unapproved decision gate over the review packet",
+    "does not include command argv; use validation-plan for command descriptors",
+    "does not execute validation commands or shell commands",
+    "does not apply refactors, write files, move files, or generate patches",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 _REFACTOR_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "rename-module": ("new_name",),
     "extract-port": ("port_name", "direction"),
@@ -325,6 +335,30 @@ def _validation_plan_safety_flags() -> dict[str, bool]:
 def _review_packet_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
+        "summarizes_command_descriptors": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _approval_decision_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "decision_metadata_only": True,
+        "approval_granted": False,
         "summarizes_command_descriptors": True,
         "emits_command_descriptors": False,
         "writes_files": False,
@@ -1860,6 +1894,100 @@ def build_refactor_review_packet(
     }
 
 
+def _approval_packet_summary(packet: dict[str, Any]) -> dict[str, Any]:
+    context = packet["context_summary"]
+    validation = packet["validation_summary"]
+    phases = []
+    for phase in validation["phases"]:
+        phases.append({
+            "command_ids": list(phase["command_ids"]),
+            "phase": phase["phase"],
+            "status": phase["status"],
+        })
+    return {
+        "command_descriptor_count": validation["command_descriptor_count"],
+        "context_state": context["context_state"],
+        "kind": packet["kind"],
+        "packet_state": packet["packet_state"],
+        "review_state": packet["review_state"],
+        "review_target_count": context["review_target_count"],
+        "validation_phases": phases,
+        "validation_state": validation["validation_state"],
+    }
+
+
+def build_refactor_approval_decision(
+    source: str,
+    path: Path,
+    action: str,
+    module_name: str,
+    *,
+    new_name: str | None = None,
+    port_name: str | None = None,
+    direction: str | None = None,
+    width: str | None = None,
+    destination: str | None = None,
+) -> dict[str, Any]:
+    packet = build_refactor_review_packet(
+        source,
+        path,
+        action,
+        module_name,
+        new_name=new_name,
+        port_name=port_name,
+        direction=direction,
+        width=width,
+        destination=destination,
+    )
+    preflight = packet["preflight"]
+    decision_state = (
+        "blocked"
+        if preflight["status"] == "blocked"
+        else "not-approved"
+    )
+    reason = (
+        "preflight blocked"
+        if preflight["status"] == "blocked"
+        else "explicit approval not recorded"
+    )
+
+    return {
+        "action": action,
+        "approval_decision": {
+            "approved": False,
+            "approver": "not-recorded",
+            "decision": decision_state,
+            "reason": reason,
+            "requires_explicit_user_approval_before_run": True,
+            "requires_explicit_user_approval_before_write": True,
+        },
+        "decision_state": decision_state,
+        "kind": "module-refactor-approval-decision",
+        "limitations": list(APPROVAL_DECISION_LIMITATIONS),
+        "module": packet["module"],
+        "packet_summary": _approval_packet_summary(packet),
+        "preflight": {
+            "reasons": list(preflight["reasons"]),
+            "requires_approval_before_write": preflight[
+                "requires_approval_before_write"
+            ],
+            "requires_explicit_approval_before_run": True,
+            "status": preflight["status"],
+        },
+        "proposal_summary": {
+            "planned_step_count": packet["proposal_summary"]["planned_step_count"],
+            "requested_change": packet["proposal_summary"]["requested_change"],
+            "writes_files": packet["proposal_summary"]["writes_files"],
+        },
+        "safety": _approval_decision_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "target": module_name,
+        "tool": "pccx-ide-cli",
+        "writes_files": False,
+    }
+
+
 def format_refactor_proposal_text(proposal: dict[str, Any]) -> str:
     lines = [
         f"source: {proposal['source']}",
@@ -1952,6 +2080,38 @@ def format_refactor_review_packet_text(packet: dict[str, Any]) -> str:
     lines.append(
         "summary-only: no command argv, validation, shell, refactor, patch, "
         "file write, lab, launcher, vendor tool, provider, or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_refactor_approval_decision_text(decision: dict[str, Any]) -> str:
+    approval = decision["approval_decision"]
+    packet = decision["packet_summary"]
+    lines = [
+        f"source: {decision['source']}",
+        f"target: {decision['target']}",
+        f"action: {decision['action']}",
+        f"approval decision: {approval['decision']}",
+        "approved: no",
+        f"review state: {packet['review_state']}",
+        f"preflight: {decision['preflight']['status']}",
+        "writes files: no",
+        "runs validation: no",
+        f"validation descriptors: {packet['command_descriptor_count']}",
+    ]
+    for phase in packet["validation_phases"]:
+        command_ids = ", ".join(phase["command_ids"]) or "none"
+        lines.append(
+            f"validation phase: {phase['phase']} "
+            f"({phase['status']}): {command_ids}"
+        )
+    for reason in decision["preflight"]["reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"reason: {approval['reason']}")
+    lines.append(
+        "decision metadata only: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
     )
     return "\n".join(lines) + "\n"
 
