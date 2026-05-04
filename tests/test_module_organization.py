@@ -27,6 +27,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_refactor_approval_decision,
     build_refactor_application_result,
     build_refactor_application_request,
+    build_refactor_checklist_summary,
     build_refactor_handoff_summary,
     build_refactor_impact_view,
     build_refactor_proposal,
@@ -35,6 +36,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_refactor_approval_decision_text,
     format_refactor_application_result_text,
     format_refactor_application_request_text,
+    format_refactor_checklist_summary_text,
     format_refactor_handoff_summary_text,
     format_module_dependency_text,
     format_module_context_text,
@@ -848,6 +850,79 @@ def test_build_refactor_handoff_summary_reports_blocked_preflight():
     assert phases["post-change-local-validation"]["command_ids"] == []
 
 
+def test_build_refactor_checklist_summary_records_summary_only_items():
+    checklist = build_refactor_checklist_summary(
+        str(FIXTURE),
+        FIXTURE,
+        "rename-module",
+        "leaf_mod",
+        new_name="leaf_mod_next",
+    )
+
+    assert checklist["kind"] == "module-refactor-checklist-summary"
+    assert checklist["checklist_state"] == "ready-for-review"
+    assert checklist["handoff_summary"]["kind"] == (
+        "module-refactor-handoff-summary"
+    )
+    assert checklist["handoff_summary"]["ready_for_maintainer_review"] is True
+    assert checklist["result_summary"]["application_result"] == "not_applied"
+    assert checklist["result_summary"]["write_attempted"] is False
+    assert checklist["result_summary"]["patch_generated"] is False
+    assert checklist["result_summary"]["file_change_count"] == 0
+    assert checklist["result_summary"]["validation_run"] is False
+    assert checklist["result_summary"]["rollback_required"] is False
+    assert [item["item_id"] for item in checklist["checklist_items"]] == [
+        "preflight",
+        "context-review",
+        "validation-plan-review",
+        "approval-gate",
+        "application-gate",
+        "handoff-review",
+    ]
+    items = {item["item_id"]: item for item in checklist["checklist_items"]}
+    assert items["preflight"]["complete"] is True
+    assert items["context-review"]["status"] == "pending-maintainer-review"
+    assert items["validation-plan-review"]["command_descriptor_count"] == 8
+    assert items["approval-gate"]["status"] == "not-approved"
+    assert items["application-gate"]["write_attempted"] is False
+    assert "approval-grant" in checklist["blocked_actions"]
+    assert "application-accept" in checklist["blocked_actions"]
+    assert checklist["safety"]["read_only"] is True
+    assert checklist["safety"]["checklist_summary_only"] is True
+    assert checklist["safety"]["approval_granted"] is False
+    assert checklist["safety"]["request_accepted"] is False
+    assert checklist["safety"]["writes_files"] is False
+    assert checklist["safety"]["generates_patch"] is False
+    assert checklist["safety"]["runs_validation"] is False
+    assert checklist["safety"]["runs_shell"] is False
+    assert checklist["safety"]["invokes_pccx_lab"] is False
+    assert checklist["safety"]["invokes_launcher"] is False
+    assert checklist["safety"]["hardware_access"] is False
+    assert '"argv"' not in json.dumps(checklist)
+
+
+def test_build_refactor_checklist_summary_reports_blocked_preflight():
+    checklist = build_refactor_checklist_summary(
+        str(FIXTURE),
+        FIXTURE,
+        "extract-port",
+        "top_mod",
+        port_name="valid_i",
+    )
+
+    assert checklist["checklist_state"] == "blocked"
+    assert checklist["handoff_summary"]["ready_for_maintainer_review"] is False
+    assert checklist["handoff_summary"]["recommended_next_step"] == (
+        "resolve refactor preflight blockers before handoff"
+    )
+    assert "missing required direction" in checklist["preflight"]["reasons"]
+    items = {item["item_id"]: item for item in checklist["checklist_items"]}
+    assert items["preflight"]["status"] == "blocked"
+    assert items["preflight"]["complete"] is False
+    assert items["context-review"]["status"] == "blocked-by-preflight"
+    assert items["validation-plan-review"]["status"] == "blocked-by-preflight"
+
+
 def test_format_module_organization_text_mentions_boundary_and_hierarchy():
     export = build_module_organization_export(str(FIXTURE), FIXTURE)
     text = format_module_organization_text(export)
@@ -1071,6 +1146,33 @@ def test_format_refactor_handoff_summary_text_mentions_summary_only_boundary():
     assert "writes files: no" in text
     assert "runs validation: no" in text
     assert "summary-only handoff: no command argv" in text
+
+
+def test_format_refactor_checklist_summary_text_mentions_summary_only_boundary():
+    checklist = build_refactor_checklist_summary(
+        str(FIXTURE),
+        FIXTURE,
+        "move-module",
+        "leaf_mod",
+        destination="rtl/leaf_mod.sv",
+    )
+    text = format_refactor_checklist_summary_text(checklist)
+
+    assert "refactor checklist: ready-for-review" in text
+    assert "handoff: ready-for-review" in text
+    assert "ready for maintainer review: yes" in text
+    assert "write attempted: no" in text
+    assert "patch generated: no" in text
+    assert "files changed: 0" in text
+    assert "validation run: no" in text
+    assert "rollback required: no" in text
+    assert "approval decision: not-approved" in text
+    assert "application result: not_applied" in text
+    assert "checklist: preflight (ready-for-review)" in text
+    assert "checklist: approval-gate (not-approved)" in text
+    assert "writes files: no" in text
+    assert "runs validation: no" in text
+    assert "summary-only checklist: no command argv" in text
 
 
 def test_cli_organization_json():
@@ -1573,6 +1675,60 @@ def test_cli_refactor_handoff_text():
     assert "summary-only handoff: no command argv" in result.stdout
 
 
+def test_cli_refactor_checklist_json():
+    result = _run_cli(
+        "refactor-checklist",
+        str(FIXTURE),
+        "--action",
+        "rename-module",
+        "--module",
+        "leaf_mod",
+        "--new-name",
+        "leaf_mod_next",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-refactor-checklist-summary"
+    assert payload["checklist_state"] == "ready-for-review"
+    assert payload["handoff_summary"]["ready_for_maintainer_review"] is True
+    assert payload["result_summary"]["application_result"] == "not_applied"
+    assert payload["result_summary"]["write_attempted"] is False
+    assert payload["result_summary"]["patch_generated"] is False
+    assert payload["result_summary"]["validation_run"] is False
+    assert payload["safety"]["checklist_summary_only"] is True
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["generates_patch"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert payload["safety"]["runs_shell"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_refactor_checklist_text():
+    result = _run_cli(
+        "refactor-checklist",
+        str(FIXTURE),
+        "--action",
+        "extract-port",
+        "--module",
+        "top_mod",
+        "--port-name",
+        "valid_i",
+        "--format",
+        "text",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "refactor checklist: blocked" in result.stdout
+    assert "ready for maintainer review: no" in result.stdout
+    assert "validation run: no" in result.stdout
+    assert "approval decision: blocked" in result.stdout
+    assert "application result: not_applied" in result.stdout
+    assert "checklist: preflight (blocked)" in result.stdout
+    assert "blocked: missing required direction" in result.stdout
+    assert "summary-only checklist: no command argv" in result.stdout
+
+
 def test_cli_organization_missing_path_exits_nonzero():
     result = _run_cli("organization", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -1720,6 +1876,21 @@ def test_cli_refactor_handoff_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_refactor_checklist_missing_path_exits_nonzero():
+    result = _run_cli(
+        "refactor-checklist",
+        str(FIXTURE.parent / "missing.sv"),
+        "--action",
+        "rename-module",
+        "--module",
+        "leaf_mod",
+        "--new-name",
+        "leaf_mod_next",
+    )
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_docs_cover_organization_flow_and_limits():
     contract = CONTRACT_DOC.read_text(encoding="utf-8")
     workflow = WORKFLOW_DOC.read_text(encoding="utf-8")
@@ -1736,6 +1907,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "refactor-application <path>" in contract
     assert "refactor-result <path>" in contract
     assert "refactor-handoff <path>" in contract
+    assert "refactor-checklist <path>" in contract
     assert "MODULE_ORGANIZATION_WORKFLOW.md" in contract
     assert "proposal-only" in workflow
     assert "module-hierarchy-view" in workflow
@@ -1750,11 +1922,13 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-refactor-application-request" in workflow
     assert "module-refactor-application-result" in workflow
     assert "module-refactor-handoff-summary" in workflow
+    assert "module-refactor-checklist-summary" in workflow
     assert "proposed-not-run" in workflow
     assert "summary-only review packet" in workflow
     assert "approval decision metadata" in workflow
     assert "application request metadata" in workflow
     assert "application result metadata" in workflow
     assert "refactor handoff metadata" in workflow
+    assert "refactor checklist metadata" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow
