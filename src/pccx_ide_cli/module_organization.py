@@ -229,6 +229,21 @@ CHECKLIST_SUMMARY_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+REFACTOR_SESSION_LIMITATIONS: tuple[str, ...] = (
+    "summary-only refactor session status metadata",
+    "summarizes the existing refactor checklist for editor status panes",
+    "does not include command argv; use validation-plan for command descriptors",
+    "does not persist session state, write status files, or dispatch notifications",
+    "does not record approval, accept application requests, or apply refactors",
+    "does not execute validation commands or shell commands",
+    "does not apply refactors, write files, move files, generate patches, "
+    "or roll back files",
+    "does not publish public text, create pull requests, write comments, "
+    "or mutate projects",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 _REFACTOR_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "rename-module": ("new_name",),
     "extract-port": ("port_name", "direction"),
@@ -515,6 +530,41 @@ def _checklist_summary_safety_flags() -> dict[str, bool]:
         "approval_granted": False,
         "request_accepted": False,
         "write_attempted": False,
+        "summarizes_command_descriptors": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "rollback_required": False,
+        "public_text_published": False,
+        "pull_request_created": False,
+        "comment_written": False,
+        "project_mutation": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _refactor_session_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "session_status_only": True,
+        "checklist_summary_only": True,
+        "approval_granted": False,
+        "request_accepted": False,
+        "write_attempted": False,
+        "session_persistence": False,
+        "status_writeback": False,
+        "notification_dispatched": False,
         "summarizes_command_descriptors": True,
         "emits_command_descriptors": False,
         "writes_files": False,
@@ -2649,6 +2699,107 @@ def build_refactor_checklist_summary(
     }
 
 
+def _refactor_session_items(checklist: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        {
+            "complete": item["complete"],
+            "item_id": item["item_id"],
+            "required": item["required"],
+            "status": item["status"],
+            "summary": item["summary"],
+        }
+        for item in checklist["checklist_items"]
+    ]
+
+
+def build_refactor_session_status(
+    source: str,
+    path: Path,
+    action: str,
+    module_name: str,
+    *,
+    new_name: str | None = None,
+    port_name: str | None = None,
+    direction: str | None = None,
+    width: str | None = None,
+    destination: str | None = None,
+) -> dict[str, Any]:
+    checklist = build_refactor_checklist_summary(
+        source,
+        path,
+        action,
+        module_name,
+        new_name=new_name,
+        port_name=port_name,
+        direction=direction,
+        width=width,
+        destination=destination,
+    )
+    items = _refactor_session_items(checklist)
+    required_items = [item for item in items if item["required"]]
+    incomplete_required = [
+        item for item in required_items if not item["complete"]
+    ]
+    preflight_status = checklist["preflight"]["status"]
+    session_state = checklist["checklist_state"]
+    current_stage = (
+        "preflight-blocked"
+        if session_state == "blocked"
+        else "maintainer-review"
+    )
+    next_required_action = (
+        "resolve refactor preflight blockers before session review"
+        if session_state == "blocked"
+        else "review checklist items before approval or application"
+    )
+
+    return {
+        "action": action,
+        "blocked_actions": [
+            *checklist["blocked_actions"],
+            "session-persistence",
+            "status-writeback",
+            "notification-dispatch",
+        ],
+        "current_stage": current_stage,
+        "kind": "module-refactor-session-status",
+        "limitations": list(REFACTOR_SESSION_LIMITATIONS),
+        "module": checklist["module"],
+        "next_required_action": next_required_action,
+        "preflight": {
+            "reasons": list(checklist["preflight"]["reasons"]),
+            "requires_approval_before_write": checklist["preflight"][
+                "requires_approval_before_write"
+            ],
+            "requires_explicit_approval_before_run": True,
+            "status": preflight_status,
+        },
+        "result_summary": dict(checklist["result_summary"]),
+        "safety": _refactor_session_safety_flags(),
+        "scanner": "line-scanner",
+        "session_items": items,
+        "session_state": session_state,
+        "session_summary": {
+            "checklist_kind": checklist["kind"],
+            "checklist_state": checklist["checklist_state"],
+            "complete_required_count": (
+                len(required_items) - len(incomplete_required)
+            ),
+            "incomplete_required_count": len(incomplete_required),
+            "item_count": len(items),
+            "ready_for_maintainer_review": checklist["handoff_summary"][
+                "ready_for_maintainer_review"
+            ],
+            "required_item_count": len(required_items),
+            "result_state": checklist["handoff_summary"]["result_state"],
+        },
+        "source": source,
+        "target": module_name,
+        "tool": "pccx-ide-cli",
+        "writes_files": False,
+    }
+
+
 def format_refactor_proposal_text(proposal: dict[str, Any]) -> str:
     lines = [
         f"source: {proposal['source']}",
@@ -2931,6 +3082,50 @@ def format_refactor_checklist_summary_text(checklist: dict[str, Any]) -> str:
         "application accept, validation, shell, refactor, patch, file write, "
         "rollback, public text, pull request, comment, project mutation, lab, "
         "launcher, vendor tool, provider, or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_refactor_session_status_text(session: dict[str, Any]) -> str:
+    summary = session["session_summary"]
+    result = session["result_summary"]
+    ready = "yes" if summary["ready_for_maintainer_review"] else "no"
+    lines = [
+        f"source: {session['source']}",
+        f"target: {session['target']}",
+        f"action: {session['action']}",
+        f"refactor session: {session['session_state']}",
+        f"current stage: {session['current_stage']}",
+        f"checklist: {summary['checklist_state']}",
+        f"ready for maintainer review: {ready}",
+        f"required complete: {summary['complete_required_count']}/"
+        f"{summary['required_item_count']}",
+        "write attempted: no",
+        "patch generated: no",
+        "files changed: 0",
+        "validation run: no",
+        "rollback required: no",
+        f"approval decision: {result['approval_decision_state']}",
+        f"application result: {result['application_result']}",
+        f"preflight: {session['preflight']['status']}",
+        "writes files: no",
+        "runs validation: no",
+        f"validation descriptors: {result['command_descriptor_count']}",
+    ]
+    for item in session["session_items"]:
+        lines.append(
+            f"session item: {item['item_id']} ({item['status']}): "
+            f"{item['summary']}"
+        )
+    for reason in session["preflight"]["reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next step: {session['next_required_action']}")
+    lines.append(
+        "summary-only session status: no command argv, approval grant, "
+        "application accept, validation, shell, refactor, patch, file write, "
+        "rollback, status writeback, notification dispatch, public text, "
+        "pull request, comment, project mutation, lab, launcher, vendor tool, "
+        "provider, or hardware execution"
     )
     return "\n".join(lines) + "\n"
 

@@ -5,16 +5,17 @@
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 `module-summary`, `port-usage`, `module-context`, `refactor-impact`,
-`validation-plan`, `refactor-review`, `refactor-approval`, and
-`refactor-application`, `refactor-result`, `refactor-handoff`, and
-`refactor-checklist` CLI surfaces
+`validation-plan`, `refactor-review`, `refactor-approval`,
+`refactor-application`, `refactor-result`, `refactor-handoff`,
+`refactor-checklist`, and `refactor-session` CLI surfaces
 that report module boundary spans, scanner-based hierarchy data, direct
 dependency impact data, conservative module header/port summaries, target port
 usage summaries, target module context bundles, target-specific refactor impact
 data, proposal-only validation command descriptors, a summary-only review
 packet, approval decision metadata, application request metadata, and
-application result metadata plus refactor handoff metadata and refactor
-checklist metadata for editor navigation and reviewed refactoring planning.
+application result metadata plus refactor handoff metadata, refactor checklist
+metadata, and refactor session status metadata for editor navigation and
+reviewed refactoring planning.
 
 It is not a full SystemVerilog parser, not semantic elaboration, not an LSP
 implementation, and not a write-capable refactoring engine.
@@ -60,6 +61,9 @@ python -m pccx_ide_cli refactor-handoff <path> --action move-module --module <na
 python -m pccx_ide_cli refactor-checklist <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-checklist <path> --action extract-port --module <name> --port-name <name> --direction input --format text
 python -m pccx_ide_cli refactor-checklist <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
+python -m pccx_ide_cli refactor-session <path> --action rename-module --module <name> --new-name <name> --format json
+python -m pccx_ide_cli refactor-session <path> --action extract-port --module <name> --port-name <name> --direction input --format text
+python -m pccx_ide_cli refactor-session <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
 ```
 
 `<path>` may be a `.sv` / `.v` file or a directory. Directory scans follow the
@@ -976,6 +980,70 @@ launcher, run vendor tools, call providers, touch hardware, upload telemetry,
 publish public text, create pull requests, write comments, mutate projects,
 accept an application request, apply a refactor, perform rollback, grant
 approval, or perform automatic repository actions.
+
+## Refactor Session Status
+
+`refactor-session` adds summary-only refactor session status metadata over the
+existing `refactor-checklist` summary. It is intended for editor status panes
+and handoff dashboards that need one compact state envelope before any
+write-capable helper exists.
+
+Example shape:
+
+```json
+{
+  "kind": "module-refactor-session-status",
+  "session_state": "ready-for-review",
+  "current_stage": "maintainer-review",
+  "action": "rename-module",
+  "writes_files": false,
+  "session_summary": {
+    "checklist_kind": "module-refactor-checklist-summary",
+    "checklist_state": "ready-for-review",
+    "ready_for_maintainer_review": true,
+    "required_item_count": 6,
+    "complete_required_count": 1,
+    "incomplete_required_count": 5
+  },
+  "result_summary": {
+    "application_result": "not_applied",
+    "write_attempted": false,
+    "patch_generated": false,
+    "file_change_count": 0,
+    "validation_run": false,
+    "rollback_required": false,
+    "command_descriptor_count": 8
+  },
+  "safety": {
+    "read_only": true,
+    "session_status_only": true,
+    "session_persistence": false,
+    "status_writeback": false,
+    "notification_dispatched": false,
+    "approval_granted": false,
+    "request_accepted": false,
+    "writes_files": false,
+    "generates_patch": false,
+    "runs_validation": false,
+    "runs_shell": false,
+    "invokes_pccx_lab": false,
+    "invokes_launcher": false,
+    "hardware_access": false
+  }
+}
+```
+
+The session status intentionally summarizes checklist items and counts only.
+It does not include command argv; consumers that need the fixed-argv descriptor
+list should call `validation-plan` directly.
+
+This boundary does not persist session state, write status files, dispatch
+notifications, write files, apply refactors, move files, generate patches, run
+validation, execute shell commands, invoke `pccx-lab`, invoke the launcher, run
+vendor tools, call providers, touch hardware, upload telemetry, publish public
+text, create pull requests, write comments, mutate projects, accept an
+application request, apply a refactor, perform rollback, grant approval, or
+perform automatic repository actions.
 
 ## Limitations
 

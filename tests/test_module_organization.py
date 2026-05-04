@@ -32,12 +32,14 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_refactor_impact_view,
     build_refactor_proposal,
     build_refactor_review_packet,
+    build_refactor_session_status,
     build_refactor_validation_plan,
     format_refactor_approval_decision_text,
     format_refactor_application_result_text,
     format_refactor_application_request_text,
     format_refactor_checklist_summary_text,
     format_refactor_handoff_summary_text,
+    format_refactor_session_status_text,
     format_module_dependency_text,
     format_module_context_text,
     format_module_hierarchy_text,
@@ -923,6 +925,87 @@ def test_build_refactor_checklist_summary_reports_blocked_preflight():
     assert items["validation-plan-review"]["status"] == "blocked-by-preflight"
 
 
+def test_build_refactor_session_status_summarizes_checklist_only():
+    session = build_refactor_session_status(
+        str(FIXTURE),
+        FIXTURE,
+        "rename-module",
+        "leaf_mod",
+        new_name="leaf_mod_next",
+    )
+
+    assert session["kind"] == "module-refactor-session-status"
+    assert session["session_state"] == "ready-for-review"
+    assert session["current_stage"] == "maintainer-review"
+    assert session["next_required_action"] == (
+        "review checklist items before approval or application"
+    )
+    assert session["session_summary"]["checklist_kind"] == (
+        "module-refactor-checklist-summary"
+    )
+    assert session["session_summary"]["ready_for_maintainer_review"] is True
+    assert session["session_summary"]["required_item_count"] == 6
+    assert session["session_summary"]["complete_required_count"] == 1
+    assert session["session_summary"]["incomplete_required_count"] == 5
+    assert session["result_summary"]["application_result"] == "not_applied"
+    assert session["result_summary"]["write_attempted"] is False
+    assert session["result_summary"]["patch_generated"] is False
+    assert session["result_summary"]["validation_run"] is False
+    assert [item["item_id"] for item in session["session_items"]] == [
+        "preflight",
+        "context-review",
+        "validation-plan-review",
+        "approval-gate",
+        "application-gate",
+        "handoff-review",
+    ]
+    assert "session-persistence" in session["blocked_actions"]
+    assert "status-writeback" in session["blocked_actions"]
+    assert "notification-dispatch" in session["blocked_actions"]
+    assert session["safety"]["read_only"] is True
+    assert session["safety"]["session_status_only"] is True
+    assert session["safety"]["session_persistence"] is False
+    assert session["safety"]["status_writeback"] is False
+    assert session["safety"]["notification_dispatched"] is False
+    assert session["safety"]["approval_granted"] is False
+    assert session["safety"]["request_accepted"] is False
+    assert session["safety"]["writes_files"] is False
+    assert session["safety"]["generates_patch"] is False
+    assert session["safety"]["runs_validation"] is False
+    assert session["safety"]["runs_shell"] is False
+    assert session["safety"]["public_text_published"] is False
+    assert session["safety"]["pull_request_created"] is False
+    assert session["safety"]["comment_written"] is False
+    assert session["safety"]["project_mutation"] is False
+    assert session["safety"]["invokes_pccx_lab"] is False
+    assert session["safety"]["invokes_launcher"] is False
+    assert session["safety"]["hardware_access"] is False
+    assert '"argv"' not in json.dumps(session)
+
+
+def test_build_refactor_session_status_reports_blocked_preflight():
+    session = build_refactor_session_status(
+        str(FIXTURE),
+        FIXTURE,
+        "extract-port",
+        "top_mod",
+        port_name="valid_i",
+    )
+
+    assert session["session_state"] == "blocked"
+    assert session["current_stage"] == "preflight-blocked"
+    assert session["next_required_action"] == (
+        "resolve refactor preflight blockers before session review"
+    )
+    assert session["session_summary"]["ready_for_maintainer_review"] is False
+    assert "missing required direction" in session["preflight"]["reasons"]
+    items = {item["item_id"]: item for item in session["session_items"]}
+    assert items["preflight"]["status"] == "blocked"
+    assert items["preflight"]["complete"] is False
+    assert items["context-review"]["status"] == "blocked-by-preflight"
+    assert items["validation-plan-review"]["status"] == "blocked-by-preflight"
+
+
 def test_format_module_organization_text_mentions_boundary_and_hierarchy():
     export = build_module_organization_export(str(FIXTURE), FIXTURE)
     text = format_module_organization_text(export)
@@ -1729,6 +1812,66 @@ def test_cli_refactor_checklist_text():
     assert "summary-only checklist: no command argv" in result.stdout
 
 
+def test_cli_refactor_session_json():
+    result = _run_cli(
+        "refactor-session",
+        str(FIXTURE),
+        "--action",
+        "rename-module",
+        "--module",
+        "leaf_mod",
+        "--new-name",
+        "leaf_mod_next",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-refactor-session-status"
+    assert payload["session_state"] == "ready-for-review"
+    assert payload["current_stage"] == "maintainer-review"
+    assert payload["session_summary"]["ready_for_maintainer_review"] is True
+    assert payload["session_summary"]["incomplete_required_count"] == 5
+    assert payload["result_summary"]["application_result"] == "not_applied"
+    assert payload["result_summary"]["write_attempted"] is False
+    assert payload["result_summary"]["patch_generated"] is False
+    assert payload["result_summary"]["validation_run"] is False
+    assert payload["safety"]["session_status_only"] is True
+    assert payload["safety"]["session_persistence"] is False
+    assert payload["safety"]["status_writeback"] is False
+    assert payload["safety"]["notification_dispatched"] is False
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["generates_patch"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert payload["safety"]["runs_shell"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_refactor_session_text():
+    result = _run_cli(
+        "refactor-session",
+        str(FIXTURE),
+        "--action",
+        "extract-port",
+        "--module",
+        "top_mod",
+        "--port-name",
+        "valid_i",
+        "--format",
+        "text",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "refactor session: blocked" in result.stdout
+    assert "current stage: preflight-blocked" in result.stdout
+    assert "ready for maintainer review: no" in result.stdout
+    assert "validation run: no" in result.stdout
+    assert "approval decision: blocked" in result.stdout
+    assert "application result: not_applied" in result.stdout
+    assert "session item: preflight (blocked)" in result.stdout
+    assert "blocked: missing required direction" in result.stdout
+    assert "summary-only session status: no command argv" in result.stdout
+
+
 def test_cli_organization_missing_path_exits_nonzero():
     result = _run_cli("organization", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -1891,6 +2034,21 @@ def test_cli_refactor_checklist_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_refactor_session_missing_path_exits_nonzero():
+    result = _run_cli(
+        "refactor-session",
+        str(FIXTURE.parent / "missing.sv"),
+        "--action",
+        "rename-module",
+        "--module",
+        "leaf_mod",
+        "--new-name",
+        "leaf_mod_next",
+    )
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_docs_cover_organization_flow_and_limits():
     contract = CONTRACT_DOC.read_text(encoding="utf-8")
     workflow = WORKFLOW_DOC.read_text(encoding="utf-8")
@@ -1908,6 +2066,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "refactor-result <path>" in contract
     assert "refactor-handoff <path>" in contract
     assert "refactor-checklist <path>" in contract
+    assert "refactor-session <path>" in contract
     assert "MODULE_ORGANIZATION_WORKFLOW.md" in contract
     assert "proposal-only" in workflow
     assert "module-hierarchy-view" in workflow
@@ -1923,6 +2082,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-refactor-application-result" in workflow
     assert "module-refactor-handoff-summary" in workflow
     assert "module-refactor-checklist-summary" in workflow
+    assert "module-refactor-session-status" in workflow
     assert "proposed-not-run" in workflow
     assert "summary-only review packet" in workflow
     assert "approval decision metadata" in workflow
@@ -1930,5 +2090,6 @@ def test_docs_cover_organization_flow_and_limits():
     assert "application result metadata" in workflow
     assert "refactor handoff metadata" in workflow
     assert "refactor checklist metadata" in workflow
+    assert "refactor session status metadata" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow

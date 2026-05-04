@@ -153,6 +153,7 @@ python -m pccx_ide_cli refactor-application fixtures/organization/hierarchy_top.
 python -m pccx_ide_cli refactor-result fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 python -m pccx_ide_cli refactor-handoff fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 python -m pccx_ide_cli refactor-checklist fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
+python -m pccx_ide_cli refactor-session fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 
 # xsim log handoff scaffold (parses existing log files only)
 python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format json
@@ -228,11 +229,12 @@ review steps, but it does not write files, apply patches, run validation,
 invoke `pccx-lab` or the launcher, call providers, touch hardware, or
 perform automatic repository actions.
 `validation-plan`, `refactor-review`, `refactor-approval`,
-`refactor-application`, `refactor-result`, `refactor-handoff`, and
-`refactor-checklist` extend that reviewed flow with
+`refactor-application`, `refactor-result`, `refactor-handoff`,
+`refactor-checklist`, and `refactor-session` extend that reviewed flow with
 proposal-only validation descriptors, summary-only review data, unapproved
 approval gates, not-accepted application request metadata, and not-applied
-result receipts, plus summary-only handoff and checklist metadata. They do not
+result receipts, plus summary-only handoff, checklist, and session status
+metadata. They do not
 execute validation, run shell commands, apply edits, generate patches, write
 files, publish public text, create pull requests, write comments, mutate
 projects, invoke `pccx-lab` or the launcher, call providers, touch hardware, or

@@ -58,6 +58,7 @@ python -m pccx_ide_cli refactor-application <path> --action rename-module --modu
 python -m pccx_ide_cli refactor-result <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-handoff <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-checklist <path> --action rename-module --module <name> --new-name <name> --format json
+python -m pccx_ide_cli refactor-session <path> --action rename-module --module <name> --new-name <name> --format json
 
 # Opt-in pccx-lab diagnostics backend
 python -m pccx_ide_cli check <sv-file> --backend pccx-lab --format json
@@ -255,6 +256,13 @@ validation, run shell commands, write files, publish public text, create pull
 requests, write comments, mutate projects, invoke pccx-lab or the launcher,
 run vendor tools, call providers, touch hardware, or perform automatic
 repository actions.
+`refactor-session` emits summary-only session status metadata over that
+checklist. It records the current stage, checklist counts, incomplete required
+items, and next required action without command argv, session persistence,
+status writeback, notification dispatch, approval grants, application
+acceptance, edits, validation, shell execution, public text publication, pull
+request creation, comments, project mutation, pccx-lab or launcher invocation,
+vendor tools, providers, hardware, or automatic repository actions.
 
 For existing xsim logs, the VS Code prototype can consume the checked
 `problems from-xsim-log` JSON as a read-only status/context summary.  The
