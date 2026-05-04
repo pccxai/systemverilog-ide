@@ -78,6 +78,15 @@ LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+MODULE_BOUNDARY_AUDIT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module boundary audit data only",
+    "uses declaration spans and endmodule matching from the organization scanner",
+    "does not semantically elaborate modules or resolve generate blocks",
+    "does not apply refactors, write files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 HIERARCHY_VIEW_LIMITATIONS: tuple[str, ...] = (
     "scanner-based hierarchy visualization data only",
     "single-line instantiation candidates only",
@@ -264,6 +273,27 @@ def _refactor_safety_flags() -> dict[str, bool]:
         "runs_shell": False,
         "invokes_pccx_lab": False,
         "invokes_launcher": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _module_boundary_audit_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "boundary_audit_only": True,
+        "writes_files": False,
+        "applies_refactor": False,
+        "moves_files": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
         "provider_calls": False,
         "hardware_access": False,
         "telemetry": False,
@@ -753,6 +783,85 @@ def build_module_organization_export(
         "scanner": "line-scanner",
         "source": source,
         "tool": "pccx-ide-cli",
+    }
+
+
+def _boundary_audit_rows(
+    modules: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for module in modules:
+        reasons = []
+        if not module["complete"]:
+            reasons.append(f"missing endmodule for module: {module['name']}")
+        rows.append({
+            "boundary_state": "complete" if module["complete"] else "incomplete",
+            "complete": module["complete"],
+            "end_column": module["end_column"],
+            "end_line": module["end_line"],
+            "file": module["file"],
+            "name": module["name"],
+            "reasons": reasons,
+            "refactor_preflight_state": (
+                "ready-for-review" if module["complete"] else "blocked"
+            ),
+            "span_lines": module["span_lines"],
+            "start_column": module["start_column"],
+            "start_line": module["start_line"],
+        })
+    return rows
+
+
+def build_module_boundary_audit(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    rows = _boundary_audit_rows(organization["modules"])
+    incomplete_rows = [
+        row
+        for row in rows
+        if not row["complete"]
+    ]
+    blocked_reasons = [
+        reason
+        for row in incomplete_rows
+        for reason in row["reasons"]
+    ]
+    if not rows:
+        blocked_reasons.append("no module declarations detected")
+
+    return {
+        "audit_state": "available_as_data",
+        "blocked_reasons": blocked_reasons,
+        "boundary_state_counts": {
+            "complete": len(rows) - len(incomplete_rows),
+            "incomplete": len(incomplete_rows),
+        },
+        "complete_module_count": len(rows) - len(incomplete_rows),
+        "hierarchy_edge_count": len(organization["hierarchy"]["edges"]),
+        "incomplete_module_count": len(incomplete_rows),
+        "incomplete_modules": [
+            {
+                "file": row["file"],
+                "name": row["name"],
+                "reasons": list(row["reasons"]),
+                "start_line": row["start_line"],
+            }
+            for row in incomplete_rows
+        ],
+        "kind": "module-boundary-audit",
+        "limitations": list(MODULE_BOUNDARY_AUDIT_LIMITATIONS),
+        "module_count": len(rows),
+        "modules": rows,
+        "refactor_readiness": (
+            "ready-for-review"
+            if rows and not incomplete_rows
+            else "blocked"
+        ),
+        "safety": _module_boundary_audit_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "unresolved_dependency_count": len(organization["hierarchy"]["unresolved"]),
+        "writes_files": False,
     }
 
 
@@ -3165,6 +3274,49 @@ def format_module_organization_text(export: dict[str, Any]) -> str:
     if hierarchy["unresolved"]:
         lines.append(f"unresolved: {', '.join(hierarchy['unresolved'])}")
     lines.append("refactoring: proposal-only, no file writes")
+    return "\n".join(lines) + "\n"
+
+
+def format_module_boundary_audit_text(audit: dict[str, Any]) -> str:
+    lines = [
+        f"source: {audit['source']}",
+        f"boundary audit: {audit['audit_state']}",
+        f"refactor readiness: {audit['refactor_readiness']}",
+        "writes files: no",
+        (
+            f"{audit['module_count']} module"
+            f"{'s' if audit['module_count'] != 1 else ''}; "
+            f"{audit['complete_module_count']} complete; "
+            f"{audit['incomplete_module_count']} incomplete"
+        ),
+        (
+            f"{audit['hierarchy_edge_count']} hierarchy edge"
+            f"{'s' if audit['hierarchy_edge_count'] != 1 else ''}; "
+            f"{audit['unresolved_dependency_count']} unresolved"
+        ),
+    ]
+    if not audit["modules"]:
+        lines.append("modules: none")
+    for module in audit["modules"]:
+        end = (
+            f"{module['end_line']}:{module['end_column']}"
+            if module["complete"]
+            else "missing"
+        )
+        lines.append(
+            f"{module['file']}:{module['start_line']}:"
+            f"{module['start_column']}-{end}: module {module['name']} "
+            f"({module['boundary_state']}; "
+            f"{module['refactor_preflight_state']})"
+        )
+        for reason in module["reasons"]:
+            lines.append(f"  blocked: {reason}")
+    for reason in audit["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(
+        "read-only: no file writes, refactors, validation, shell, lab, "
+        "launcher, vendor tool, provider, or hardware execution"
+    )
     return "\n".join(lines) + "\n"
 
 

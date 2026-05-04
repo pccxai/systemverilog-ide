@@ -12,6 +12,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC = REPO_ROOT / "src"
 FIXTURE = REPO_ROOT / "fixtures" / "organization" / "hierarchy_top.sv"
+INCOMPLETE_FIXTURE = REPO_ROOT / "fixtures" / "missing_endmodule.sv"
 CONTRACT_DOC = REPO_ROOT / "docs" / "EDITOR_BRIDGE_CONTRACT.md"
 WORKFLOW_DOC = REPO_ROOT / "docs" / "MODULE_ORGANIZATION_WORKFLOW.md"
 
@@ -19,6 +20,7 @@ sys.path.insert(0, str(SRC))
 
 from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_dependency_view,
+    build_module_boundary_audit,
     build_module_context_bundle,
     build_module_hierarchy_view,
     build_module_organization_export,
@@ -40,6 +42,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_refactor_checklist_summary_text,
     format_refactor_handoff_summary_text,
     format_refactor_session_status_text,
+    format_module_boundary_audit_text,
     format_module_dependency_text,
     format_module_context_text,
     format_module_hierarchy_text,
@@ -99,6 +102,65 @@ def test_build_module_organization_export_hierarchy_seed():
             "resolved": True,
         }
     ]
+
+
+def test_build_module_boundary_audit_reports_complete_boundaries():
+    audit = build_module_boundary_audit(str(FIXTURE), FIXTURE)
+
+    assert audit["kind"] == "module-boundary-audit"
+    assert audit["audit_state"] == "available_as_data"
+    assert audit["refactor_readiness"] == "ready-for-review"
+    assert audit["module_count"] == 2
+    assert audit["complete_module_count"] == 2
+    assert audit["incomplete_module_count"] == 0
+    assert audit["blocked_reasons"] == []
+    assert audit["boundary_state_counts"] == {
+        "complete": 2,
+        "incomplete": 0,
+    }
+    assert [row["name"] for row in audit["modules"]] == ["leaf_mod", "top_mod"]
+    assert all(row["boundary_state"] == "complete" for row in audit["modules"])
+    assert all(
+        row["refactor_preflight_state"] == "ready-for-review"
+        for row in audit["modules"]
+    )
+    assert audit["safety"]["read_only"] is True
+    assert audit["safety"]["boundary_audit_only"] is True
+    assert audit["safety"]["writes_files"] is False
+    assert audit["safety"]["applies_refactor"] is False
+    assert audit["safety"]["generates_patch"] is False
+    assert audit["safety"]["runs_validation"] is False
+    assert audit["safety"]["runs_shell"] is False
+    assert audit["safety"]["invokes_pccx_lab"] is False
+    assert audit["safety"]["invokes_launcher"] is False
+    assert audit["safety"]["invokes_vendor_tools"] is False
+    assert audit["safety"]["provider_calls"] is False
+    assert audit["safety"]["hardware_access"] is False
+    assert audit["writes_files"] is False
+
+
+def test_build_module_boundary_audit_blocks_incomplete_boundaries():
+    audit = build_module_boundary_audit(str(INCOMPLETE_FIXTURE), INCOMPLETE_FIXTURE)
+
+    assert audit["refactor_readiness"] == "blocked"
+    assert audit["module_count"] == 1
+    assert audit["complete_module_count"] == 0
+    assert audit["incomplete_module_count"] == 1
+    assert audit["incomplete_modules"] == [
+        {
+            "file": str(INCOMPLETE_FIXTURE),
+            "name": "bad_module",
+            "reasons": ["missing endmodule for module: bad_module"],
+            "start_line": 1,
+        }
+    ]
+    assert audit["modules"][0]["boundary_state"] == "incomplete"
+    assert audit["modules"][0]["refactor_preflight_state"] == "blocked"
+    assert audit["modules"][0]["end_line"] is None
+    assert audit["blocked_reasons"] == [
+        "missing endmodule for module: bad_module"
+    ]
+    assert audit["writes_files"] is False
 
 
 def test_build_module_hierarchy_view_tree_is_read_only():
@@ -1015,6 +1077,19 @@ def test_format_module_organization_text_mentions_boundary_and_hierarchy():
     assert "refactoring: proposal-only, no file writes" in text
 
 
+def test_format_module_boundary_audit_text_mentions_read_only_gate():
+    audit = build_module_boundary_audit(str(INCOMPLETE_FIXTURE), INCOMPLETE_FIXTURE)
+    text = format_module_boundary_audit_text(audit)
+
+    assert "boundary audit: available_as_data" in text
+    assert "refactor readiness: blocked" in text
+    assert "writes files: no" in text
+    assert "1 module; 0 complete; 1 incomplete" in text
+    assert "module bad_module (incomplete; blocked)" in text
+    assert "blocked: missing endmodule for module: bad_module" in text
+    assert "read-only: no file writes" in text
+
+
 def test_format_module_hierarchy_text_mentions_tree_and_boundary():
     view = build_module_hierarchy_view(str(FIXTURE), FIXTURE)
     text = format_module_hierarchy_text(view)
@@ -1273,6 +1348,33 @@ def test_cli_organization_text():
     assert "source:" in result.stdout
     assert "2 modules" in result.stdout
     assert "1 hierarchy edge" in result.stdout
+
+
+def test_cli_boundary_audit_json():
+    result = _run_cli("boundary-audit", str(FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-boundary-audit"
+    assert payload["refactor_readiness"] == "ready-for-review"
+    assert payload["complete_module_count"] == 2
+    assert payload["incomplete_module_count"] == 0
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["runs_validation"] is False
+
+
+def test_cli_boundary_audit_text():
+    result = _run_cli(
+        "boundary-audit",
+        str(INCOMPLETE_FIXTURE),
+        "--format",
+        "text",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "boundary audit: available_as_data" in result.stdout
+    assert "refactor readiness: blocked" in result.stdout
+    assert "module bad_module (incomplete; blocked)" in result.stdout
+    assert "blocked: missing endmodule for module: bad_module" in result.stdout
+    assert "read-only: no file writes" in result.stdout
 
 
 def test_cli_hierarchy_json():
@@ -1878,6 +1980,12 @@ def test_cli_organization_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_boundary_audit_missing_path_exits_nonzero():
+    result = _run_cli("boundary-audit", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_cli_hierarchy_missing_path_exits_nonzero():
     result = _run_cli("hierarchy", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -2053,6 +2161,7 @@ def test_docs_cover_organization_flow_and_limits():
     contract = CONTRACT_DOC.read_text(encoding="utf-8")
     workflow = WORKFLOW_DOC.read_text(encoding="utf-8")
     assert "organization <path>" in contract
+    assert "boundary-audit <path>" in contract
     assert "hierarchy <path>" in contract
     assert "dependencies <path>" in contract
     assert "module-summary <path>" in contract
@@ -2069,6 +2178,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "refactor-session <path>" in contract
     assert "MODULE_ORGANIZATION_WORKFLOW.md" in contract
     assert "proposal-only" in workflow
+    assert "module-boundary-audit" in workflow
     assert "module-hierarchy-view" in workflow
     assert "module-dependency-view" in workflow
     assert "module-summary-view" in workflow
@@ -2091,5 +2201,6 @@ def test_docs_cover_organization_flow_and_limits():
     assert "refactor handoff metadata" in workflow
     assert "refactor checklist metadata" in workflow
     assert "refactor session status metadata" in workflow
+    assert "boundary audit data" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow
