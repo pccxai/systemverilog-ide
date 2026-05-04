@@ -13,6 +13,9 @@ _ENDMODULE_RE = re.compile(r"^(\s*)endmodule\b")
 _INSTANCE_RE = re.compile(
     r"^(\s*)([A-Za-z_]\w*)\s+(?:#\s*\([^;]*\)\s*)?([A-Za-z_]\w*)\s*\("
 )
+_IDENT_RE = re.compile(r"\b[A-Za-z_]\w*\b")
+_PORT_DIRECTION_RE = re.compile(r"\b(input|output|inout)\b")
+_PORT_WIDTH_RE = re.compile(r"(\[[^\]]+\])")
 
 _NON_INSTANCE_WORDS: frozenset[str] = frozenset({
     "always",
@@ -45,6 +48,26 @@ _NON_INSTANCE_WORDS: frozenset[str] = frozenset({
     "while",
 })
 
+_PORT_SKIP_WORDS: frozenset[str] = frozenset({
+    "bit",
+    "byte",
+    "input",
+    "inout",
+    "integer",
+    "int",
+    "logic",
+    "longint",
+    "output",
+    "parameter",
+    "reg",
+    "shortint",
+    "signed",
+    "time",
+    "tri",
+    "var",
+    "wire",
+})
+
 LIMITATIONS: tuple[str, ...] = (
     "scanner-based module declarations and endmodule matching only",
     "single-line instantiation candidates only",
@@ -66,6 +89,16 @@ DEPENDENCY_VIEW_LIMITATIONS: tuple[str, ...] = (
     "scanner-based module dependency visualization data only",
     "single-line instantiation candidates only",
     "direct dependency and dependent summaries only",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "no refactor application, file write, validation run, or patch generation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
+MODULE_SUMMARY_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module header and port summary data only",
+    "ANSI-style port declarations are detected conservatively",
+    "non-ANSI body declarations, parameters, macros, interfaces, and modports are not resolved",
     "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
     "no refactor application, file write, validation run, or patch generation",
     "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
@@ -130,6 +163,22 @@ def _hierarchy_safety_flags() -> dict[str, bool]:
 
 
 def _dependency_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "writes_files": False,
+        "applies_refactor": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _module_summary_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "writes_files": False,
@@ -526,6 +575,185 @@ def build_module_dependency_view(source: str, path: Path) -> dict[str, Any]:
     }
 
 
+def _module_header(
+    module: dict[str, Any],
+    visible_lines: list[tuple[int, str]],
+) -> dict[str, Any]:
+    lines: list[tuple[int, str]] = []
+    header_end_line: int | None = None
+    boundary_end = module["end_line"]
+    for line_num, visible in visible_lines:
+        if line_num < module["start_line"]:
+            continue
+        if boundary_end is not None and line_num >= boundary_end:
+            break
+        lines.append((line_num, visible))
+        if ";" in visible:
+            header_end_line = line_num
+            break
+
+    return {
+        "complete": header_end_line is not None,
+        "end_line": header_end_line,
+        "line_count": len(lines),
+        "lines": lines,
+        "start_line": module["start_line"],
+    }
+
+
+def _port_segments(line: str, module_name: str) -> list[str]:
+    visible = line.split("//", 1)[0]
+    module_prefix = re.match(rf"^\s*module\s+{re.escape(module_name)}\b", visible)
+    if module_prefix:
+        open_paren = visible.find("(", module_prefix.end())
+        if open_paren == -1:
+            return []
+        visible = visible[open_paren + 1:]
+
+    visible = (
+        visible
+        .replace(");", " ")
+        .replace(";", " ")
+        .replace("(", " ")
+        .replace(")", " ")
+    )
+    return [
+        segment.strip()
+        for segment in visible.split(",")
+        if segment.strip()
+    ]
+
+
+def _port_name_from_segment(segment: str) -> str | None:
+    before_default = segment.split("=", 1)[0]
+    identifiers = [
+        identifier
+        for identifier in _IDENT_RE.findall(before_default)
+        if identifier not in _PORT_SKIP_WORDS
+    ]
+    return identifiers[-1] if identifiers else None
+
+
+def _scan_header_ports(
+    module: dict[str, Any],
+    header_lines: list[tuple[int, str]],
+) -> list[dict[str, Any]]:
+    ports: list[dict[str, Any]] = []
+    current_direction: str | None = None
+    current_width: str | None = None
+    seen_names: set[str] = set()
+
+    for line_num, visible in header_lines:
+        for segment in _port_segments(visible, module["name"]):
+            if "parameter" in _IDENT_RE.findall(segment):
+                current_direction = None
+                current_width = None
+                continue
+
+            direction_match = _PORT_DIRECTION_RE.search(segment)
+            width_match = _PORT_WIDTH_RE.search(segment)
+            if direction_match:
+                current_direction = direction_match.group(1)
+                current_width = width_match.group(1) if width_match else None
+                state = "detected"
+            elif current_direction is not None:
+                state = "inherited-direction"
+            else:
+                state = "direction-unknown"
+
+            name = _port_name_from_segment(segment)
+            if name is None or name in seen_names:
+                continue
+
+            seen_names.add(name)
+            ports.append({
+                "direction": current_direction or "unknown",
+                "line": line_num,
+                "name": name,
+                "state": state,
+                "width": current_width,
+            })
+
+    return ports
+
+
+def _port_direction_counts(ports: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {
+        "input": 0,
+        "output": 0,
+        "inout": 0,
+        "unknown": 0,
+    }
+    for port in ports:
+        counts[port["direction"]] = counts.get(port["direction"], 0) + 1
+    return counts
+
+
+def _module_summary_readiness(
+    module: dict[str, Any],
+    header: dict[str, Any],
+) -> dict[str, Any]:
+    reasons: list[str] = []
+    if not module["complete"]:
+        reasons.append(f"module boundary is incomplete: {module['name']}")
+    if not header["complete"]:
+        reasons.append(f"module header is incomplete: {module['name']}")
+    return {
+        "reasons": reasons,
+        "state": "blocked" if reasons else "ready-for-review",
+    }
+
+
+def _module_summary_rows(
+    modules: list[dict[str, Any]],
+    visible_lines_by_file: dict[str, list[tuple[int, str]]],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for module in modules:
+        header = _module_header(module, visible_lines_by_file[module["file"]])
+        ports = _scan_header_ports(module, header["lines"])
+        rows.append({
+            "boundary": _module_summary(module),
+            "file": module["file"],
+            "header": {
+                "complete": header["complete"],
+                "end_line": header["end_line"],
+                "line_count": header["line_count"],
+                "start_line": header["start_line"],
+            },
+            "name": module["name"],
+            "port_count": len(ports),
+            "port_direction_counts": _port_direction_counts(ports),
+            "ports": ports,
+            "readiness": _module_summary_readiness(module, header),
+        })
+    return rows
+
+
+def build_module_summary_view(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    files = sorted({module["file"] for module in modules})
+    visible_lines_by_file = {
+        file_name: _visible_lines(Path(file_name))
+        for file_name in files
+    }
+    summaries = _module_summary_rows(modules, visible_lines_by_file)
+
+    return {
+        "kind": "module-summary-view",
+        "limitations": list(MODULE_SUMMARY_LIMITATIONS),
+        "module_count": len(summaries),
+        "modules": summaries,
+        "port_count": sum(summary["port_count"] for summary in summaries),
+        "safety": _module_summary_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "summary_state": "available_as_data",
+        "tool": "pccx-ide-cli",
+    }
+
+
 def _requested_change(
     action: str,
     module_name: str,
@@ -789,6 +1017,39 @@ def format_module_dependency_text(view: dict[str, Any]) -> str:
         )
     if view["unresolved"]:
         lines.append(f"unresolved: {', '.join(view['unresolved'])}")
+    lines.append(
+        "read-only: no file writes, refactors, validation, lab, launcher, "
+        "provider, or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_summary_text(view: dict[str, Any]) -> str:
+    lines = [
+        f"source: {view['source']}",
+        f"module summary: {view['summary_state']}",
+        f"{view['module_count']} module"
+        f"{'s' if view['module_count'] != 1 else ''}",
+        f"{view['port_count']} port"
+        f"{'s' if view['port_count'] != 1 else ''}",
+    ]
+    for module in view["modules"]:
+        header_state = "complete" if module["header"]["complete"] else "incomplete"
+        readiness = module["readiness"]["state"]
+        lines.append(
+            f"{module['file']}:{module['boundary']['start_line']}: "
+            f"module {module['name']} ({header_state} header, {readiness})"
+        )
+        if not module["ports"]:
+            lines.append("  ports: none")
+        for port in module["ports"]:
+            width = f" {port['width']}" if port["width"] else ""
+            lines.append(
+                f"  {port['direction']}{width} {port['name']} "
+                f"at line {port['line']} ({port['state']})"
+            )
+        for reason in module["readiness"]["reasons"]:
+            lines.append(f"  blocked: {reason}")
     lines.append(
         "read-only: no file writes, refactors, validation, lab, launcher, "
         "provider, or hardware execution"

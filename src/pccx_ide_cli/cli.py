@@ -173,6 +173,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    module_summary_cmd = sub.add_parser(
+        "module-summary",
+        help=(
+            "Render scanner-based read-only module header and port summaries."
+        ),
+    )
+    module_summary_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    module_summary_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     refactor_plan_cmd = sub.add_parser(
         "refactor-plan",
         help=(
@@ -495,6 +513,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_module_dependency_text(view))
+        return 0
+
+    if args.command == "module-summary":
+        from .module_organization import (
+            build_module_summary_view,
+            format_module_summary_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        view = build_module_summary_view(str(args.path), args.path)
+        if args.format == "json":
+            json.dump(view, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_module_summary_text(view))
         return 0
 
     if args.command == "refactor-plan":
