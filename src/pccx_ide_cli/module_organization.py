@@ -215,6 +215,20 @@ HANDOFF_SUMMARY_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+CHECKLIST_SUMMARY_LIMITATIONS: tuple[str, ...] = (
+    "summary-only refactor checklist metadata",
+    "summarizes the existing refactor handoff for maintainer review",
+    "does not include command argv; use validation-plan for command descriptors",
+    "does not record approval, accept application requests, or apply refactors",
+    "does not execute validation commands or shell commands",
+    "does not apply refactors, write files, move files, generate patches, "
+    "or roll back files",
+    "does not publish public text, create pull requests, write comments, "
+    "or mutate projects",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 _REFACTOR_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "rename-module": ("new_name",),
     "extract-port": ("port_name", "direction"),
@@ -467,6 +481,37 @@ def _handoff_summary_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "handoff_summary_only": True,
+        "approval_granted": False,
+        "request_accepted": False,
+        "write_attempted": False,
+        "summarizes_command_descriptors": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "rollback_required": False,
+        "public_text_published": False,
+        "pull_request_created": False,
+        "comment_written": False,
+        "project_mutation": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _checklist_summary_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "checklist_summary_only": True,
         "approval_granted": False,
         "request_accepted": False,
         "write_attempted": False,
@@ -2455,6 +2500,155 @@ def build_refactor_handoff_summary(
     }
 
 
+def _checklist_items(handoff: dict[str, Any]) -> list[dict[str, Any]]:
+    preflight = handoff["preflight"]
+    result = handoff["application_result_summary"]
+    handoff_summary = handoff["handoff_summary"]
+    preflight_ready = preflight["status"] != "blocked"
+
+    return [
+        {
+            "complete": preflight_ready,
+            "item_id": "preflight",
+            "required": True,
+            "status": preflight["status"],
+            "summary": (
+                "Refactor preflight metadata is ready for review."
+                if preflight_ready
+                else "Resolve refactor preflight blockers before review."
+            ),
+        },
+        {
+            "complete": False,
+            "item_id": "context-review",
+            "required": True,
+            "status": (
+                "pending-maintainer-review"
+                if preflight_ready
+                else "blocked-by-preflight"
+            ),
+            "summary": (
+                "Review module context, dependency impact, port usage, "
+                "and target references before any approval."
+            ),
+        },
+        {
+            "command_descriptor_count": result["command_descriptor_count"],
+            "complete": False,
+            "item_id": "validation-plan-review",
+            "required": True,
+            "status": (
+                "pending-maintainer-review"
+                if preflight_ready
+                else "blocked-by-preflight"
+            ),
+            "summary": (
+                "Review validation descriptor IDs before any explicit "
+                "validation run."
+            ),
+        },
+        {
+            "complete": False,
+            "item_id": "approval-gate",
+            "required": True,
+            "status": result["approval_decision_state"],
+            "summary": "Explicit approval has not been recorded.",
+        },
+        {
+            "complete": False,
+            "item_id": "application-gate",
+            "required": True,
+            "status": result["application_result"],
+            "summary": (
+                "Application remains not applied; no write attempt, patch, "
+                "validation run, or rollback occurred."
+            ),
+            "write_attempted": result["write_attempted"],
+        },
+        {
+            "complete": False,
+            "item_id": "handoff-review",
+            "required": True,
+            "status": handoff["handoff_state"],
+            "summary": handoff_summary["recommended_next_step"],
+        },
+    ]
+
+
+def build_refactor_checklist_summary(
+    source: str,
+    path: Path,
+    action: str,
+    module_name: str,
+    *,
+    new_name: str | None = None,
+    port_name: str | None = None,
+    direction: str | None = None,
+    width: str | None = None,
+    destination: str | None = None,
+) -> dict[str, Any]:
+    handoff = build_refactor_handoff_summary(
+        source,
+        path,
+        action,
+        module_name,
+        new_name=new_name,
+        port_name=port_name,
+        direction=direction,
+        width=width,
+        destination=destination,
+    )
+    handoff_summary = handoff["handoff_summary"]
+    result = handoff["application_result_summary"]
+
+    return {
+        "action": action,
+        "blocked_actions": [
+            *handoff["blocked_actions"],
+            "approval-grant",
+            "application-accept",
+        ],
+        "checklist_items": _checklist_items(handoff),
+        "checklist_state": handoff["handoff_state"],
+        "handoff_summary": {
+            "handoff_state": handoff["handoff_state"],
+            "kind": handoff["kind"],
+            "ready_for_maintainer_review": handoff_summary[
+                "ready_for_maintainer_review"
+            ],
+            "recommended_next_step": handoff_summary["recommended_next_step"],
+            "result_state": handoff_summary["result_state"],
+        },
+        "kind": "module-refactor-checklist-summary",
+        "limitations": list(CHECKLIST_SUMMARY_LIMITATIONS),
+        "module": handoff["module"],
+        "preflight": {
+            "reasons": list(handoff["preflight"]["reasons"]),
+            "requires_approval_before_write": handoff["preflight"][
+                "requires_approval_before_write"
+            ],
+            "requires_explicit_approval_before_run": True,
+            "status": handoff["preflight"]["status"],
+        },
+        "result_summary": {
+            "approval_decision_state": result["approval_decision_state"],
+            "application_result": result["application_result"],
+            "command_descriptor_count": result["command_descriptor_count"],
+            "file_change_count": result["file_change_count"],
+            "patch_generated": result["patch_generated"],
+            "rollback_required": result["rollback_required"],
+            "validation_run": result["validation_run"],
+            "write_attempted": result["write_attempted"],
+        },
+        "safety": _checklist_summary_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "target": module_name,
+        "tool": "pccx-ide-cli",
+        "writes_files": False,
+    }
+
+
 def format_refactor_proposal_text(proposal: dict[str, Any]) -> str:
     lines = [
         f"source: {proposal['source']}",
@@ -2697,6 +2891,46 @@ def format_refactor_handoff_summary_text(summary: dict[str, Any]) -> str:
         "comment, project mutation, validation, shell, refactor, patch, "
         "file write, rollback, lab, launcher, vendor tool, provider, or "
         "hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_refactor_checklist_summary_text(checklist: dict[str, Any]) -> str:
+    handoff = checklist["handoff_summary"]
+    result = checklist["result_summary"]
+    ready = "yes" if handoff["ready_for_maintainer_review"] else "no"
+    lines = [
+        f"source: {checklist['source']}",
+        f"target: {checklist['target']}",
+        f"action: {checklist['action']}",
+        f"refactor checklist: {checklist['checklist_state']}",
+        f"handoff: {handoff['handoff_state']}",
+        f"ready for maintainer review: {ready}",
+        "write attempted: no",
+        "patch generated: no",
+        "files changed: 0",
+        "validation run: no",
+        "rollback required: no",
+        f"approval decision: {result['approval_decision_state']}",
+        f"application result: {result['application_result']}",
+        f"preflight: {checklist['preflight']['status']}",
+        "writes files: no",
+        "runs validation: no",
+        f"validation descriptors: {result['command_descriptor_count']}",
+    ]
+    for item in checklist["checklist_items"]:
+        lines.append(
+            f"checklist: {item['item_id']} ({item['status']}): "
+            f"{item['summary']}"
+        )
+    for reason in checklist["preflight"]["reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next step: {handoff['recommended_next_step']}")
+    lines.append(
+        "summary-only checklist: no command argv, approval grant, "
+        "application accept, validation, shell, refactor, patch, file write, "
+        "rollback, public text, pull request, comment, project mutation, lab, "
+        "launcher, vendor tool, provider, or hardware execution"
     )
     return "\n".join(lines) + "\n"
 

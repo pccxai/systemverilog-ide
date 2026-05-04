@@ -650,6 +650,59 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    refactor_checklist_cmd = sub.add_parser(
+        "refactor-checklist",
+        help="Emit summary-only checklist metadata for refactor review.",
+    )
+    refactor_checklist_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    refactor_checklist_cmd.add_argument(
+        "--action",
+        choices=("rename-module", "extract-port", "move-module"),
+        required=True,
+        help="Refactor proposal kind to summarize as a review checklist.",
+    )
+    refactor_checklist_cmd.add_argument(
+        "--module",
+        required=True,
+        help="Exact module name to use as the checklist target.",
+    )
+    refactor_checklist_cmd.add_argument(
+        "--new-name",
+        default=None,
+        help="New module name for rename-module checklists.",
+    )
+    refactor_checklist_cmd.add_argument(
+        "--port-name",
+        default=None,
+        help="Port name for extract-port checklists.",
+    )
+    refactor_checklist_cmd.add_argument(
+        "--direction",
+        choices=("input", "output", "inout"),
+        default=None,
+        help="Port direction for extract-port checklists.",
+    )
+    refactor_checklist_cmd.add_argument(
+        "--width",
+        default=None,
+        help="Optional port width text for extract-port checklists.",
+    )
+    refactor_checklist_cmd.add_argument(
+        "--destination",
+        default=None,
+        help="Relative destination path for move-module checklists.",
+    )
+    refactor_checklist_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     xsim_log = sub.add_parser(
         "xsim-log",
         help="Parse an existing xsim-style log file into diagnostics-like output.",
@@ -1184,6 +1237,34 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_refactor_handoff_summary_text(summary))
+        return 0
+
+    if args.command == "refactor-checklist":
+        from .module_organization import (
+            build_refactor_checklist_summary,
+            format_refactor_checklist_summary_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        checklist = build_refactor_checklist_summary(
+            str(args.path),
+            args.path,
+            args.action,
+            args.module,
+            new_name=args.new_name,
+            port_name=args.port_name,
+            direction=args.direction,
+            width=args.width,
+            destination=args.destination,
+        )
+        if args.format == "json":
+            json.dump(checklist, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_refactor_checklist_summary_text(checklist))
         return 0
 
     if args.command == "xsim-log":

@@ -6,14 +6,15 @@ This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 `module-summary`, `port-usage`, `module-context`, `refactor-impact`,
 `validation-plan`, `refactor-review`, `refactor-approval`, and
-`refactor-application`, `refactor-result`, and `refactor-handoff` CLI surfaces
+`refactor-application`, `refactor-result`, `refactor-handoff`, and
+`refactor-checklist` CLI surfaces
 that report module boundary spans, scanner-based hierarchy data, direct
 dependency impact data, conservative module header/port summaries, target port
 usage summaries, target module context bundles, target-specific refactor impact
 data, proposal-only validation command descriptors, a summary-only review
 packet, approval decision metadata, application request metadata, and
-application result metadata plus refactor handoff metadata for editor
-navigation and reviewed refactoring planning.
+application result metadata plus refactor handoff metadata and refactor
+checklist metadata for editor navigation and reviewed refactoring planning.
 
 It is not a full SystemVerilog parser, not semantic elaboration, not an LSP
 implementation, and not a write-capable refactoring engine.
@@ -56,6 +57,9 @@ python -m pccx_ide_cli refactor-result <path> --action move-module --module <nam
 python -m pccx_ide_cli refactor-handoff <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-handoff <path> --action extract-port --module <name> --port-name <name> --direction input --format text
 python -m pccx_ide_cli refactor-handoff <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
+python -m pccx_ide_cli refactor-checklist <path> --action rename-module --module <name> --new-name <name> --format json
+python -m pccx_ide_cli refactor-checklist <path> --action extract-port --module <name> --port-name <name> --direction input --format text
+python -m pccx_ide_cli refactor-checklist <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
 ```
 
 `<path>` may be a `.sv` / `.v` file or a directory. Directory scans follow the
@@ -450,6 +454,7 @@ inputs for later helpers:
 - target-specific module context bundles
 - target-specific refactor impact review data
 - planned helper names for rename, extract-port, and move-module workflows
+- summary-only checklist metadata for maintainer review
 
 The CLI does not write files, apply patches, rename symbols, move modules,
 edit ports, run validation, execute shell commands, invoke `pccx-lab`, invoke
@@ -902,6 +907,76 @@ publish public text, create pull requests, write comments, mutate projects,
 accept an application request, apply a refactor, perform rollback, grant
 approval, or perform automatic repository actions.
 
+## Refactor Checklist Summary
+
+`refactor-checklist` adds summary-only refactor checklist metadata over the
+existing `refactor-handoff` summary. It is intended for editor review panes and
+maintainer notes that need a compact list of gates before any write-capable
+helper exists.
+
+Example shape:
+
+```json
+{
+  "kind": "module-refactor-checklist-summary",
+  "checklist_state": "ready-for-review",
+  "action": "rename-module",
+  "writes_files": false,
+  "checklist_items": [
+    {
+      "item_id": "preflight",
+      "status": "ready-for-review",
+      "required": true,
+      "complete": true
+    },
+    {
+      "item_id": "approval-gate",
+      "status": "not-approved",
+      "required": true,
+      "complete": false
+    }
+  ],
+  "handoff_summary": {
+    "kind": "module-refactor-handoff-summary",
+    "handoff_state": "ready-for-review",
+    "ready_for_maintainer_review": true
+  },
+  "result_summary": {
+    "application_result": "not_applied",
+    "write_attempted": false,
+    "patch_generated": false,
+    "file_change_count": 0,
+    "validation_run": false,
+    "rollback_required": false,
+    "command_descriptor_count": 8
+  },
+  "safety": {
+    "read_only": true,
+    "checklist_summary_only": true,
+    "approval_granted": false,
+    "request_accepted": false,
+    "writes_files": false,
+    "generates_patch": false,
+    "runs_validation": false,
+    "runs_shell": false,
+    "invokes_pccx_lab": false,
+    "invokes_launcher": false,
+    "hardware_access": false
+  }
+}
+```
+
+The checklist intentionally summarizes review gates and command descriptor
+counts only. It does not include command argv; consumers that need the
+fixed-argv descriptor list should call `validation-plan` directly.
+
+This boundary does not write files, apply refactors, move files, generate
+patches, run validation, execute shell commands, invoke `pccx-lab`, invoke the
+launcher, run vendor tools, call providers, touch hardware, upload telemetry,
+publish public text, create pull requests, write comments, mutate projects,
+accept an application request, apply a refactor, perform rollback, grant
+approval, or perform automatic repository actions.
+
 ## Limitations
 
 - Scanner-based module declarations and `endmodule` matching only.
@@ -920,5 +995,5 @@ direct dependency view, conservative module header/port summaries,
 target-specific port usage summaries, target-specific module context
 bundles, target-specific refactor impact review data, and a
 proposal-only refactoring, validation planning, review packet, approval
-decision, application request, application result, and handoff summary
-boundary.
+decision, application request, application result, handoff summary, and
+checklist summary boundary.

@@ -57,6 +57,7 @@ python -m pccx_ide_cli refactor-approval <path> --action rename-module --module 
 python -m pccx_ide_cli refactor-application <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-result <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-handoff <path> --action rename-module --module <name> --new-name <name> --format json
+python -m pccx_ide_cli refactor-checklist <path> --action rename-module --module <name> --new-name <name> --format json
 
 # Opt-in pccx-lab diagnostics backend
 python -m pccx_ide_cli check <sv-file> --backend pccx-lab --format json
@@ -246,6 +247,14 @@ files, no validation run, and no rollback requirement; it does not include
 command argv, accept a write request, apply edits, execute validation, run
 shell commands, write files, invoke pccx-lab or the launcher, run vendor tools,
 call providers, touch hardware, or perform automatic repository actions.
+`refactor-checklist` emits summary-only checklist metadata over the refactor
+handoff. It records preflight, context review, validation-plan review, approval
+gate, application gate, and handoff review items without command argv; it does
+not grant approval, accept application requests, apply edits, execute
+validation, run shell commands, write files, publish public text, create pull
+requests, write comments, mutate projects, invoke pccx-lab or the launcher,
+run vendor tools, call providers, touch hardware, or perform automatic
+repository actions.
 
 For existing xsim logs, the VS Code prototype can consume the checked
 `problems from-xsim-log` JSON as a read-only status/context summary.  The
@@ -265,7 +274,7 @@ xsim path, and text surface sketches is documented in
 - Module organization, header/port summaries, port usage summaries,
   refactor impact review, refactor planning, and validation planning are
   scanner-based; refactor review packets, approval decisions, application
-  requests, application results, and handoff summaries are summary-only
+  requests, application results, handoff summaries, and checklists are summary-only
   metadata over those
   surfaces. They are not semantic elaboration and do not apply refactors or
   execute validation.
