@@ -4,11 +4,12 @@
 
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
-`module-summary`, `port-usage`, and `refactor-impact` CLI surfaces that
+`module-summary`, `port-usage`, `module-context`, and `refactor-impact` CLI surfaces that
 report module boundary spans, scanner-based hierarchy data, direct
 dependency impact data, conservative module header/port summaries,
-target port usage summaries, and target-specific refactor impact data
-for editor navigation and reviewed refactoring planning.
+target port usage summaries, target module context bundles, and
+target-specific refactor impact data for editor navigation and reviewed
+refactoring planning.
 
 It is not a full SystemVerilog parser, not semantic elaboration, not an LSP
 implementation, and not a write-capable refactoring engine.
@@ -26,6 +27,8 @@ python -m pccx_ide_cli module-summary <path> --format json
 python -m pccx_ide_cli module-summary <path> --format text
 python -m pccx_ide_cli port-usage <path> --module <name> --format json
 python -m pccx_ide_cli port-usage <path> --module <name> --format text
+python -m pccx_ide_cli module-context <path> --module <name> --format json
+python -m pccx_ide_cli module-context <path> --module <name> --format text
 python -m pccx_ide_cli refactor-impact <path> --module <name> --format json
 python -m pccx_ide_cli refactor-impact <path> --module <name> --format text
 python -m pccx_ide_cli refactor-plan <path> --action rename-module --module <name> --new-name <name> --format json
@@ -225,6 +228,49 @@ generate patches, run validation, execute shell commands, invoke
 `pccx-lab`, invoke the launcher, call providers, touch hardware, upload
 telemetry, or perform automatic repository actions.
 
+The module context bundle combines the existing target-specific view
+outputs into a bounded editor context packet:
+
+```json
+{
+  "kind": "module-context-bundle",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "target": "leaf_mod",
+  "context_state": "available_as_data",
+  "writes_files": false,
+  "preflight": {
+    "status": "ready-for-review",
+    "requires_approval_before_write": true,
+    "reasons": []
+  },
+  "summary_context": {},
+  "dependency_context": {},
+  "port_context": {},
+  "refactor_context": {
+    "review_target_count": 2,
+    "writes_files": false
+  },
+  "source_views": [],
+  "safety": {
+    "read_only": true,
+    "writes_files": false,
+    "applies_refactor": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The module context bundle is display/context data only. It summarizes
+the existing `module-summary`, `dependencies`, `port-usage`, and
+`refactor-impact` surfaces for a named module. It does not write files,
+apply refactors, move files, generate patches, run validation, execute
+shell commands, invoke `pccx-lab`, invoke the launcher, call providers,
+touch hardware, upload telemetry, or perform automatic repository
+actions.
+
 The refactor impact view reports target-specific review data for a module:
 
 ```json
@@ -309,6 +355,8 @@ This is a visualization seed for editor trees and review workflows. The
 `module-summary` command renders conservative module header and port data.
 The `port-usage` command renders a target module's conservative port data
 and dependent instantiation connection summaries.
+The `module-context` command bundles target summary, dependency,
+port-usage, and refactor-impact review data for editor context panes.
 These commands do not run elaboration, expand macros, interpret generate
 blocks, or replace vendor tooling.
 
@@ -340,6 +388,20 @@ semantically resolved: macros, interfaces, generate blocks, parameter
 elaboration, implicit connections, and type compatibility are outside
 this boundary.
 
+## Module Context Bundle
+
+`module-context` accepts a target module name and returns one read-only
+context packet assembled from the existing scanner-derived summary,
+dependency, port-usage, and refactor-impact views. The bundle is meant
+for editor context panes that need a compact target module snapshot
+without making separate UI-layer assumptions about the individual view
+shapes.
+
+This command does not create a new analysis engine. It does not write
+files, apply refactors, generate patches, run validation, execute shell
+commands, invoke `pccx-lab`, invoke the launcher, call providers, touch
+hardware, upload telemetry, or perform automatic repository actions.
+
 ## Refactor Impact Review
 
 `refactor-impact` accepts a target module name and reports scanner-detected
@@ -363,6 +425,7 @@ inputs for later helpers:
 - direct dependency and dependent summaries
 - conservative module header and port summaries
 - target-specific port usage summaries
+- target-specific module context bundles
 - target-specific refactor impact review data
 - planned helper names for rename, extract-port, and move-module workflows
 
@@ -439,5 +502,6 @@ This workflow advances
 [`systemverilog-ide#8`](https://github.com/pccxai/systemverilog-ide/issues/8)
 with read-only module boundary detection, a focused hierarchy view, a
 direct dependency view, conservative module header/port summaries,
-target-specific port usage summaries, target-specific refactor impact
-review data, and a proposal-only refactoring boundary.
+target-specific port usage summaries, target-specific module context
+bundles, target-specific refactor impact review data, and a
+proposal-only refactoring boundary.

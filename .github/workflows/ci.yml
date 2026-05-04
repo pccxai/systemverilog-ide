@@ -185,6 +185,13 @@ jobs:
               fixtures/organization/hierarchy_top.sv \
               | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-summary-view'; assert d['safety']['writes_files'] is False"
           echo "module summary smoke ok"
+      - name: cli smoke (module context exits zero)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli module-context \
+              fixtures/organization/hierarchy_top.sv --module leaf_mod \
+              | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-context-bundle'; assert d['safety']['writes_files'] is False"
+          echo "module context smoke ok"
       - name: cli smoke (refactor impact exits zero)
         run: |
           set -e

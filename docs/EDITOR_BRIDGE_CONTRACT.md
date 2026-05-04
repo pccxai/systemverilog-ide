@@ -49,6 +49,7 @@ python -m pccx_ide_cli hierarchy <path> --format json
 python -m pccx_ide_cli dependencies <path> --format json
 python -m pccx_ide_cli module-summary <path> --format json
 python -m pccx_ide_cli port-usage <path> --module <name> --format json
+python -m pccx_ide_cli module-context <path> --module <name> --format json
 python -m pccx_ide_cli refactor-impact <path> --module <name> --format json
 
 # Opt-in pccx-lab diagnostics backend
@@ -189,10 +190,11 @@ declaration records.  `declarations` exports those records directly, and
 adds scanner-based module boundary spans, hierarchy edges, root candidates,
 and proposal-only refactoring metadata for project tree and reviewed
 refactoring workflows. `hierarchy`, `dependencies`, `module-summary`,
-`port-usage`, and `refactor-impact` render focused read-only views from
-the same scanner data, including conservative module header/port
-summaries, target port usage summaries, and target-specific refactor
-impact review data. The organization surface is documented in
+`port-usage`, `module-context`, and `refactor-impact` render focused
+read-only views from the same scanner data, including conservative module
+header/port summaries, target port usage summaries, target module context
+bundles, and target-specific refactor impact review data. The
+organization surface is documented in
 [`MODULE_ORGANIZATION_WORKFLOW.md`](./MODULE_ORGANIZATION_WORKFLOW.md).
 `refactor-plan` extends the same boundary with proposal-only
 rename-module, extract-port, and move-module planning envelopes. It emits
