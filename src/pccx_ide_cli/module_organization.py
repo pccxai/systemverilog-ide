@@ -182,6 +182,16 @@ APPROVAL_DECISION_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+APPLICATION_REQUEST_LIMITATIONS: tuple[str, ...] = (
+    "proposal-only refactor application request metadata",
+    "records a not-accepted application gate over the approval decision",
+    "does not include command argv; use validation-plan for command descriptors",
+    "does not execute validation commands or shell commands",
+    "does not apply refactors, write files, move files, or generate patches",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 _REFACTOR_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "rename-module": ("new_name",),
     "extract-port": ("port_name", "direction"),
@@ -359,6 +369,31 @@ def _approval_decision_safety_flags() -> dict[str, bool]:
         "read_only": True,
         "decision_metadata_only": True,
         "approval_granted": False,
+        "summarizes_command_descriptors": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _application_request_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "application_metadata_only": True,
+        "approval_granted": False,
+        "request_accepted": False,
         "summarizes_command_descriptors": True,
         "emits_command_descriptors": False,
         "writes_files": False,
@@ -1988,6 +2023,102 @@ def build_refactor_approval_decision(
     }
 
 
+def _application_approval_summary(decision: dict[str, Any]) -> dict[str, Any]:
+    packet = decision["packet_summary"]
+    phases = []
+    for phase in packet["validation_phases"]:
+        phases.append({
+            "command_ids": list(phase["command_ids"]),
+            "phase": phase["phase"],
+            "status": phase["status"],
+        })
+    return {
+        "approved": decision["approval_decision"]["approved"],
+        "command_descriptor_count": packet["command_descriptor_count"],
+        "decision_state": decision["decision_state"],
+        "kind": decision["kind"],
+        "reason": decision["approval_decision"]["reason"],
+        "review_state": packet["review_state"],
+        "validation_phases": phases,
+        "validation_state": packet["validation_state"],
+    }
+
+
+def build_refactor_application_request(
+    source: str,
+    path: Path,
+    action: str,
+    module_name: str,
+    *,
+    new_name: str | None = None,
+    port_name: str | None = None,
+    direction: str | None = None,
+    width: str | None = None,
+    destination: str | None = None,
+) -> dict[str, Any]:
+    decision = build_refactor_approval_decision(
+        source,
+        path,
+        action,
+        module_name,
+        new_name=new_name,
+        port_name=port_name,
+        direction=direction,
+        width=width,
+        destination=destination,
+    )
+    preflight = decision["preflight"]
+    approval = decision["approval_decision"]
+    application_state = (
+        "blocked"
+        if preflight["status"] == "blocked"
+        else "not-accepted"
+    )
+    reason = (
+        "preflight blocked"
+        if preflight["status"] == "blocked"
+        else "approval not granted"
+    )
+
+    return {
+        "action": action,
+        "application_request": {
+            "accepted": False,
+            "applied": False,
+            "decision": application_state,
+            "reason": reason,
+            "required_approval_decision": approval["decision"],
+            "requires_explicit_user_approval_before_run": True,
+            "requires_explicit_user_approval_before_write": True,
+            "result": "not_applied",
+        },
+        "application_state": application_state,
+        "approval_summary": _application_approval_summary(decision),
+        "kind": "module-refactor-application-request",
+        "limitations": list(APPLICATION_REQUEST_LIMITATIONS),
+        "module": decision["module"],
+        "preflight": {
+            "reasons": list(preflight["reasons"]),
+            "requires_approval_before_write": preflight[
+                "requires_approval_before_write"
+            ],
+            "requires_explicit_approval_before_run": True,
+            "status": preflight["status"],
+        },
+        "proposal_summary": {
+            "planned_step_count": decision["proposal_summary"]["planned_step_count"],
+            "requested_change": decision["proposal_summary"]["requested_change"],
+            "writes_files": decision["proposal_summary"]["writes_files"],
+        },
+        "safety": _application_request_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "target": module_name,
+        "tool": "pccx-ide-cli",
+        "writes_files": False,
+    }
+
+
 def format_refactor_proposal_text(proposal: dict[str, Any]) -> str:
     lines = [
         f"source: {proposal['source']}",
@@ -2110,6 +2241,40 @@ def format_refactor_approval_decision_text(decision: dict[str, Any]) -> str:
     lines.append(f"reason: {approval['reason']}")
     lines.append(
         "decision metadata only: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_refactor_application_request_text(request: dict[str, Any]) -> str:
+    application = request["application_request"]
+    approval = request["approval_summary"]
+    lines = [
+        f"source: {request['source']}",
+        f"target: {request['target']}",
+        f"action: {request['action']}",
+        f"application request: {application['decision']}",
+        "accepted: no",
+        "applied: no",
+        f"approval decision: {approval['decision_state']}",
+        f"review state: {approval['review_state']}",
+        f"preflight: {request['preflight']['status']}",
+        "writes files: no",
+        "runs validation: no",
+        f"validation descriptors: {approval['command_descriptor_count']}",
+    ]
+    for phase in approval["validation_phases"]:
+        command_ids = ", ".join(phase["command_ids"]) or "none"
+        lines.append(
+            f"validation phase: {phase['phase']} "
+            f"({phase['status']}): {command_ids}"
+        )
+    for reason in request["preflight"]["reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"reason: {application['reason']}")
+    lines.append(
+        "application metadata only: no command argv, validation, shell, "
         "refactor, patch, file write, lab, launcher, vendor tool, provider, "
         "or hardware execution"
     )
