@@ -55,6 +55,7 @@ python -m pccx_ide_cli validation-plan <path> --action rename-module --module <n
 python -m pccx_ide_cli refactor-review <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-approval <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-application <path> --action rename-module --module <name> --new-name <name> --format json
+python -m pccx_ide_cli refactor-result <path> --action rename-module --module <name> --new-name <name> --format json
 
 # Opt-in pccx-lab diagnostics backend
 python -m pccx_ide_cli check <sv-file> --backend pccx-lab --format json
@@ -229,6 +230,13 @@ with `accepted: false` and `applied: false`; it does not include command argv,
 accept a write request, apply edits, execute validation, run shell commands,
 write files, invoke pccx-lab or the launcher, run vendor tools, call providers,
 touch hardware, or perform automatic repository actions.
+`refactor-result` emits proposal-only application result metadata over the
+application request. It records a not-applied or blocked result receipt with no
+write attempt, no generated patch, no changed files, no validation run, and no
+rollback requirement; it does not include command argv, accept a write request,
+apply edits, execute validation, run shell commands, write files, invoke
+pccx-lab or the launcher, run vendor tools, call providers, touch hardware, or
+perform automatic repository actions.
 
 For existing xsim logs, the VS Code prototype can consume the checked
 `problems from-xsim-log` JSON as a read-only status/context summary.  The
@@ -247,9 +255,10 @@ xsim path, and text surface sketches is documented in
 - Scanner-based scaffolds, not full SystemVerilog parsing.
 - Module organization, header/port summaries, port usage summaries,
   refactor impact review, refactor planning, and validation planning are
-  scanner-based; refactor review packets, approval decisions, and application
-  requests are summary-only metadata over those surfaces. They are not semantic
-  elaboration and do not apply refactors or execute validation.
+  scanner-based; refactor review packets, approval decisions, application
+  requests, and application results are summary-only metadata over those
+  surfaces. They are not semantic elaboration and do not apply refactors or
+  execute validation.
 - No LSP server in this repository today.
 - No published editor extension or marketplace packaging is implemented
   here.
