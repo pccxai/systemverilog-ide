@@ -4,18 +4,18 @@
 
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
-`module-summary`, `port-usage`, `module-context`, `refactor-impact`,
-`validation-plan`, `refactor-review`, `refactor-approval`,
+`module-summary`, `boundary-audit`, `port-usage`, `module-context`,
+`refactor-impact`, `validation-plan`, `refactor-review`, `refactor-approval`,
 `refactor-application`, `refactor-result`, `refactor-handoff`,
 `refactor-checklist`, and `refactor-session` CLI surfaces
 that report module boundary spans, scanner-based hierarchy data, direct
 dependency impact data, conservative module header/port summaries, target port
 usage summaries, target module context bundles, target-specific refactor impact
-data, proposal-only validation command descriptors, a summary-only review
-packet, approval decision metadata, application request metadata, and
-application result metadata plus refactor handoff metadata, refactor checklist
-metadata, and refactor session status metadata for editor navigation and
-reviewed refactoring planning.
+data, boundary audit data, proposal-only validation command descriptors, a
+summary-only review packet, approval decision metadata, application request
+metadata, and application result metadata plus refactor handoff metadata,
+refactor checklist metadata, and refactor session status metadata for editor
+navigation and reviewed refactoring planning.
 
 It is not a full SystemVerilog parser, not semantic elaboration, not an LSP
 implementation, and not a write-capable refactoring engine.
@@ -31,6 +31,8 @@ python -m pccx_ide_cli dependencies <path> --format json
 python -m pccx_ide_cli dependencies <path> --format text
 python -m pccx_ide_cli module-summary <path> --format json
 python -m pccx_ide_cli module-summary <path> --format text
+python -m pccx_ide_cli boundary-audit <path> --format json
+python -m pccx_ide_cli boundary-audit <path> --format text
 python -m pccx_ide_cli port-usage <path> --module <name> --format json
 python -m pccx_ide_cli port-usage <path> --module <name> --format text
 python -m pccx_ide_cli module-context <path> --module <name> --format json
@@ -203,6 +205,39 @@ The module summary view is display data only. It does not write files,
 apply refactors, generate patches, run validation, execute shell
 commands, invoke `pccx-lab`, invoke the launcher, call providers, touch
 hardware, upload telemetry, or perform automatic repository actions.
+
+The boundary audit view reports scanner-detected module boundary
+completeness and whether those boundaries are ready for reviewed
+refactor planning:
+
+```json
+{
+  "kind": "module-boundary-audit",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "audit_state": "available_as_data",
+  "refactor_readiness": "ready-for-review",
+  "module_count": 2,
+  "complete_module_count": 2,
+  "incomplete_module_count": 0,
+  "modules": [],
+  "blocked_reasons": [],
+  "writes_files": false,
+  "safety": {
+    "read_only": true,
+    "boundary_audit_only": true,
+    "writes_files": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The boundary audit is status data only. It does not write files, apply
+refactors, generate patches, run validation, execute shell commands,
+invoke `pccx-lab`, invoke the launcher, run vendor tools, call providers,
+touch hardware, upload telemetry, or perform automatic repository actions.
 
 The port usage view reports a target module's conservative port
 declarations and scanner-detected dependent instantiation usage sites:

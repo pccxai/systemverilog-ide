@@ -45,6 +45,7 @@ python -m pccx_ide_cli locate <path> <name> --kind any --format json
 
 # Module organization for editor project trees
 python -m pccx_ide_cli organization <path> --format json
+python -m pccx_ide_cli boundary-audit <path> --format json
 python -m pccx_ide_cli hierarchy <path> --format json
 python -m pccx_ide_cli dependencies <path> --format json
 python -m pccx_ide_cli module-summary <path> --format json
@@ -197,11 +198,16 @@ declaration records.  `declarations` exports those records directly, and
 `locate` resolves exact declaration names by requested kind. `organization`
 adds scanner-based module boundary spans, hierarchy edges, root candidates,
 and proposal-only refactoring metadata for project tree and reviewed
-refactoring workflows. `hierarchy`, `dependencies`, `module-summary`,
-`port-usage`, `module-context`, and `refactor-impact` render focused
-read-only views from the same scanner data, including conservative module
-header/port summaries, target port usage summaries, target module context
-bundles, and target-specific refactor impact review data. The
+refactoring workflows. `boundary-audit` emits read-only module boundary
+completeness and refactor-readiness audit data from the same scanner output;
+it does not write files, apply refactors, generate patches, run validation,
+invoke pccx-lab or the launcher, run vendor tools, call providers, touch
+hardware, or perform automatic repository actions. `hierarchy`,
+`dependencies`, `module-summary`, `port-usage`, `module-context`, and
+`refactor-impact` render focused read-only views from the same scanner data,
+including conservative module header/port summaries, target port usage
+summaries, target module context bundles, and target-specific refactor impact
+review data. The
 organization surface is documented in
 [`MODULE_ORGANIZATION_WORKFLOW.md`](./MODULE_ORGANIZATION_WORKFLOW.md).
 `refactor-plan` extends the same boundary with proposal-only
@@ -279,9 +285,9 @@ xsim path, and text surface sketches is documented in
 ## Limitations
 
 - Scanner-based scaffolds, not full SystemVerilog parsing.
-- Module organization, header/port summaries, port usage summaries,
-  refactor impact review, refactor planning, and validation planning are
-  scanner-based; refactor review packets, approval decisions, application
+- Module organization, boundary audits, header/port summaries, port usage
+  summaries, refactor impact review, refactor planning, and validation planning
+  are scanner-based; refactor review packets, approval decisions, application
   requests, application results, handoff summaries, and checklists are summary-only
   metadata over those
   surfaces. They are not semantic elaboration and do not apply refactors or
