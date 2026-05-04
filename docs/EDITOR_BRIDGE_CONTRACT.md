@@ -53,6 +53,7 @@ python -m pccx_ide_cli module-context <path> --module <name> --format json
 python -m pccx_ide_cli refactor-impact <path> --module <name> --format json
 python -m pccx_ide_cli validation-plan <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-review <path> --action rename-module --module <name> --new-name <name> --format json
+python -m pccx_ide_cli refactor-approval <path> --action rename-module --module <name> --new-name <name> --format json
 
 # Opt-in pccx-lab diagnostics backend
 python -m pccx_ide_cli check <sv-file> --backend pccx-lab --format json
@@ -215,6 +216,12 @@ descriptor phases and command IDs, but does not include command argv, execute
 validation, run shell commands, apply edits, invoke pccx-lab or the launcher,
 run vendor tools, call providers, touch hardware, or perform automatic
 repository actions.
+`refactor-approval` emits proposal-only approval decision metadata over the
+review packet. It records an unapproved or blocked decision gate and summarizes
+review and validation state without command argv; it does not grant approval,
+execute validation, run shell commands, apply edits, write files, invoke
+pccx-lab or the launcher, run vendor tools, call providers, touch hardware, or
+perform automatic repository actions.
 
 For existing xsim logs, the VS Code prototype can consume the checked
 `problems from-xsim-log` JSON as a read-only status/context summary.  The

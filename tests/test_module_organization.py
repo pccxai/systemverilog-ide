@@ -24,10 +24,12 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_organization_export,
     build_module_port_usage_view,
     build_module_summary_view,
+    build_refactor_approval_decision,
     build_refactor_impact_view,
     build_refactor_proposal,
     build_refactor_review_packet,
     build_refactor_validation_plan,
+    format_refactor_approval_decision_text,
     format_module_dependency_text,
     format_module_context_text,
     format_module_hierarchy_text,
@@ -558,6 +560,70 @@ def test_build_refactor_review_packet_reports_blocked_state():
     assert phases["post-change-local-validation"]["command_ids"] == []
 
 
+def test_build_refactor_approval_decision_records_unapproved_gate():
+    decision = build_refactor_approval_decision(
+        str(FIXTURE),
+        FIXTURE,
+        "rename-module",
+        "leaf_mod",
+        new_name="leaf_mod_next",
+    )
+
+    assert decision["kind"] == "module-refactor-approval-decision"
+    assert decision["decision_state"] == "not-approved"
+    assert decision["approval_decision"]["approved"] is False
+    assert decision["approval_decision"]["approver"] == "not-recorded"
+    assert decision["approval_decision"]["reason"] == (
+        "explicit approval not recorded"
+    )
+    assert decision["preflight"]["status"] == "ready-for-review"
+    assert decision["writes_files"] is False
+    assert decision["packet_summary"]["kind"] == "module-refactor-review-packet"
+    assert decision["packet_summary"]["review_state"] == "ready-for-review"
+    assert decision["packet_summary"]["command_descriptor_count"] == 8
+    assert decision["packet_summary"]["validation_phases"][0]["command_ids"] == [
+        "module-context",
+        "refactor-impact",
+        "refactor-plan",
+    ]
+    assert decision["proposal_summary"]["requested_change"]["new_name"] == (
+        "leaf_mod_next"
+    )
+    assert decision["safety"]["read_only"] is True
+    assert decision["safety"]["decision_metadata_only"] is True
+    assert decision["safety"]["approval_granted"] is False
+    assert decision["safety"]["summarizes_command_descriptors"] is True
+    assert decision["safety"]["emits_command_descriptors"] is False
+    assert decision["safety"]["writes_files"] is False
+    assert decision["safety"]["runs_validation"] is False
+    assert decision["safety"]["runs_shell"] is False
+    assert decision["safety"]["invokes_pccx_lab"] is False
+    assert decision["safety"]["invokes_launcher"] is False
+    assert decision["safety"]["hardware_access"] is False
+    assert '"argv"' not in json.dumps(decision)
+
+
+def test_build_refactor_approval_decision_reports_blocked_preflight():
+    decision = build_refactor_approval_decision(
+        str(FIXTURE),
+        FIXTURE,
+        "extract-port",
+        "top_mod",
+        port_name="valid_i",
+    )
+
+    assert decision["decision_state"] == "blocked"
+    assert decision["approval_decision"]["approved"] is False
+    assert decision["approval_decision"]["reason"] == "preflight blocked"
+    assert "missing required direction" in decision["preflight"]["reasons"]
+    phases = {
+        phase["phase"]: phase
+        for phase in decision["packet_summary"]["validation_phases"]
+    }
+    assert phases["post-change-local-validation"]["status"] == "blocked"
+    assert phases["post-change-local-validation"]["command_ids"] == []
+
+
 def test_format_module_organization_text_mentions_boundary_and_hierarchy():
     export = build_module_organization_export(str(FIXTURE), FIXTURE)
     text = format_module_organization_text(export)
@@ -691,6 +757,25 @@ def test_format_refactor_review_packet_text_mentions_summary_only_boundary():
     assert "writes files: no" in text
     assert "runs validation: no" in text
     assert "summary-only: no command argv" in text
+
+
+def test_format_refactor_approval_decision_text_mentions_unapproved_boundary():
+    decision = build_refactor_approval_decision(
+        str(FIXTURE),
+        FIXTURE,
+        "move-module",
+        "leaf_mod",
+        destination="rtl/leaf_mod.sv",
+    )
+    text = format_refactor_approval_decision_text(decision)
+
+    assert "approval decision: not-approved" in text
+    assert "approved: no" in text
+    assert "review state: ready-for-review" in text
+    assert "validation descriptors:" in text
+    assert "writes files: no" in text
+    assert "runs validation: no" in text
+    assert "decision metadata only: no command argv" in text
 
 
 def test_cli_organization_json():
@@ -984,6 +1069,51 @@ def test_cli_refactor_review_text():
     assert "summary-only: no command argv" in result.stdout
 
 
+def test_cli_refactor_approval_json():
+    result = _run_cli(
+        "refactor-approval",
+        str(FIXTURE),
+        "--action",
+        "rename-module",
+        "--module",
+        "leaf_mod",
+        "--new-name",
+        "leaf_mod_next",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-refactor-approval-decision"
+    assert payload["decision_state"] == "not-approved"
+    assert payload["approval_decision"]["approved"] is False
+    assert payload["packet_summary"]["review_state"] == "ready-for-review"
+    assert payload["packet_summary"]["command_descriptor_count"] == 8
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_refactor_approval_text():
+    result = _run_cli(
+        "refactor-approval",
+        str(FIXTURE),
+        "--action",
+        "extract-port",
+        "--module",
+        "top_mod",
+        "--port-name",
+        "valid_i",
+        "--format",
+        "text",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "approval decision: blocked" in result.stdout
+    assert "approved: no" in result.stdout
+    assert "blocked: missing required direction" in result.stdout
+    assert "decision metadata only: no command argv" in result.stdout
+
+
 def test_cli_organization_missing_path_exits_nonzero():
     result = _run_cli("organization", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -1071,6 +1201,21 @@ def test_cli_refactor_review_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_refactor_approval_missing_path_exits_nonzero():
+    result = _run_cli(
+        "refactor-approval",
+        str(FIXTURE.parent / "missing.sv"),
+        "--action",
+        "rename-module",
+        "--module",
+        "leaf_mod",
+        "--new-name",
+        "leaf_mod_next",
+    )
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_docs_cover_organization_flow_and_limits():
     contract = CONTRACT_DOC.read_text(encoding="utf-8")
     workflow = WORKFLOW_DOC.read_text(encoding="utf-8")
@@ -1083,6 +1228,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "refactor-impact <path>" in contract
     assert "validation-plan <path>" in contract
     assert "refactor-review <path>" in contract
+    assert "refactor-approval <path>" in contract
     assert "MODULE_ORGANIZATION_WORKFLOW.md" in contract
     assert "proposal-only" in workflow
     assert "module-hierarchy-view" in workflow
@@ -1093,7 +1239,9 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-refactor-impact-view" in workflow
     assert "module-refactor-validation-plan" in workflow
     assert "module-refactor-review-packet" in workflow
+    assert "module-refactor-approval-decision" in workflow
     assert "proposed-not-run" in workflow
     assert "summary-only review packet" in workflow
+    assert "approval decision metadata" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow

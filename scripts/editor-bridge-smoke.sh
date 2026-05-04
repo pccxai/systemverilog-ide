@@ -38,6 +38,7 @@ run_json module-refactor-impact-view refactor-impact fixtures/organization/hiera
 run_json module-refactor-proposal refactor-plan fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 run_json module-refactor-validation-plan validation-plan fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 run_json module-refactor-review-packet refactor-review fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
+run_json module-refactor-approval-decision refactor-approval fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 
 bash scripts/check-editor-bridge-examples.sh
 
