@@ -191,6 +191,30 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    port_usage_cmd = sub.add_parser(
+        "port-usage",
+        help=(
+            "Emit read-only scanner-based target port declarations and "
+            "usage-site connection summaries."
+        ),
+    )
+    port_usage_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    port_usage_cmd.add_argument(
+        "--module",
+        required=True,
+        help="Exact module name to inspect for port usage review.",
+    )
+    port_usage_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     refactor_impact_cmd = sub.add_parser(
         "refactor-impact",
         help=(
@@ -554,6 +578,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_module_summary_text(view))
+        return 0
+
+    if args.command == "port-usage":
+        from .module_organization import (
+            build_module_port_usage_view,
+            format_module_port_usage_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        view = build_module_port_usage_view(str(args.path), args.path, args.module)
+        if args.format == "json":
+            json.dump(view, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_module_port_usage_text(view))
         return 0
 
     if args.command == "refactor-impact":

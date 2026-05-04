@@ -48,6 +48,7 @@ python -m pccx_ide_cli organization <path> --format json
 python -m pccx_ide_cli hierarchy <path> --format json
 python -m pccx_ide_cli dependencies <path> --format json
 python -m pccx_ide_cli module-summary <path> --format json
+python -m pccx_ide_cli port-usage <path> --module <name> --format json
 python -m pccx_ide_cli refactor-impact <path> --module <name> --format json
 
 # Opt-in pccx-lab diagnostics backend
@@ -187,11 +188,11 @@ declaration records.  `declarations` exports those records directly, and
 `locate` resolves exact declaration names by requested kind. `organization`
 adds scanner-based module boundary spans, hierarchy edges, root candidates,
 and proposal-only refactoring metadata for project tree and reviewed
-refactoring workflows. `hierarchy`, `dependencies`, `module-summary`, and
-`refactor-impact` render focused read-only views from the same scanner
-data, including conservative module header/port summaries and
-target-specific refactor impact review data. The organization surface is
-documented in
+refactoring workflows. `hierarchy`, `dependencies`, `module-summary`,
+`port-usage`, and `refactor-impact` render focused read-only views from
+the same scanner data, including conservative module header/port
+summaries, target port usage summaries, and target-specific refactor
+impact review data. The organization surface is documented in
 [`MODULE_ORGANIZATION_WORKFLOW.md`](./MODULE_ORGANIZATION_WORKFLOW.md).
 `refactor-plan` extends the same boundary with proposal-only
 rename-module, extract-port, and move-module planning envelopes. It emits
@@ -214,9 +215,9 @@ xsim path, and text surface sketches is documented in
 ## Limitations
 
 - Scanner-based scaffolds, not full SystemVerilog parsing.
-- Module organization, header/port summaries, refactor impact review, and
-  refactor planning are scanner-based; they are not semantic elaboration
-  and do not apply refactors.
+- Module organization, header/port summaries, port usage summaries,
+  refactor impact review, and refactor planning are scanner-based; they
+  are not semantic elaboration and do not apply refactors.
 - No LSP server in this repository today.
 - No published editor extension or marketplace packaging is implemented
   here.
