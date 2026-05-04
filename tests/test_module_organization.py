@@ -21,10 +21,12 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_dependency_view,
     build_module_hierarchy_view,
     build_module_organization_export,
+    build_module_summary_view,
     build_refactor_proposal,
     format_module_dependency_text,
     format_module_hierarchy_text,
     format_module_organization_text,
+    format_module_summary_text,
     format_refactor_proposal_text,
 )
 
@@ -140,6 +142,67 @@ def test_build_module_dependency_view_is_read_only():
     assert view["safety"]["hardware_access"] is False
 
 
+def test_build_module_summary_view_reports_ports_and_safety():
+    view = build_module_summary_view(str(FIXTURE), FIXTURE)
+
+    assert view["kind"] == "module-summary-view"
+    assert view["summary_state"] == "available_as_data"
+    assert view["module_count"] == 2
+    assert view["port_count"] == 2
+    modules = {module["name"]: module for module in view["modules"]}
+    assert set(modules) == {"leaf_mod", "top_mod"}
+    assert modules["leaf_mod"]["header"]["complete"] is True
+    assert modules["leaf_mod"]["readiness"]["state"] == "ready-for-review"
+    assert modules["leaf_mod"]["port_count"] == 1
+    assert modules["leaf_mod"]["port_direction_counts"]["input"] == 1
+    assert modules["leaf_mod"]["ports"] == [
+        {
+            "direction": "input",
+            "line": 5,
+            "name": "clk",
+            "state": "detected",
+            "width": None,
+        }
+    ]
+    assert view["safety"]["read_only"] is True
+    assert view["safety"]["writes_files"] is False
+    assert view["safety"]["applies_refactor"] is False
+    assert view["safety"]["runs_validation"] is False
+    assert view["safety"]["invokes_pccx_lab"] is False
+    assert view["safety"]["invokes_launcher"] is False
+    assert view["safety"]["provider_calls"] is False
+    assert view["safety"]["hardware_access"] is False
+
+
+def test_build_module_summary_view_inherits_port_direction(tmp_path):
+    source = tmp_path / "ports.sv"
+    source.write_text(
+        "\n".join([
+            "module ported (",
+            "    input logic [7:0] data_i,",
+            "    valid_i,",
+            "    output logic done_o",
+            ");",
+            "endmodule",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+
+    view = build_module_summary_view(str(source), source)
+    module = view["modules"][0]
+    ports = {port["name"]: port for port in module["ports"]}
+
+    assert module["port_count"] == 3
+    assert ports["data_i"]["direction"] == "input"
+    assert ports["data_i"]["width"] == "[7:0]"
+    assert ports["valid_i"]["direction"] == "input"
+    assert ports["valid_i"]["state"] == "inherited-direction"
+    assert ports["valid_i"]["width"] == "[7:0]"
+    assert ports["done_o"]["direction"] == "output"
+    assert ports["done_o"]["state"] == "detected"
+
+
 def test_build_module_organization_export_refactoring_is_proposal_only():
     export = build_module_organization_export(str(FIXTURE), FIXTURE)
     assert export["refactoring"]["mode"] == "proposal-only"
@@ -227,6 +290,17 @@ def test_format_module_dependency_text_mentions_impact_and_boundary():
     assert "read-only: no file writes" in text
 
 
+def test_format_module_summary_text_mentions_ports_and_boundary():
+    view = build_module_summary_view(str(FIXTURE), FIXTURE)
+    text = format_module_summary_text(view)
+
+    assert "module summary: available_as_data" in text
+    assert "2 ports" in text
+    assert "module leaf_mod (complete header, ready-for-review)" in text
+    assert "input clk at line 5 (detected)" in text
+    assert "read-only: no file writes" in text
+
+
 def test_format_refactor_proposal_text_mentions_no_execution():
     proposal = build_refactor_proposal(
         str(FIXTURE),
@@ -293,6 +367,23 @@ def test_cli_dependencies_text():
     assert "leaf_mod: dependencies=none; dependents=top_mod" in result.stdout
 
 
+def test_cli_module_summary_json():
+    result = _run_cli("module-summary", str(FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-summary-view"
+    assert payload["port_count"] == 2
+    assert payload["modules"][0]["ports"][0]["name"] == "clk"
+    assert payload["safety"]["writes_files"] is False
+
+
+def test_cli_module_summary_text():
+    result = _run_cli("module-summary", str(FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module summary: available_as_data" in result.stdout
+    assert "input clk at line 5 (detected)" in result.stdout
+
+
 def test_cli_refactor_plan_json():
     result = _run_cli(
         "refactor-plan",
@@ -353,15 +444,23 @@ def test_cli_dependencies_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_module_summary_missing_path_exits_nonzero():
+    result = _run_cli("module-summary", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_docs_cover_organization_flow_and_limits():
     contract = CONTRACT_DOC.read_text(encoding="utf-8")
     workflow = WORKFLOW_DOC.read_text(encoding="utf-8")
     assert "organization <path>" in contract
     assert "hierarchy <path>" in contract
     assert "dependencies <path>" in contract
+    assert "module-summary <path>" in contract
     assert "MODULE_ORGANIZATION_WORKFLOW.md" in contract
     assert "proposal-only" in workflow
     assert "module-hierarchy-view" in workflow
     assert "module-dependency-view" in workflow
+    assert "module-summary-view" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow
