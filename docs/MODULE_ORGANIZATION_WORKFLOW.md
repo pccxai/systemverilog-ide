@@ -4,11 +4,12 @@
 
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
-`module-summary`, `port-usage`, `module-context`, and `refactor-impact` CLI surfaces that
-report module boundary spans, scanner-based hierarchy data, direct
-dependency impact data, conservative module header/port summaries,
-target port usage summaries, target module context bundles, and
-target-specific refactor impact data for editor navigation and reviewed
+`module-summary`, `port-usage`, `module-context`, `refactor-impact`, and
+`validation-plan` CLI surfaces that report module boundary spans,
+scanner-based hierarchy data, direct dependency impact data, conservative
+module header/port summaries, target port usage summaries, target module
+context bundles, target-specific refactor impact data, and proposal-only
+validation command descriptors for editor navigation and reviewed
 refactoring planning.
 
 It is not a full SystemVerilog parser, not semantic elaboration, not an LSP
@@ -34,6 +35,9 @@ python -m pccx_ide_cli refactor-impact <path> --module <name> --format text
 python -m pccx_ide_cli refactor-plan <path> --action rename-module --module <name> --new-name <name> --format json
 python -m pccx_ide_cli refactor-plan <path> --action extract-port --module <name> --port-name <name> --direction input --format text
 python -m pccx_ide_cli refactor-plan <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
+python -m pccx_ide_cli validation-plan <path> --action rename-module --module <name> --new-name <name> --format json
+python -m pccx_ide_cli validation-plan <path> --action extract-port --module <name> --port-name <name> --direction input --format text
+python -m pccx_ide_cli validation-plan <path> --action move-module --module <name> --destination rtl/<name>.sv --format json
 ```
 
 `<path>` may be a `.sv` / `.v` file or a directory. Directory scans follow the
@@ -487,6 +491,66 @@ execute shell commands, invoke `pccx-lab`, invoke the launcher, call
 providers, touch hardware, upload telemetry, or perform automatic repository
 actions.
 
+## Validation Proposal Plan
+
+`validation-plan` adds a proposal-only validation planning envelope for a
+reviewed refactor request. It reuses the same requested action fields as
+`refactor-plan`, returns the refactor preflight status, and emits fixed
+argument-array command descriptors that an editor or maintainer workflow can
+review later.
+
+Example shape:
+
+```json
+{
+  "kind": "module-refactor-validation-plan",
+  "validation_state": "proposal-only",
+  "action": "rename-module",
+  "command_descriptor_count": 8,
+  "writes_files": false,
+  "preflight": {
+    "status": "ready-for-review",
+    "requires_explicit_approval_before_run": true,
+    "reasons": []
+  },
+  "validation_groups": [
+    {
+      "phase": "pre-change-review",
+      "status": "proposal-only",
+      "commands": [
+        {
+          "id": "module-context",
+          "argv": ["python", "-m", "pccx_ide_cli", "module-context", "<path>", "--module", "<name>", "--format", "json"],
+          "fixed_argv": true,
+          "shell": false,
+          "state": "proposed-not-run"
+        }
+      ]
+    }
+  ],
+  "safety": {
+    "read_only": true,
+    "emits_command_descriptors": true,
+    "writes_files": false,
+    "runs_validation": false,
+    "runs_shell": false,
+    "invokes_pccx_lab": false,
+    "invokes_launcher": false,
+    "hardware_access": false
+  }
+}
+```
+
+Blocked plans still return JSON. The pre-change review descriptors remain
+available as data, while post-change validation descriptors are withheld until
+the refactor preflight is ready for review.
+
+The command descriptors are proposed-not-run data. This boundary does not
+execute validation, execute shell commands, write files, apply refactors,
+generate patches, invoke `pccx-lab`, invoke the launcher, run vendor tools,
+call providers, touch hardware, upload telemetry, or perform automatic
+repository actions.
+
 ## Limitations
 
 - Scanner-based module declarations and `endmodule` matching only.
@@ -504,4 +568,4 @@ with read-only module boundary detection, a focused hierarchy view, a
 direct dependency view, conservative module header/port summaries,
 target-specific port usage summaries, target-specific module context
 bundles, target-specific refactor impact review data, and a
-proposal-only refactoring boundary.
+proposal-only refactoring and validation planning boundary.

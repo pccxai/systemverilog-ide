@@ -51,6 +51,7 @@ python -m pccx_ide_cli module-summary <path> --format json
 python -m pccx_ide_cli port-usage <path> --module <name> --format json
 python -m pccx_ide_cli module-context <path> --module <name> --format json
 python -m pccx_ide_cli refactor-impact <path> --module <name> --format json
+python -m pccx_ide_cli validation-plan <path> --action rename-module --module <name> --new-name <name> --format json
 
 # Opt-in pccx-lab diagnostics backend
 python -m pccx_ide_cli check <sv-file> --backend pccx-lab --format json
@@ -201,6 +202,12 @@ rename-module, extract-port, and move-module planning envelopes. It emits
 preflight metadata and review steps only; it does not apply edits, move
 files, run validation, invoke pccx-lab or the launcher, call providers, touch
 hardware, or perform automatic repository actions.
+`validation-plan` emits proposal-only validation planning envelopes for those
+refactor requests. It returns fixed argument-array command descriptors with
+`proposed-not-run` state and explicit approval metadata; it does not execute
+validation, run shell commands, apply edits, invoke pccx-lab or the launcher,
+run vendor tools, call providers, touch hardware, or perform automatic
+repository actions.
 
 For existing xsim logs, the VS Code prototype can consume the checked
 `problems from-xsim-log` JSON as a read-only status/context summary.  The
@@ -218,8 +225,9 @@ xsim path, and text surface sketches is documented in
 
 - Scanner-based scaffolds, not full SystemVerilog parsing.
 - Module organization, header/port summaries, port usage summaries,
-  refactor impact review, and refactor planning are scanner-based; they
-  are not semantic elaboration and do not apply refactors.
+  refactor impact review, refactor planning, and validation planning are
+  scanner-based; they are not semantic elaboration and do not apply
+  refactors or execute validation.
 - No LSP server in this repository today.
 - No published editor extension or marketplace packaging is implemented
   here.

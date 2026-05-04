@@ -152,6 +152,16 @@ PROPOSAL_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+VALIDATION_PLAN_LIMITATIONS: tuple[str, ...] = (
+    "proposal-only validation planning metadata",
+    "scanner-based module and refactor preflight data only",
+    "emits command descriptors as fixed argument arrays for later review",
+    "does not execute validation commands or shell commands",
+    "does not apply refactors, write files, move files, or generate patches",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 _REFACTOR_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "rename-module": ("new_name",),
     "extract-port": ("port_name", "direction"),
@@ -274,6 +284,27 @@ def _module_context_safety_flags() -> dict[str, bool]:
         "runs_shell": False,
         "invokes_pccx_lab": False,
         "invokes_launcher": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _validation_plan_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "emits_command_descriptors": True,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
         "provider_calls": False,
         "hardware_access": False,
         "telemetry": False,
@@ -1409,6 +1440,276 @@ def build_refactor_proposal(
     }
 
 
+def _json_cli_argv(command: str, path: Path, *args: str) -> list[str]:
+    return [
+        "python",
+        "-m",
+        "pccx_ide_cli",
+        command,
+        str(path),
+        *args,
+        "--format",
+        "json",
+    ]
+
+
+def _refactor_plan_argv(path: Path, requested: dict[str, Any]) -> list[str]:
+    args = [
+        "--action",
+        requested["action"],
+        "--module",
+        requested["module"],
+    ]
+    for field, option in (
+        ("new_name", "--new-name"),
+        ("port_name", "--port-name"),
+        ("direction", "--direction"),
+        ("width", "--width"),
+        ("destination", "--destination"),
+    ):
+        if requested[field]:
+            args.extend([option, str(requested[field])])
+    return _json_cli_argv("refactor-plan", path, *args)
+
+
+def _validation_command_descriptor(
+    command_id: str,
+    phase: str,
+    purpose: str,
+    argv: list[str],
+) -> dict[str, Any]:
+    return {
+        "approval_required": True,
+        "argv": argv,
+        "fixed_argv": True,
+        "id": command_id,
+        "phase": phase,
+        "purpose": purpose,
+        "runner": "user-approved",
+        "shell": False,
+        "state": "proposed-not-run",
+    }
+
+
+def _pre_change_validation_commands(
+    path: Path,
+    requested: dict[str, Any],
+) -> list[dict[str, Any]]:
+    module_name = requested["module"]
+    return [
+        _validation_command_descriptor(
+            "module-context",
+            "pre-change-review",
+            "Refresh target module context before reviewing any edit.",
+            _json_cli_argv("module-context", path, "--module", module_name),
+        ),
+        _validation_command_descriptor(
+            "refactor-impact",
+            "pre-change-review",
+            "Refresh declaration and reference review targets for the proposal.",
+            _json_cli_argv("refactor-impact", path, "--module", module_name),
+        ),
+        _validation_command_descriptor(
+            "refactor-plan",
+            "pre-change-review",
+            "Refresh the proposal-only refactor plan with the requested inputs.",
+            _refactor_plan_argv(path, requested),
+        ),
+    ]
+
+
+def _post_change_validation_commands(
+    path: Path,
+    requested: dict[str, Any],
+) -> list[dict[str, Any]]:
+    module_name = requested["module"]
+    commands = [
+        _validation_command_descriptor(
+            "organization",
+            "post-change-local-validation",
+            "Rebuild scanner-based module boundaries and hierarchy after edits.",
+            _json_cli_argv("organization", path),
+        ),
+        _validation_command_descriptor(
+            "module-summary",
+            "post-change-local-validation",
+            "Rebuild conservative module header and port summaries after edits.",
+            _json_cli_argv("module-summary", path),
+        ),
+        _validation_command_descriptor(
+            "dependencies",
+            "post-change-local-validation",
+            "Rebuild direct dependency summaries after edits.",
+            _json_cli_argv("dependencies", path),
+        ),
+    ]
+    if path.is_file():
+        commands.append(
+            _validation_command_descriptor(
+                "check",
+                "post-change-local-validation",
+                "Run the built-in local diagnostics check after edits.",
+                _json_cli_argv("check", path),
+            )
+        )
+
+    action = requested["action"]
+    if action == "rename-module" and requested["new_name"]:
+        commands.append(
+            _validation_command_descriptor(
+                "locate-new-module",
+                "post-change-local-validation",
+                "Confirm the renamed module declaration can be located after edits.",
+                _json_cli_argv(
+                    "locate",
+                    path,
+                    str(requested["new_name"]),
+                    "--kind",
+                    "module",
+                ),
+            )
+        )
+    elif action == "extract-port":
+        commands.append(
+            _validation_command_descriptor(
+                "port-usage",
+                "post-change-local-validation",
+                "Review target port declarations and dependent usage sites after edits.",
+                _json_cli_argv("port-usage", path, "--module", module_name),
+            )
+        )
+    elif action == "move-module" and requested["destination"]:
+        destination = Path(str(requested["destination"]))
+        commands.extend(
+            [
+                _validation_command_descriptor(
+                    "organization-destination",
+                    "post-change-local-validation",
+                    "Review scanner data for the planned destination file after the move.",
+                    _json_cli_argv("organization", destination),
+                ),
+                _validation_command_descriptor(
+                    "check-destination",
+                    "post-change-local-validation",
+                    "Run the built-in local diagnostics check on the destination file after the move.",
+                    _json_cli_argv("check", destination),
+                ),
+            ]
+        )
+    return commands
+
+
+def _validation_groups(
+    path: Path,
+    requested: dict[str, Any],
+    preflight: dict[str, Any],
+) -> list[dict[str, Any]]:
+    pre_change = _pre_change_validation_commands(path, requested)
+    post_change = (
+        []
+        if preflight["status"] == "blocked"
+        else _post_change_validation_commands(path, requested)
+    )
+    return [
+        {
+            "blocked_by": [],
+            "command_count": len(pre_change),
+            "commands": pre_change,
+            "phase": "pre-change-review",
+            "status": "proposal-only",
+        },
+        {
+            "blocked_by": list(preflight["reasons"]),
+            "command_count": len(post_change),
+            "commands": post_change,
+            "phase": "post-change-local-validation",
+            "status": (
+                "blocked"
+                if preflight["status"] == "blocked"
+                else "proposal-only"
+            ),
+        },
+    ]
+
+
+def build_refactor_validation_plan(
+    source: str,
+    path: Path,
+    action: str,
+    module_name: str,
+    *,
+    new_name: str | None = None,
+    port_name: str | None = None,
+    direction: str | None = None,
+    width: str | None = None,
+    destination: str | None = None,
+) -> dict[str, Any]:
+    proposal = build_refactor_proposal(
+        source,
+        path,
+        action,
+        module_name,
+        new_name=new_name,
+        port_name=port_name,
+        direction=direction,
+        width=width,
+        destination=destination,
+    )
+    impact = build_refactor_impact_view(source, path, module_name)
+    preflight = proposal["preflight"]
+    requested = proposal["requested_change"]
+    groups = _validation_groups(path, requested, preflight)
+
+    return {
+        "action": action,
+        "approval": {
+            "approved_runner_required": True,
+            "requires_explicit_user_approval_before_run": True,
+            "requires_explicit_user_approval_before_write": True,
+        },
+        "command_descriptor_count": sum(
+            group["command_count"]
+            for group in groups
+        ),
+        "kind": "module-refactor-validation-plan",
+        "limitations": list(VALIDATION_PLAN_LIMITATIONS),
+        "module": proposal["module"],
+        "preflight": {
+            "reasons": list(preflight["reasons"]),
+            "requires_approval_before_write": preflight[
+                "requires_approval_before_write"
+            ],
+            "requires_explicit_approval_before_run": True,
+            "status": preflight["status"],
+        },
+        "refactor_proposal": {
+            "kind": proposal["kind"],
+            "planned_step_count": len(proposal["planned_steps"]),
+            "proposal_state": proposal["proposal_state"],
+            "requested_change": requested,
+            "writes_files": proposal["writes_files"],
+        },
+        "review_context": {
+            "direct_dependency_count": impact["direct_dependency_count"],
+            "direct_dependent_count": impact["direct_dependent_count"],
+            "review_target_count": len(impact["review_targets"]),
+            "unresolved_dependency_count": impact["unresolved_dependency_count"],
+        },
+        "safety": _validation_plan_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "target": module_name,
+        "tool": "pccx-ide-cli",
+        "validation_groups": groups,
+        "validation_state": (
+            "blocked"
+            if preflight["status"] == "blocked"
+            else "proposal-only"
+        ),
+        "writes_files": False,
+    }
+
+
 def format_refactor_proposal_text(proposal: dict[str, Any]) -> str:
     lines = [
         f"source: {proposal['source']}",
@@ -1431,6 +1732,34 @@ def format_refactor_proposal_text(proposal: dict[str, Any]) -> str:
         for step in proposal["planned_steps"]:
             lines.append(f"plan: {step}")
     lines.append("no patch, validation, lab, launcher, provider, or hardware execution")
+    return "\n".join(lines) + "\n"
+
+
+def format_refactor_validation_plan_text(plan: dict[str, Any]) -> str:
+    lines = [
+        f"source: {plan['source']}",
+        f"target: {plan['target']}",
+        f"action: {plan['action']}",
+        f"validation plan: {plan['validation_state']}",
+        f"preflight: {plan['preflight']['status']}",
+        "writes files: no",
+        "runs validation: no",
+    ]
+    for reason in plan["preflight"]["reasons"]:
+        lines.append(f"blocked: {reason}")
+    for group in plan["validation_groups"]:
+        lines.append(f"{group['phase']}: {group['status']}")
+        if not group["commands"]:
+            lines.append("  commands: none")
+        for command in group["commands"]:
+            lines.append(
+                f"  {command['id']}: {' '.join(command['argv'])} "
+                "(proposed-not-run)"
+            )
+    lines.append(
+        "no validation, shell, refactor, patch, file write, lab, launcher, "
+        "vendor tool, provider, or hardware execution"
+    )
     return "\n".join(lines) + "\n"
 
 
