@@ -19,6 +19,7 @@ sys.path.insert(0, str(SRC))
 
 from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_dependency_view,
+    build_module_context_bundle,
     build_module_hierarchy_view,
     build_module_organization_export,
     build_module_port_usage_view,
@@ -26,6 +27,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_refactor_impact_view,
     build_refactor_proposal,
     format_module_dependency_text,
+    format_module_context_text,
     format_module_hierarchy_text,
     format_module_organization_text,
     format_module_port_usage_text,
@@ -268,6 +270,53 @@ def test_build_module_port_usage_view_blocks_missing_module():
     assert view["writes_files"] is False
 
 
+def test_build_module_context_bundle_summarizes_target_views():
+    bundle = build_module_context_bundle(str(FIXTURE), FIXTURE, "leaf_mod")
+
+    assert bundle["kind"] == "module-context-bundle"
+    assert bundle["context_state"] == "available_as_data"
+    assert bundle["target"] == "leaf_mod"
+    assert bundle["preflight"]["status"] == "ready-for-review"
+    assert bundle["writes_files"] is False
+    assert bundle["module"]["name"] == "leaf_mod"
+    assert bundle["summary_context"]["name"] == "leaf_mod"
+    assert bundle["summary_context"]["port_count"] == 1
+    assert bundle["dependency_context"]["direct_dependencies"] == []
+    assert bundle["dependency_context"]["direct_dependents"] == ["top_mod"]
+    assert bundle["dependency_context"]["unresolved_dependencies"] == []
+    assert bundle["port_context"]["port_count"] == 1
+    assert bundle["port_context"]["usage_site_count"] == 1
+    assert bundle["refactor_context"]["review_target_count"] == 2
+    assert [view["command"] for view in bundle["source_views"]] == [
+        "module-summary",
+        "dependencies",
+        "port-usage",
+        "refactor-impact",
+    ]
+    assert bundle["safety"]["read_only"] is True
+    assert bundle["safety"]["writes_files"] is False
+    assert bundle["safety"]["applies_refactor"] is False
+    assert bundle["safety"]["applies_patch"] is False
+    assert bundle["safety"]["runs_validation"] is False
+    assert bundle["safety"]["invokes_pccx_lab"] is False
+    assert bundle["safety"]["invokes_launcher"] is False
+    assert bundle["safety"]["provider_calls"] is False
+    assert bundle["safety"]["hardware_access"] is False
+
+
+def test_build_module_context_bundle_blocks_missing_module():
+    bundle = build_module_context_bundle(str(FIXTURE), FIXTURE, "missing_mod")
+
+    assert bundle["context_state"] == "blocked"
+    assert bundle["preflight"]["status"] == "blocked"
+    assert "module not found: missing_mod" in bundle["preflight"]["reasons"]
+    assert bundle["module"] is None
+    assert bundle["summary_context"] is None
+    assert bundle["port_context"]["ports"] == []
+    assert bundle["refactor_context"]["review_targets"] == []
+    assert bundle["writes_files"] is False
+
+
 def test_build_refactor_impact_view_reports_target_references():
     view = build_refactor_impact_view(str(FIXTURE), FIXTURE, "leaf_mod")
 
@@ -426,6 +475,20 @@ def test_format_module_port_usage_text_mentions_usage_and_no_execution():
     assert "read-only: no file writes" in text
 
 
+def test_format_module_context_text_mentions_context_and_no_execution():
+    bundle = build_module_context_bundle(str(FIXTURE), FIXTURE, "leaf_mod")
+    text = format_module_context_text(bundle)
+
+    assert "module context: available_as_data" in text
+    assert "preflight: ready-for-review" in text
+    assert "summary: 1 port; ready-for-review" in text
+    assert "dependents: top_mod" in text
+    assert "port usage: 1 site" in text
+    assert "review targets: 2" in text
+    assert "writes files: no" in text
+    assert "read-only: no file writes" in text
+
+
 def test_format_refactor_impact_text_mentions_references_and_no_execution():
     view = build_refactor_impact_view(str(FIXTURE), FIXTURE, "leaf_mod")
     text = format_refactor_impact_text(view)
@@ -553,6 +616,40 @@ def test_cli_port_usage_text():
     assert "top_mod instantiates leaf_mod as u_leaf" in result.stdout
 
 
+def test_cli_module_context_json():
+    result = _run_cli(
+        "module-context",
+        str(FIXTURE),
+        "--module",
+        "leaf_mod",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-context-bundle"
+    assert payload["target"] == "leaf_mod"
+    assert payload["summary_context"]["port_count"] == 1
+    assert payload["dependency_context"]["direct_dependents"] == ["top_mod"]
+    assert payload["port_context"]["usage_site_count"] == 1
+    assert payload["refactor_context"]["review_target_count"] == 2
+    assert payload["safety"]["writes_files"] is False
+
+
+def test_cli_module_context_text():
+    result = _run_cli(
+        "module-context",
+        str(FIXTURE),
+        "--module",
+        "leaf_mod",
+        "--format",
+        "text",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "module context: available_as_data" in result.stdout
+    assert "dependents: top_mod" in result.stdout
+
+
 def test_cli_refactor_impact_json():
     result = _run_cli(
         "refactor-impact",
@@ -672,6 +769,17 @@ def test_cli_refactor_impact_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_module_context_missing_path_exits_nonzero():
+    result = _run_cli(
+        "module-context",
+        str(FIXTURE.parent / "missing.sv"),
+        "--module",
+        "leaf_mod",
+    )
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_docs_cover_organization_flow_and_limits():
     contract = CONTRACT_DOC.read_text(encoding="utf-8")
     workflow = WORKFLOW_DOC.read_text(encoding="utf-8")
@@ -680,6 +788,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "dependencies <path>" in contract
     assert "module-summary <path>" in contract
     assert "port-usage <path>" in contract
+    assert "module-context <path>" in contract
     assert "refactor-impact <path>" in contract
     assert "MODULE_ORGANIZATION_WORKFLOW.md" in contract
     assert "proposal-only" in workflow
@@ -687,6 +796,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-dependency-view" in workflow
     assert "module-summary-view" in workflow
     assert "module-port-usage-view" in workflow
+    assert "module-context-bundle" in workflow
     assert "module-refactor-impact-view" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow

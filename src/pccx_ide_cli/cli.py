@@ -215,6 +215,29 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    module_context_cmd = sub.add_parser(
+        "module-context",
+        help=(
+            "Emit a read-only scanner-based target module context bundle."
+        ),
+    )
+    module_context_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    module_context_cmd.add_argument(
+        "--module",
+        required=True,
+        help="Exact module name to inspect for context review.",
+    )
+    module_context_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     refactor_impact_cmd = sub.add_parser(
         "refactor-impact",
         help=(
@@ -596,6 +619,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_module_port_usage_text(view))
+        return 0
+
+    if args.command == "module-context":
+        from .module_organization import (
+            build_module_context_bundle,
+            format_module_context_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        bundle = build_module_context_bundle(str(args.path), args.path, args.module)
+        if args.format == "json":
+            json.dump(bundle, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_module_context_text(bundle))
         return 0
 
     if args.command == "refactor-impact":

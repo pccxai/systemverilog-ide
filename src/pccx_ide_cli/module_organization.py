@@ -119,6 +119,15 @@ PORT_USAGE_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+MODULE_CONTEXT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based target module context bundle data only",
+    "combines existing summary, dependency, port-usage, and refactor-impact views",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "no refactor application, file write, validation run, or patch generation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 REFACTOR_IMPACT_LIMITATIONS: tuple[str, ...] = (
     "scanner-based target-specific refactor impact data only",
     "module declarations and single-line instantiation candidates only",
@@ -237,6 +246,24 @@ def _refactor_impact_safety_flags() -> dict[str, bool]:
 
 
 def _port_usage_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "writes_files": False,
+        "applies_refactor": False,
+        "moves_files": False,
+        "applies_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _module_context_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "writes_files": False,
@@ -1113,6 +1140,138 @@ def build_refactor_impact_view(
     }
 
 
+def _selected_module_summary(
+    summary_view: dict[str, Any],
+    selected_module: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if selected_module is None:
+        return None
+    for summary in summary_view["modules"]:
+        boundary = summary["boundary"]
+        if (
+            summary["name"] == selected_module["name"]
+            and boundary["file"] == selected_module["file"]
+            and boundary["start_line"] == selected_module["start_line"]
+        ):
+            return summary
+    return None
+
+
+def _selected_dependency_impact(
+    dependency_view: dict[str, Any],
+    module_name: str,
+) -> dict[str, Any] | None:
+    for row in dependency_view["impact"]:
+        if row["module"] == module_name:
+            return row
+    return None
+
+
+def _source_view_refs(
+    summary_view: dict[str, Any],
+    dependency_view: dict[str, Any],
+    port_usage_view: dict[str, Any],
+    refactor_impact_view: dict[str, Any],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "command": "module-summary",
+            "kind": summary_view["kind"],
+            "state": summary_view["summary_state"],
+            "included": True,
+            "summary": "conservative module header and port metadata",
+        },
+        {
+            "command": "dependencies",
+            "kind": dependency_view["kind"],
+            "state": dependency_view["dependency_state"],
+            "included": True,
+            "summary": "direct dependency and dependent summaries",
+        },
+        {
+            "command": "port-usage",
+            "kind": port_usage_view["kind"],
+            "state": port_usage_view["usage_state"],
+            "included": True,
+            "summary": "target port declarations and dependent usage sites",
+        },
+        {
+            "command": "refactor-impact",
+            "kind": refactor_impact_view["kind"],
+            "state": refactor_impact_view["impact_state"],
+            "included": True,
+            "summary": "target-specific declaration and reference review data",
+        },
+    ]
+
+
+def build_module_context_bundle(
+    source: str,
+    path: Path,
+    module_name: str,
+) -> dict[str, Any]:
+    summary_view = build_module_summary_view(source, path)
+    dependency_view = build_module_dependency_view(source, path)
+    port_usage_view = build_module_port_usage_view(source, path, module_name)
+    refactor_impact_view = build_refactor_impact_view(source, path, module_name)
+    selected_module = refactor_impact_view["module"]
+    selected_summary = _selected_module_summary(summary_view, selected_module)
+    dependency_impact = _selected_dependency_impact(dependency_view, module_name)
+    preflight = refactor_impact_view["preflight"]
+
+    return {
+        "context_state": (
+            "blocked"
+            if preflight["status"] == "blocked"
+            else "available_as_data"
+        ),
+        "dependency_context": {
+            "dependency_edges": refactor_impact_view["dependency_edges"],
+            "dependency_impact": dependency_impact,
+            "dependent_edges": refactor_impact_view["dependent_edges"],
+            "direct_dependencies": refactor_impact_view["direct_dependencies"],
+            "direct_dependency_count": refactor_impact_view["direct_dependency_count"],
+            "direct_dependents": refactor_impact_view["direct_dependents"],
+            "direct_dependent_count": refactor_impact_view["direct_dependent_count"],
+            "unresolved_dependencies": refactor_impact_view["unresolved_dependencies"],
+            "unresolved_dependency_count": (
+                refactor_impact_view["unresolved_dependency_count"]
+            ),
+        },
+        "kind": "module-context-bundle",
+        "limitations": list(MODULE_CONTEXT_LIMITATIONS),
+        "module": selected_module,
+        "port_context": {
+            "direct_dependents": port_usage_view["direct_dependents"],
+            "header": port_usage_view["header"],
+            "port_count": port_usage_view["port_count"],
+            "port_direction_counts": port_usage_view["port_direction_counts"],
+            "ports": port_usage_view["ports"],
+            "usage_site_count": port_usage_view["usage_site_count"],
+            "usage_sites": port_usage_view["usage_sites"],
+        },
+        "preflight": preflight,
+        "refactor_context": {
+            "review_target_count": len(refactor_impact_view["review_targets"]),
+            "review_targets": refactor_impact_view["review_targets"],
+            "writes_files": False,
+        },
+        "safety": _module_context_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "source_views": _source_view_refs(
+            summary_view,
+            dependency_view,
+            port_usage_view,
+            refactor_impact_view,
+        ),
+        "summary_context": selected_summary,
+        "target": module_name,
+        "tool": "pccx-ide-cli",
+        "writes_files": False,
+    }
+
+
 def _requested_change(
     action: str,
     module_name: str,
@@ -1519,6 +1678,58 @@ def format_refactor_impact_text(view: dict[str, Any]) -> str:
                 f"{edge['line']}:{edge['column']} ({state})"
             )
     for reason in view["preflight"]["reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(
+        "read-only: no file writes, refactors, validation, lab, launcher, "
+        "provider, or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_context_text(bundle: dict[str, Any]) -> str:
+    lines = [
+        f"source: {bundle['source']}",
+        f"target: {bundle['target']}",
+        f"module context: {bundle['context_state']}",
+        f"preflight: {bundle['preflight']['status']}",
+        "writes files: no",
+    ]
+
+    module = bundle["module"]
+    if module is not None:
+        lines.append(
+            f"declaration: {module['file']}:{module['start_line']}:"
+            f"{module['start_column']}"
+        )
+
+    summary = bundle["summary_context"]
+    if summary is None:
+        lines.append("summary: unavailable")
+    else:
+        readiness = summary["readiness"]["state"]
+        lines.append(
+            f"summary: {summary['port_count']} port"
+            f"{'s' if summary['port_count'] != 1 else ''}; {readiness}"
+        )
+
+    dependency = bundle["dependency_context"]
+    dependencies = ", ".join(dependency["direct_dependencies"]) or "none"
+    dependents = ", ".join(dependency["direct_dependents"]) or "none"
+    unresolved = ", ".join(dependency["unresolved_dependencies"]) or "none"
+    lines.append(f"dependencies: {dependencies}")
+    lines.append(f"dependents: {dependents}")
+    lines.append(f"unresolved dependencies: {unresolved}")
+
+    port_context = bundle["port_context"]
+    lines.append(
+        f"port usage: {port_context['usage_site_count']} site"
+        f"{'s' if port_context['usage_site_count'] != 1 else ''}"
+    )
+    lines.append(
+        f"review targets: {bundle['refactor_context']['review_target_count']}"
+    )
+
+    for reason in bundle["preflight"]["reasons"]:
         lines.append(f"blocked: {reason}")
     lines.append(
         "read-only: no file writes, refactors, validation, lab, launcher, "

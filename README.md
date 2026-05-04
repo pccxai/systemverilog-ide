@@ -135,6 +135,10 @@ python -m pccx_ide_cli module-summary fixtures/organization/hierarchy_top.sv --f
 python -m pccx_ide_cli port-usage fixtures/organization/hierarchy_top.sv --module leaf_mod --format json
 python -m pccx_ide_cli port-usage fixtures/organization/hierarchy_top.sv --module leaf_mod --format text
 
+# Target module context bundle (pre-stable, read-only)
+python -m pccx_ide_cli module-context fixtures/organization/hierarchy_top.sv --module leaf_mod --format json
+python -m pccx_ide_cli module-context fixtures/organization/hierarchy_top.sv --module leaf_mod --format text
+
 # Target-specific refactor impact view (pre-stable, read-only)
 python -m pccx_ide_cli refactor-impact fixtures/organization/hierarchy_top.sv --module leaf_mod --format json
 python -m pccx_ide_cli refactor-impact fixtures/organization/hierarchy_top.sv --module leaf_mod --format text
@@ -200,9 +204,11 @@ dependent, and impact summaries from the same scanner data.
 `module-summary` renders conservative module header and port summaries
 for editor sidebars and reviewed refactoring planning. `port-usage`
 renders target port declarations with scanner-detected dependent
-instantiation connection summaries. `refactor-impact` renders
-target-specific declaration, dependent, and dependency review data for a
-named module. These commands do not edit files, apply
+instantiation connection summaries. `module-context` bundles target
+summary, dependency, port-usage, and refactor-impact review data for
+editor context panes. `refactor-impact` renders target-specific
+declaration, dependent, and dependency review data for a named module.
+These commands do not edit files, apply
 refactors, execute validation, run vendor tools, invoke `pccx-lab` or the
 launcher, or implement semantic elaboration. The output shapes are
 pre-stable and documented in
@@ -256,7 +262,7 @@ surfaces, external editor planning, and later workflow tracks lives in
 The scanner-based module organization workflow for module boundaries,
 hierarchy views, dependency views, module header/port summaries, and
 target-specific refactor impact review data plus proposal-only
-refactoring planning is documented in
+refactoring planning, including the target module context bundle, is documented in
 [`docs/MODULE_ORGANIZATION_WORKFLOW.md`](./docs/MODULE_ORGANIZATION_WORKFLOW.md).
 The planned AI-assisted SystemVerilog workflow, permission boundary, and
 pccx-lab controlled MCP/tool dependency are documented in
