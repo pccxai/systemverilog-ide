@@ -131,6 +131,10 @@ python -m pccx_ide_cli dependencies fixtures/organization/hierarchy_top.sv --for
 python -m pccx_ide_cli module-summary fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli module-summary fixtures/organization/hierarchy_top.sv --format text
 
+# Target port usage view (pre-stable, read-only)
+python -m pccx_ide_cli port-usage fixtures/organization/hierarchy_top.sv --module leaf_mod --format json
+python -m pccx_ide_cli port-usage fixtures/organization/hierarchy_top.sv --module leaf_mod --format text
+
 # Target-specific refactor impact view (pre-stable, read-only)
 python -m pccx_ide_cli refactor-impact fixtures/organization/hierarchy_top.sv --module leaf_mod --format json
 python -m pccx_ide_cli refactor-impact fixtures/organization/hierarchy_top.sv --module leaf_mod --format text
@@ -194,9 +198,11 @@ renders the same scanner data as a focused read-only hierarchy view for
 editor tree consumers. `dependencies` renders direct module dependency,
 dependent, and impact summaries from the same scanner data.
 `module-summary` renders conservative module header and port summaries
-for editor sidebars and reviewed refactoring planning. `refactor-impact`
-renders target-specific declaration, dependent, and dependency review
-data for a named module. These commands do not edit files, apply
+for editor sidebars and reviewed refactoring planning. `port-usage`
+renders target port declarations with scanner-detected dependent
+instantiation connection summaries. `refactor-impact` renders
+target-specific declaration, dependent, and dependency review data for a
+named module. These commands do not edit files, apply
 refactors, execute validation, run vendor tools, invoke `pccx-lab` or the
 launcher, or implement semantic elaboration. The output shapes are
 pre-stable and documented in

@@ -33,6 +33,7 @@ run_json locate locate fixtures/modules/simple_module.sv simple_mod --format jso
 run_json module-hierarchy-view hierarchy fixtures/organization/hierarchy_top.sv --format json
 run_json module-dependency-view dependencies fixtures/organization/hierarchy_top.sv --format json
 run_json module-summary-view module-summary fixtures/organization/hierarchy_top.sv --format json
+run_json module-port-usage-view port-usage fixtures/organization/hierarchy_top.sv --module leaf_mod --format json
 run_json module-refactor-impact-view refactor-impact fixtures/organization/hierarchy_top.sv --module leaf_mod --format json
 run_json module-refactor-proposal refactor-plan fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 

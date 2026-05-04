@@ -16,6 +16,8 @@ _INSTANCE_RE = re.compile(
 _IDENT_RE = re.compile(r"\b[A-Za-z_]\w*\b")
 _PORT_DIRECTION_RE = re.compile(r"\b(input|output|inout)\b")
 _PORT_WIDTH_RE = re.compile(r"(\[[^\]]+\])")
+_PORT_NAMED_CONNECTION_RE = re.compile(r"\.\s*([A-Za-z_]\w*)\s*\(")
+_PORT_CONNECTION_SCAN_LINE_LIMIT = 40
 
 _NON_INSTANCE_WORDS: frozenset[str] = frozenset({
     "always",
@@ -99,6 +101,18 @@ MODULE_SUMMARY_LIMITATIONS: tuple[str, ...] = (
     "scanner-based module header and port summary data only",
     "ANSI-style port declarations are detected conservatively",
     "non-ANSI body declarations, parameters, macros, interfaces, and modports are not resolved",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "no refactor application, file write, validation run, or patch generation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
+PORT_USAGE_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based target module port usage data only",
+    "ANSI-style target port declarations are detected conservatively",
+    "instantiation candidates come from the existing line scanner",
+    "connection summaries are bounded to the scanner-detected instantiation statement",
+    "named and ordered port connections are not semantically resolved",
     "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
     "no refactor application, file write, validation run, or patch generation",
     "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
@@ -205,6 +219,24 @@ def _module_summary_safety_flags() -> dict[str, bool]:
 
 
 def _refactor_impact_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "writes_files": False,
+        "applies_refactor": False,
+        "moves_files": False,
+        "applies_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _port_usage_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "writes_files": False,
@@ -782,6 +814,185 @@ def build_module_summary_view(source: str, path: Path) -> dict[str, Any]:
     }
 
 
+def _instantiation_statement(
+    edge: dict[str, Any],
+    visible_lines: list[tuple[int, str]],
+) -> dict[str, Any]:
+    statement_lines: list[str] = []
+    complete = False
+    truncated = False
+
+    for line_num, visible in visible_lines:
+        if line_num < edge["line"]:
+            continue
+        if len(statement_lines) >= _PORT_CONNECTION_SCAN_LINE_LIMIT:
+            truncated = True
+            break
+
+        statement_lines.append(visible.strip())
+        if ";" in visible:
+            complete = True
+            break
+
+    return {
+        "complete": complete,
+        "line_count": len(statement_lines),
+        "text": " ".join(statement_lines).strip(),
+        "truncated": truncated,
+    }
+
+
+def _instantiation_argument_text(edge: dict[str, Any], statement: str) -> str:
+    head_match = re.search(
+        rf"\b{re.escape(edge['child'])}\s+"
+        rf"(?:#\s*\([^;]*\)\s*)?"
+        rf"{re.escape(edge['instance'])}\s*\(",
+        statement,
+    )
+    open_paren = (
+        head_match.end() - 1
+        if head_match is not None
+        else statement.find("(")
+    )
+    if open_paren == -1:
+        return ""
+
+    close_paren = statement.rfind(")")
+    if close_paren <= open_paren:
+        return statement[open_paren + 1:].strip()
+    return statement[open_paren + 1:close_paren].strip()
+
+
+def _ordered_connection_count(argument_text: str) -> int:
+    return len([
+        segment
+        for segment in argument_text.split(",")
+        if segment.strip()
+    ])
+
+
+def _instance_connection_summary(
+    edge: dict[str, Any],
+    visible_lines: list[tuple[int, str]],
+) -> dict[str, Any]:
+    statement = _instantiation_statement(edge, visible_lines)
+    argument_text = _instantiation_argument_text(edge, statement["text"])
+    named_connections = _PORT_NAMED_CONNECTION_RE.findall(argument_text)
+
+    if named_connections:
+        connection_style = "named"
+        connection_names = list(dict.fromkeys(named_connections))
+        connection_count = len(named_connections)
+    elif argument_text:
+        connection_style = "ordered"
+        connection_names = []
+        connection_count = _ordered_connection_count(argument_text)
+    else:
+        connection_style = "unknown"
+        connection_names = []
+        connection_count = 0
+
+    return {
+        "connection_count": connection_count,
+        "connection_names": connection_names,
+        "connection_style": connection_style,
+        "scan_complete": statement["complete"],
+        "scan_line_count": statement["line_count"],
+        "scan_truncated": statement["truncated"],
+        "semantically_resolved": False,
+    }
+
+
+def _port_usage_rows(
+    dependent_edges: list[dict[str, Any]],
+    visible_lines_by_file: dict[str, list[tuple[int, str]]],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for edge in dependent_edges:
+        rows.append({
+            "child": edge["child"],
+            "column": edge["column"],
+            "file": edge["file"],
+            "instance": edge["instance"],
+            "line": edge["line"],
+            "parent": edge["parent"],
+            "resolved": edge["resolved"],
+            **_instance_connection_summary(
+                edge,
+                visible_lines_by_file.get(edge["file"], []),
+            ),
+        })
+    return rows
+
+
+def build_module_port_usage_view(
+    source: str,
+    path: Path,
+    module_name: str,
+) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    files = sorted({module["file"] for module in modules})
+    visible_lines_by_file = {
+        file_name: _visible_lines(Path(file_name))
+        for file_name in files
+    }
+
+    matches = _module_lookup(modules, module_name)
+    selected_module = matches[0] if len(matches) == 1 else None
+    header = None
+    ports: list[dict[str, Any]] = []
+    if selected_module is not None:
+        header = _module_header(
+            selected_module,
+            visible_lines_by_file[selected_module["file"]],
+        )
+        ports = _scan_header_ports(selected_module, header["lines"])
+
+    dependent_edges = [
+        edge
+        for edge in hierarchy["edges"]
+        if edge["child"] == module_name
+    ]
+    direct_dependents = sorted({
+        edge["parent"]
+        for edge in dependent_edges
+    })
+
+    return {
+        "dependent_edges": dependent_edges,
+        "direct_dependent_count": len(direct_dependents),
+        "direct_dependents": direct_dependents,
+        "header": (
+            {
+                "complete": header["complete"],
+                "end_line": header["end_line"],
+                "line_count": header["line_count"],
+                "start_line": header["start_line"],
+            }
+            if header is not None
+            else None
+        ),
+        "kind": "module-port-usage-view",
+        "limitations": list(PORT_USAGE_LIMITATIONS),
+        "module": selected_module,
+        "port_count": len(ports),
+        "port_direction_counts": _port_direction_counts(ports),
+        "ports": ports,
+        "preflight": _refactor_impact_preflight(module_name, matches),
+        "safety": _port_usage_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "target": module_name,
+        "tool": "pccx-ide-cli",
+        "usage_site_count": len(dependent_edges),
+        "usage_sites": _port_usage_rows(dependent_edges, visible_lines_by_file),
+        "usage_state": "available_as_data",
+        "writes_files": False,
+    }
+
+
 def _refactor_impact_preflight(
     module_name: str,
     matches: list[dict[str, Any]],
@@ -1198,6 +1409,68 @@ def format_module_summary_text(view: dict[str, Any]) -> str:
             )
         for reason in module["readiness"]["reasons"]:
             lines.append(f"  blocked: {reason}")
+    lines.append(
+        "read-only: no file writes, refactors, validation, lab, launcher, "
+        "provider, or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def _port_usage_connection_label(site: dict[str, Any]) -> str:
+    if site["connection_style"] == "named":
+        names = ", ".join(site["connection_names"]) or "none"
+        return f"named connections: {names}"
+    if site["connection_style"] == "ordered":
+        return f"ordered connections: {site['connection_count']}"
+    return "connections: unknown"
+
+
+def format_module_port_usage_text(view: dict[str, Any]) -> str:
+    lines = [
+        f"source: {view['source']}",
+        f"target: {view['target']}",
+        f"port usage: {view['usage_state']}",
+        f"preflight: {view['preflight']['status']}",
+        "writes files: no",
+    ]
+
+    module = view["module"]
+    if module is not None:
+        lines.append(
+            f"declaration: {module['file']}:{module['start_line']}:"
+            f"{module['start_column']}"
+        )
+
+    lines.append(
+        f"{view['port_count']} target port"
+        f"{'s' if view['port_count'] != 1 else ''}"
+    )
+    if not view["ports"]:
+        lines.append("ports: none")
+    for port in view["ports"]:
+        width = f" {port['width']}" if port["width"] else ""
+        lines.append(
+            f"  {port['direction']}{width} {port['name']} "
+            f"at line {port['line']} ({port['state']})"
+        )
+
+    dependents = ", ".join(view["direct_dependents"]) or "none"
+    lines.append(f"dependents: {dependents}")
+    lines.append("usage sites:")
+    if not view["usage_sites"]:
+        lines.append("  none")
+    for site in view["usage_sites"]:
+        state = "resolved" if site["resolved"] else "unresolved"
+        connection_label = _port_usage_connection_label(site)
+        lines.append(
+            f"  {site['parent']} instantiates {site['child']} "
+            f"as {site['instance']} at {site['file']}:"
+            f"{site['line']}:{site['column']} ({state}; "
+            f"{connection_label}; not semantically resolved)"
+        )
+
+    for reason in view["preflight"]["reasons"]:
+        lines.append(f"blocked: {reason}")
     lines.append(
         "read-only: no file writes, refactors, validation, lab, launcher, "
         "provider, or hardware execution"

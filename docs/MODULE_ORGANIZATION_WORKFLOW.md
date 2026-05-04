@@ -4,11 +4,11 @@
 
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
-`module-summary`, and `refactor-impact` CLI surfaces that report module
-boundary spans, scanner-based hierarchy data, direct dependency impact
-data, conservative module header/port summaries, and target-specific
-refactor impact data for editor navigation and reviewed refactoring
-planning.
+`module-summary`, `port-usage`, and `refactor-impact` CLI surfaces that
+report module boundary spans, scanner-based hierarchy data, direct
+dependency impact data, conservative module header/port summaries,
+target port usage summaries, and target-specific refactor impact data
+for editor navigation and reviewed refactoring planning.
 
 It is not a full SystemVerilog parser, not semantic elaboration, not an LSP
 implementation, and not a write-capable refactoring engine.
@@ -24,6 +24,8 @@ python -m pccx_ide_cli dependencies <path> --format json
 python -m pccx_ide_cli dependencies <path> --format text
 python -m pccx_ide_cli module-summary <path> --format json
 python -m pccx_ide_cli module-summary <path> --format text
+python -m pccx_ide_cli port-usage <path> --module <name> --format json
+python -m pccx_ide_cli port-usage <path> --module <name> --format text
 python -m pccx_ide_cli refactor-impact <path> --module <name> --format json
 python -m pccx_ide_cli refactor-impact <path> --module <name> --format text
 python -m pccx_ide_cli refactor-plan <path> --action rename-module --module <name> --new-name <name> --format json
@@ -169,6 +171,60 @@ apply refactors, generate patches, run validation, execute shell
 commands, invoke `pccx-lab`, invoke the launcher, call providers, touch
 hardware, upload telemetry, or perform automatic repository actions.
 
+The port usage view reports a target module's conservative port
+declarations and scanner-detected dependent instantiation usage sites:
+
+```json
+{
+  "kind": "module-port-usage-view",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "target": "leaf_mod",
+  "usage_state": "available_as_data",
+  "writes_files": false,
+  "preflight": {
+    "status": "ready-for-review",
+    "requires_approval_before_write": true,
+    "reasons": []
+  },
+  "ports": [
+    {
+      "name": "clk",
+      "direction": "input",
+      "width": null,
+      "line": 5,
+      "state": "detected"
+    }
+  ],
+  "usage_sites": [
+    {
+      "parent": "top_mod",
+      "child": "leaf_mod",
+      "instance": "u_leaf",
+      "connection_style": "named",
+      "connection_names": ["clk"],
+      "semantically_resolved": false
+    }
+  ],
+  "safety": {
+    "read_only": true,
+    "writes_files": false,
+    "applies_refactor": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The port usage view is display data only. It uses the existing
+instantiation scanner and bounded connection text from the candidate
+instantiation statement; it does not semantically resolve named or
+ordered port connections. It does not write files, apply refactors,
+generate patches, run validation, execute shell commands, invoke
+`pccx-lab`, invoke the launcher, call providers, touch hardware, upload
+telemetry, or perform automatic repository actions.
+
 The refactor impact view reports target-specific review data for a module:
 
 ```json
@@ -251,6 +307,8 @@ This is a visualization seed for editor trees and review workflows. The
 `hierarchy` command renders it as JSON or text tree data, and the
 `dependencies` command renders direct dependency and dependent data. The
 `module-summary` command renders conservative module header and port data.
+The `port-usage` command renders a target module's conservative port data
+and dependent instantiation connection summaries.
 These commands do not run elaboration, expand macros, interpret generate
 blocks, or replace vendor tooling.
 
@@ -267,6 +325,20 @@ proposal-only refactoring helpers. It is not a full SystemVerilog parser:
 non-ANSI body declarations, parameter elaboration, macros, interfaces,
 modports, packages, and semantic type resolution are outside this
 boundary.
+
+## Port Usage Review
+
+`port-usage` accepts a target module name and reports the target's
+scanner-detected ANSI-style port declarations, direct dependent modules,
+and dependent instantiation usage sites. For each usage site it reports
+the candidate instance location and a bounded connection summary such as
+named connection names or ordered connection count.
+
+This view is intended as review input for editor sidebars and future
+proposal-only port refactoring helpers. Connection data is not
+semantically resolved: macros, interfaces, generate blocks, parameter
+elaboration, implicit connections, and type compatibility are outside
+this boundary.
 
 ## Refactor Impact Review
 
@@ -290,6 +362,7 @@ inputs for later helpers:
 - scanner-based hierarchy edges
 - direct dependency and dependent summaries
 - conservative module header and port summaries
+- target-specific port usage summaries
 - target-specific refactor impact review data
 - planned helper names for rename, extract-port, and move-module workflows
 
@@ -366,5 +439,5 @@ This workflow advances
 [`systemverilog-ide#8`](https://github.com/pccxai/systemverilog-ide/issues/8)
 with read-only module boundary detection, a focused hierarchy view, a
 direct dependency view, conservative module header/port summaries,
-target-specific refactor impact review data, and a proposal-only
-refactoring boundary.
+target-specific port usage summaries, target-specific refactor impact
+review data, and a proposal-only refactoring boundary.

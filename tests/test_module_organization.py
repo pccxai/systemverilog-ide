@@ -21,12 +21,14 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_dependency_view,
     build_module_hierarchy_view,
     build_module_organization_export,
+    build_module_port_usage_view,
     build_module_summary_view,
     build_refactor_impact_view,
     build_refactor_proposal,
     format_module_dependency_text,
     format_module_hierarchy_text,
     format_module_organization_text,
+    format_module_port_usage_text,
     format_module_summary_text,
     format_refactor_impact_text,
     format_refactor_proposal_text,
@@ -205,6 +207,67 @@ def test_build_module_summary_view_inherits_port_direction(tmp_path):
     assert ports["done_o"]["state"] == "detected"
 
 
+def test_build_module_port_usage_view_reports_ports_and_usage_sites():
+    view = build_module_port_usage_view(str(FIXTURE), FIXTURE, "leaf_mod")
+
+    assert view["kind"] == "module-port-usage-view"
+    assert view["usage_state"] == "available_as_data"
+    assert view["target"] == "leaf_mod"
+    assert view["preflight"]["status"] == "ready-for-review"
+    assert view["writes_files"] is False
+    assert view["module"]["name"] == "leaf_mod"
+    assert view["port_count"] == 1
+    assert view["ports"] == [
+        {
+            "direction": "input",
+            "line": 5,
+            "name": "clk",
+            "state": "detected",
+            "width": None,
+        }
+    ]
+    assert view["direct_dependents"] == ["top_mod"]
+    assert view["usage_site_count"] == 1
+    assert view["usage_sites"] == [
+        {
+            "child": "leaf_mod",
+            "column": 5,
+            "connection_count": 1,
+            "connection_names": ["clk"],
+            "connection_style": "named",
+            "file": str(FIXTURE),
+            "instance": "u_leaf",
+            "line": 12,
+            "parent": "top_mod",
+            "resolved": True,
+            "scan_complete": True,
+            "scan_line_count": 3,
+            "scan_truncated": False,
+            "semantically_resolved": False,
+        }
+    ]
+    assert view["safety"]["read_only"] is True
+    assert view["safety"]["writes_files"] is False
+    assert view["safety"]["applies_refactor"] is False
+    assert view["safety"]["applies_patch"] is False
+    assert view["safety"]["runs_validation"] is False
+    assert view["safety"]["invokes_pccx_lab"] is False
+    assert view["safety"]["invokes_launcher"] is False
+    assert view["safety"]["provider_calls"] is False
+    assert view["safety"]["hardware_access"] is False
+
+
+def test_build_module_port_usage_view_blocks_missing_module():
+    view = build_module_port_usage_view(str(FIXTURE), FIXTURE, "missing_mod")
+
+    assert view["preflight"]["status"] == "blocked"
+    assert "module not found: missing_mod" in view["preflight"]["reasons"]
+    assert view["module"] is None
+    assert view["ports"] == []
+    assert view["usage_sites"] == []
+    assert view["writes_files"] is False
+
+
 def test_build_refactor_impact_view_reports_target_references():
     view = build_refactor_impact_view(str(FIXTURE), FIXTURE, "leaf_mod")
 
@@ -350,6 +413,19 @@ def test_format_module_summary_text_mentions_ports_and_boundary():
     assert "read-only: no file writes" in text
 
 
+def test_format_module_port_usage_text_mentions_usage_and_no_execution():
+    view = build_module_port_usage_view(str(FIXTURE), FIXTURE, "leaf_mod")
+    text = format_module_port_usage_text(view)
+
+    assert "port usage: available_as_data" in text
+    assert "preflight: ready-for-review" in text
+    assert "input clk at line 5 (detected)" in text
+    assert "top_mod instantiates leaf_mod as u_leaf" in text
+    assert "named connections: clk" in text
+    assert "writes files: no" in text
+    assert "read-only: no file writes" in text
+
+
 def test_format_refactor_impact_text_mentions_references_and_no_execution():
     view = build_refactor_impact_view(str(FIXTURE), FIXTURE, "leaf_mod")
     text = format_refactor_impact_text(view)
@@ -443,6 +519,38 @@ def test_cli_module_summary_text():
     assert result.returncode == 0, result.stderr
     assert "module summary: available_as_data" in result.stdout
     assert "input clk at line 5 (detected)" in result.stdout
+
+
+def test_cli_port_usage_json():
+    result = _run_cli(
+        "port-usage",
+        str(FIXTURE),
+        "--module",
+        "leaf_mod",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-port-usage-view"
+    assert payload["target"] == "leaf_mod"
+    assert payload["port_count"] == 1
+    assert payload["usage_sites"][0]["connection_names"] == ["clk"]
+    assert payload["safety"]["writes_files"] is False
+
+
+def test_cli_port_usage_text():
+    result = _run_cli(
+        "port-usage",
+        str(FIXTURE),
+        "--module",
+        "leaf_mod",
+        "--format",
+        "text",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "port usage: available_as_data" in result.stdout
+    assert "top_mod instantiates leaf_mod as u_leaf" in result.stdout
 
 
 def test_cli_refactor_impact_json():
@@ -542,6 +650,17 @@ def test_cli_module_summary_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_port_usage_missing_path_exits_nonzero():
+    result = _run_cli(
+        "port-usage",
+        str(FIXTURE.parent / "missing.sv"),
+        "--module",
+        "leaf_mod",
+    )
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_cli_refactor_impact_missing_path_exits_nonzero():
     result = _run_cli(
         "refactor-impact",
@@ -560,12 +679,14 @@ def test_docs_cover_organization_flow_and_limits():
     assert "hierarchy <path>" in contract
     assert "dependencies <path>" in contract
     assert "module-summary <path>" in contract
+    assert "port-usage <path>" in contract
     assert "refactor-impact <path>" in contract
     assert "MODULE_ORGANIZATION_WORKFLOW.md" in contract
     assert "proposal-only" in workflow
     assert "module-hierarchy-view" in workflow
     assert "module-dependency-view" in workflow
     assert "module-summary-view" in workflow
+    assert "module-port-usage-view" in workflow
     assert "module-refactor-impact-view" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow
