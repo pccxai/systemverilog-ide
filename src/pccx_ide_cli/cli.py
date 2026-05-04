@@ -317,6 +317,62 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    validation_plan_cmd = sub.add_parser(
+        "validation-plan",
+        help=(
+            "Emit proposal-only validation command descriptors for a "
+            "refactor plan."
+        ),
+    )
+    validation_plan_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    validation_plan_cmd.add_argument(
+        "--action",
+        choices=("rename-module", "extract-port", "move-module"),
+        required=True,
+        help="Refactor proposal kind to validate after review.",
+    )
+    validation_plan_cmd.add_argument(
+        "--module",
+        required=True,
+        help="Exact module name to use as the validation target.",
+    )
+    validation_plan_cmd.add_argument(
+        "--new-name",
+        default=None,
+        help="New module name for rename-module validation plans.",
+    )
+    validation_plan_cmd.add_argument(
+        "--port-name",
+        default=None,
+        help="Port name for extract-port validation plans.",
+    )
+    validation_plan_cmd.add_argument(
+        "--direction",
+        choices=("input", "output", "inout"),
+        default=None,
+        help="Port direction for extract-port validation plans.",
+    )
+    validation_plan_cmd.add_argument(
+        "--width",
+        default=None,
+        help="Optional port width text for extract-port validation plans.",
+    )
+    validation_plan_cmd.add_argument(
+        "--destination",
+        default=None,
+        help="Relative destination path for move-module validation plans.",
+    )
+    validation_plan_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     xsim_log = sub.add_parser(
         "xsim-log",
         help="Parse an existing xsim-style log file into diagnostics-like output.",
@@ -683,6 +739,34 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_refactor_proposal_text(proposal))
+        return 0
+
+    if args.command == "validation-plan":
+        from .module_organization import (
+            build_refactor_validation_plan,
+            format_refactor_validation_plan_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        plan = build_refactor_validation_plan(
+            str(args.path),
+            args.path,
+            args.action,
+            args.module,
+            new_name=args.new_name,
+            port_name=args.port_name,
+            direction=args.direction,
+            width=args.width,
+            destination=args.destination,
+        )
+        if args.format == "json":
+            json.dump(plan, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_refactor_validation_plan_text(plan))
         return 0
 
     if args.command == "xsim-log":

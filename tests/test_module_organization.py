@@ -26,6 +26,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_summary_view,
     build_refactor_impact_view,
     build_refactor_proposal,
+    build_refactor_validation_plan,
     format_module_dependency_text,
     format_module_context_text,
     format_module_hierarchy_text,
@@ -34,6 +35,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_summary_text,
     format_refactor_impact_text,
     format_refactor_proposal_text,
+    format_refactor_validation_plan_text,
 )
 
 
@@ -421,6 +423,70 @@ def test_build_refactor_proposal_extract_port_requires_direction():
     assert proposal["safety"]["writes_files"] is False
 
 
+def test_build_refactor_validation_plan_is_proposal_only():
+    plan = build_refactor_validation_plan(
+        str(FIXTURE),
+        FIXTURE,
+        "rename-module",
+        "leaf_mod",
+        new_name="leaf_mod_next",
+    )
+
+    assert plan["kind"] == "module-refactor-validation-plan"
+    assert plan["validation_state"] == "proposal-only"
+    assert plan["preflight"]["status"] == "ready-for-review"
+    assert plan["writes_files"] is False
+    assert plan["refactor_proposal"]["requested_change"]["new_name"] == "leaf_mod_next"
+    assert plan["review_context"]["review_target_count"] == 2
+    assert plan["command_descriptor_count"] == 8
+    groups = {group["phase"]: group for group in plan["validation_groups"]}
+    assert groups["pre-change-review"]["command_count"] == 3
+    assert groups["post-change-local-validation"]["command_count"] == 5
+    locate_command = groups["post-change-local-validation"]["commands"][-1]
+    assert locate_command["id"] == "locate-new-module"
+    assert locate_command["argv"] == [
+        "python",
+        "-m",
+        "pccx_ide_cli",
+        "locate",
+        str(FIXTURE),
+        "leaf_mod_next",
+        "--kind",
+        "module",
+        "--format",
+        "json",
+    ]
+    assert locate_command["state"] == "proposed-not-run"
+    assert locate_command["shell"] is False
+    assert plan["safety"]["read_only"] is True
+    assert plan["safety"]["emits_command_descriptors"] is True
+    assert plan["safety"]["runs_validation"] is False
+    assert plan["safety"]["runs_shell"] is False
+    assert plan["safety"]["invokes_pccx_lab"] is False
+    assert plan["safety"]["invokes_launcher"] is False
+    assert plan["safety"]["hardware_access"] is False
+
+
+def test_build_refactor_validation_plan_blocks_post_change_commands():
+    plan = build_refactor_validation_plan(
+        str(FIXTURE),
+        FIXTURE,
+        "extract-port",
+        "top_mod",
+        port_name="valid_i",
+    )
+
+    assert plan["validation_state"] == "blocked"
+    assert "missing required direction" in plan["preflight"]["reasons"]
+    groups = {group["phase"]: group for group in plan["validation_groups"]}
+    assert groups["pre-change-review"]["command_count"] == 3
+    assert groups["post-change-local-validation"]["status"] == "blocked"
+    assert groups["post-change-local-validation"]["commands"] == []
+    assert groups["post-change-local-validation"]["blocked_by"] == [
+        "missing required direction"
+    ]
+
+
 def test_format_module_organization_text_mentions_boundary_and_hierarchy():
     export = build_module_organization_export(str(FIXTURE), FIXTURE)
     text = format_module_organization_text(export)
@@ -515,6 +581,25 @@ def test_format_refactor_proposal_text_mentions_no_execution():
     assert "preflight: ready-for-review" in text
     assert "writes files: no" in text
     assert "no patch, validation, lab, launcher, provider, or hardware execution" in text
+
+
+def test_format_refactor_validation_plan_text_mentions_no_execution():
+    plan = build_refactor_validation_plan(
+        str(FIXTURE),
+        FIXTURE,
+        "move-module",
+        "leaf_mod",
+        destination="rtl/leaf_mod.sv",
+    )
+    text = format_refactor_validation_plan_text(plan)
+
+    assert "validation plan: proposal-only" in text
+    assert "pre-change-review: proposal-only" in text
+    assert "post-change-local-validation: proposal-only" in text
+    assert "organization-destination:" in text
+    assert "writes files: no" in text
+    assert "runs validation: no" in text
+    assert "no validation, shell, refactor, patch, file write" in text
 
 
 def test_cli_organization_json():
@@ -723,6 +808,48 @@ def test_cli_refactor_plan_text():
     assert "writes files: no" in result.stdout
 
 
+def test_cli_validation_plan_json():
+    result = _run_cli(
+        "validation-plan",
+        str(FIXTURE),
+        "--action",
+        "rename-module",
+        "--module",
+        "leaf_mod",
+        "--new-name",
+        "leaf_mod_next",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-refactor-validation-plan"
+    assert payload["validation_state"] == "proposal-only"
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["runs_validation"] is False
+
+
+def test_cli_validation_plan_text():
+    result = _run_cli(
+        "validation-plan",
+        str(FIXTURE),
+        "--action",
+        "extract-port",
+        "--module",
+        "top_mod",
+        "--port-name",
+        "valid_i",
+        "--direction",
+        "input",
+        "--format",
+        "text",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "validation plan: proposal-only" in result.stdout
+    assert "runs validation: no" in result.stdout
+    assert "port-usage:" in result.stdout
+
+
 def test_cli_organization_missing_path_exits_nonzero():
     result = _run_cli("organization", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -780,6 +907,21 @@ def test_cli_module_context_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_validation_plan_missing_path_exits_nonzero():
+    result = _run_cli(
+        "validation-plan",
+        str(FIXTURE.parent / "missing.sv"),
+        "--action",
+        "rename-module",
+        "--module",
+        "leaf_mod",
+        "--new-name",
+        "leaf_mod_next",
+    )
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_docs_cover_organization_flow_and_limits():
     contract = CONTRACT_DOC.read_text(encoding="utf-8")
     workflow = WORKFLOW_DOC.read_text(encoding="utf-8")
@@ -790,6 +932,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "port-usage <path>" in contract
     assert "module-context <path>" in contract
     assert "refactor-impact <path>" in contract
+    assert "validation-plan <path>" in contract
     assert "MODULE_ORGANIZATION_WORKFLOW.md" in contract
     assert "proposal-only" in workflow
     assert "module-hierarchy-view" in workflow
@@ -798,5 +941,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-port-usage-view" in workflow
     assert "module-context-bundle" in workflow
     assert "module-refactor-impact-view" in workflow
+    assert "module-refactor-validation-plan" in workflow
+    assert "proposed-not-run" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow
