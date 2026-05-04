@@ -192,6 +192,17 @@ APPLICATION_REQUEST_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+APPLICATION_RESULT_LIMITATIONS: tuple[str, ...] = (
+    "proposal-only refactor application result metadata",
+    "records a not-applied result receipt over the application request",
+    "does not include command argv; use validation-plan for command descriptors",
+    "does not execute validation commands or shell commands",
+    "does not apply refactors, write files, move files, generate patches, "
+    "or roll back files",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 _REFACTOR_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "rename-module": ("new_name",),
     "extract-port": ("port_name", "direction"),
@@ -403,6 +414,33 @@ def _application_request_safety_flags() -> dict[str, bool]:
         "generates_patch": False,
         "runs_validation": False,
         "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _application_result_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "application_result_metadata_only": True,
+        "approval_granted": False,
+        "request_accepted": False,
+        "write_attempted": False,
+        "summarizes_command_descriptors": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "rollback_required": False,
         "invokes_pccx_lab": False,
         "invokes_launcher": False,
         "invokes_vendor_tools": False,
@@ -2119,6 +2157,115 @@ def build_refactor_application_request(
     }
 
 
+def _result_application_summary(request: dict[str, Any]) -> dict[str, Any]:
+    approval = request["approval_summary"]
+    phases = []
+    for phase in approval["validation_phases"]:
+        phases.append({
+            "command_ids": list(phase["command_ids"]),
+            "phase": phase["phase"],
+            "status": phase["status"],
+        })
+    return {
+        "accepted": request["application_request"]["accepted"],
+        "application_state": request["application_state"],
+        "applied": request["application_request"]["applied"],
+        "approval_decision_state": approval["decision_state"],
+        "approval_granted": approval["approved"],
+        "command_descriptor_count": approval["command_descriptor_count"],
+        "decision": request["application_request"]["decision"],
+        "kind": request["kind"],
+        "reason": request["application_request"]["reason"],
+        "required_approval_decision": request["application_request"][
+            "required_approval_decision"
+        ],
+        "review_state": approval["review_state"],
+        "validation_phases": phases,
+        "validation_state": approval["validation_state"],
+    }
+
+
+def build_refactor_application_result(
+    source: str,
+    path: Path,
+    action: str,
+    module_name: str,
+    *,
+    new_name: str | None = None,
+    port_name: str | None = None,
+    direction: str | None = None,
+    width: str | None = None,
+    destination: str | None = None,
+) -> dict[str, Any]:
+    request = build_refactor_application_request(
+        source,
+        path,
+        action,
+        module_name,
+        new_name=new_name,
+        port_name=port_name,
+        direction=direction,
+        width=width,
+        destination=destination,
+    )
+    preflight = request["preflight"]
+    result_state = (
+        "blocked"
+        if preflight["status"] == "blocked"
+        else "not-applied"
+    )
+    reason = (
+        "preflight blocked"
+        if preflight["status"] == "blocked"
+        else "application request not accepted"
+    )
+
+    return {
+        "action": action,
+        "application_result": {
+            "applied": False,
+            "file_change_count": 0,
+            "files_changed": [],
+            "patch_generated": False,
+            "reason": reason,
+            "result": "not_applied",
+            "result_state": result_state,
+            "rollback_performed": False,
+            "rollback_required": False,
+            "source_application_state": request["application_state"],
+            "validation_result": "not_run",
+            "validation_run": False,
+            "write_attempted": False,
+        },
+        "application_summary": _result_application_summary(request),
+        "kind": "module-refactor-application-result",
+        "limitations": list(APPLICATION_RESULT_LIMITATIONS),
+        "module": request["module"],
+        "preflight": {
+            "reasons": list(preflight["reasons"]),
+            "requires_approval_before_write": preflight[
+                "requires_approval_before_write"
+            ],
+            "requires_explicit_approval_before_run": True,
+            "status": preflight["status"],
+        },
+        "proposal_summary": {
+            "planned_step_count": request["proposal_summary"][
+                "planned_step_count"
+            ],
+            "requested_change": request["proposal_summary"]["requested_change"],
+            "writes_files": request["proposal_summary"]["writes_files"],
+        },
+        "result_state": result_state,
+        "safety": _application_result_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "target": module_name,
+        "tool": "pccx-ide-cli",
+        "writes_files": False,
+    }
+
+
 def format_refactor_proposal_text(proposal: dict[str, Any]) -> str:
     lines = [
         f"source: {proposal['source']}",
@@ -2277,6 +2424,47 @@ def format_refactor_application_request_text(request: dict[str, Any]) -> str:
         "application metadata only: no command argv, validation, shell, "
         "refactor, patch, file write, lab, launcher, vendor tool, provider, "
         "or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_refactor_application_result_text(result: dict[str, Any]) -> str:
+    application_result = result["application_result"]
+    application = result["application_summary"]
+    lines = [
+        f"source: {result['source']}",
+        f"target: {result['target']}",
+        f"action: {result['action']}",
+        f"application result: {application_result['result_state']}",
+        f"result: {application_result['result']}",
+        f"application request: {application['application_state']}",
+        "accepted: no",
+        "applied: no",
+        "write attempted: no",
+        "patch generated: no",
+        "files changed: 0",
+        "validation run: no",
+        "rollback required: no",
+        f"approval decision: {application['approval_decision_state']}",
+        f"review state: {application['review_state']}",
+        f"preflight: {result['preflight']['status']}",
+        "writes files: no",
+        "runs validation: no",
+        f"validation descriptors: {application['command_descriptor_count']}",
+    ]
+    for phase in application["validation_phases"]:
+        command_ids = ", ".join(phase["command_ids"]) or "none"
+        lines.append(
+            f"validation phase: {phase['phase']} "
+            f"({phase['status']}): {command_ids}"
+        )
+    for reason in result["preflight"]["reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"reason: {application_result['reason']}")
+    lines.append(
+        "result metadata only: no command argv, validation, shell, "
+        "refactor, patch, file write, rollback, lab, launcher, vendor tool, "
+        "provider, or hardware execution"
     )
     return "\n".join(lines) + "\n"
 

@@ -146,6 +146,11 @@ python -m pccx_ide_cli refactor-impact fixtures/organization/hierarchy_top.sv --
 # Refactoring proposal export (pre-stable, proposal-only)
 python -m pccx_ide_cli refactor-plan fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 python -m pccx_ide_cli refactor-plan fixtures/organization/hierarchy_top.sv --action extract-port --module top_mod --port-name valid_i --direction input --format text
+python -m pccx_ide_cli validation-plan fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
+python -m pccx_ide_cli refactor-review fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
+python -m pccx_ide_cli refactor-approval fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
+python -m pccx_ide_cli refactor-application fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
+python -m pccx_ide_cli refactor-result fixtures/organization/hierarchy_top.sv --action rename-module --module top_mod --new-name top_mod_next --format json
 
 # xsim log handoff scaffold (parses existing log files only)
 python -m pccx_ide_cli xsim-log fixtures/xsim/mixed.log --format json
@@ -220,6 +225,13 @@ It records requested inputs, a bounded preflight status, and planned
 review steps, but it does not write files, apply patches, run validation,
 invoke `pccx-lab` or the launcher, call providers, touch hardware, or
 perform automatic repository actions.
+`validation-plan`, `refactor-review`, `refactor-approval`,
+`refactor-application`, and `refactor-result` extend that reviewed flow with
+proposal-only validation descriptors, summary-only review data, unapproved
+approval gates, not-accepted application request metadata, and not-applied
+result receipts. They do not execute validation, run shell commands, apply
+edits, generate patches, write files, invoke `pccx-lab` or the launcher, call
+providers, touch hardware, or perform automatic repository actions.
 
 `xsim-log` is an early handoff scaffold. It parses existing synthetic
 xsim-style log files into diagnostics-like JSON or text output. It does

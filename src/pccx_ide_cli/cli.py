@@ -541,6 +541,62 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    refactor_result_cmd = sub.add_parser(
+        "refactor-result",
+        help=(
+            "Emit proposal-only application result metadata for a "
+            "refactor application request."
+        ),
+    )
+    refactor_result_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    refactor_result_cmd.add_argument(
+        "--action",
+        choices=("rename-module", "extract-port", "move-module"),
+        required=True,
+        help="Refactor proposal kind to summarize as a result.",
+    )
+    refactor_result_cmd.add_argument(
+        "--module",
+        required=True,
+        help="Exact module name to use as the result target.",
+    )
+    refactor_result_cmd.add_argument(
+        "--new-name",
+        default=None,
+        help="New module name for rename-module application results.",
+    )
+    refactor_result_cmd.add_argument(
+        "--port-name",
+        default=None,
+        help="Port name for extract-port application results.",
+    )
+    refactor_result_cmd.add_argument(
+        "--direction",
+        choices=("input", "output", "inout"),
+        default=None,
+        help="Port direction for extract-port application results.",
+    )
+    refactor_result_cmd.add_argument(
+        "--width",
+        default=None,
+        help="Optional port width text for extract-port application results.",
+    )
+    refactor_result_cmd.add_argument(
+        "--destination",
+        default=None,
+        help="Relative destination path for move-module application results.",
+    )
+    refactor_result_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     xsim_log = sub.add_parser(
         "xsim-log",
         help="Parse an existing xsim-style log file into diagnostics-like output.",
@@ -1019,6 +1075,34 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_refactor_application_request_text(request))
+        return 0
+
+    if args.command == "refactor-result":
+        from .module_organization import (
+            build_refactor_application_result,
+            format_refactor_application_result_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        result = build_refactor_application_result(
+            str(args.path),
+            args.path,
+            args.action,
+            args.module,
+            new_name=args.new_name,
+            port_name=args.port_name,
+            direction=args.direction,
+            width=args.width,
+            destination=args.destination,
+        )
+        if args.format == "json":
+            json.dump(result, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_refactor_application_result_text(result))
         return 0
 
     if args.command == "xsim-log":
