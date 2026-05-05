@@ -6,7 +6,7 @@ This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 `hierarchy-cycles`, `unresolved-instances`, `module-roots`, `module-leaves`,
 `module-orphans`, `module-depths`, `module-paths`, `module-edges`,
-`module-reachability`, `module-fanout`, `module-fanin`,
+`module-reachability`, `module-order`, `module-fanout`, `module-fanin`,
 `module-health`,
 `module-summary`,
 `boundary-audit`, `module-duplicates`, `refactor-candidates`, `port-usage`,
@@ -20,6 +20,7 @@ report metadata, unresolved instantiation report metadata, root-candidate
 report metadata, leaf-candidate report metadata, orphan-candidate report
 metadata, depth-level report metadata, hierarchy path report metadata,
 `module-edge-report` metadata, `module-reachability-report` metadata,
+`module-order-report` metadata,
 `module-fanout-report` metadata,
 `module-fanin-report` metadata,
 module graph health summary metadata,
@@ -62,6 +63,8 @@ python -m pccx_ide_cli module-edges <path> --format json
 python -m pccx_ide_cli module-edges <path> --format text
 python -m pccx_ide_cli module-reachability <path> --format json
 python -m pccx_ide_cli module-reachability <path> --format text
+python -m pccx_ide_cli module-order <path> --format json
+python -m pccx_ide_cli module-order <path> --format text
 python -m pccx_ide_cli module-fanout <path> --format json
 python -m pccx_ide_cli module-fanout <path> --format text
 python -m pccx_ide_cli module-fanin <path> --format json
@@ -537,6 +540,51 @@ The reachability report is display data only. It does not write files, apply
 refactors, generate patches, run validation, execute shell commands, emit
 command argv, invoke `pccx-lab`, invoke the launcher, call providers, touch
 hardware, upload telemetry, or perform automatic repository actions.
+
+The module order report summarizes a dependency-first module review order from
+resolved scanner edges:
+
+```json
+{
+  "kind": "module-order-report",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "report_state": "order-detected",
+  "order_direction": "dependency-first",
+  "ordered_module_names": [
+    "fanout_child_b",
+    "fanout_leaf",
+    "fanout_child_a",
+    "fanout_top"
+  ],
+  "max_dependency_level": 2,
+  "modules": [
+    {
+      "name": "fanout_top",
+      "order_index": 4,
+      "dependency_level": 2,
+      "direct_dependencies": ["fanout_child_a", "fanout_child_b"]
+    }
+  ],
+  "safety": {
+    "read_only": true,
+    "order_report_only": true,
+    "writes_files": false,
+    "emits_command_descriptors": false,
+    "runs_validation": false,
+    "runs_build": false,
+    "runs_compile": false
+  },
+  "limitations": []
+}
+```
+
+The module order report is display data only. It does not write files, apply
+refactors, generate patches, run validation, run builds or compilers, execute
+shell commands, emit command argv, invoke `pccx-lab`, invoke the launcher, call
+providers, touch hardware, upload telemetry, or perform automatic repository
+actions.
 
 The fanin report ranks modules by scanner-detected resolved direct dependents:
 
