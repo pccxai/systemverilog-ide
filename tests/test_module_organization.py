@@ -1665,6 +1665,37 @@ def test_build_module_graph_health_summary_blocks_unresolved_and_duplicates():
     assert "ambiguous module name: dup_mod" in duplicates["blocked_reasons"]
 
 
+def test_build_module_graph_health_summary_blocks_incomplete_boundaries():
+    report = build_module_graph_health_summary(
+        str(INCOMPLETE_FIXTURE),
+        INCOMPLETE_FIXTURE,
+    )
+
+    assert report["health_state"] == "blocked"
+    assert report["ready_for_review"] is False
+    assert report["module_count"] == 1
+    assert report["complete_module_count"] == 0
+    assert report["incomplete_module_count"] == 1
+    assert report["blocked_reasons"] == [
+        "module boundary is incomplete: bad_module"
+    ]
+    assert report["next_required_action"] == (
+        "resolve scanner-detected module graph blockers before refactor planning"
+    )
+    cards = {card["card_id"]: card for card in report["health_cards"]}
+    assert cards["boundary-completeness"]["status"] == "blocked"
+    assert cards["boundary-completeness"]["complete_module_count"] == 0
+    assert cards["boundary-completeness"]["incomplete_module_count"] == 1
+    assert report["root_names"] == ["bad_module"]
+    assert report["leaf_names"] == ["bad_module"]
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["graph_health_summary_only"] is True
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
 def test_build_module_summary_view_reports_ports_and_safety():
     view = build_module_summary_view(str(FIXTURE), FIXTURE)
 
@@ -3814,6 +3845,31 @@ def test_cli_module_health_text():
     assert result.returncode == 0, result.stderr
     assert "module graph health: ready-for-review" in result.stdout
     assert "status: duplicate-modules (no-duplicates-detected)" in result.stdout
+    assert "read-only graph health summary: no command argv" in result.stdout
+
+
+def test_cli_module_health_blocks_incomplete_boundary_json():
+    result = _run_cli("module-health", str(INCOMPLETE_FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-graph-health-summary"
+    assert payload["health_state"] == "blocked"
+    assert payload["ready_for_review"] is False
+    assert payload["incomplete_module_count"] == 1
+    assert payload["blocked_reasons"] == [
+        "module boundary is incomplete: bad_module"
+    ]
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_health_blocks_incomplete_boundary_text():
+    result = _run_cli("module-health", str(INCOMPLETE_FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module graph health: blocked" in result.stdout
+    assert "status: boundary-completeness (blocked)" in result.stdout
+    assert "blocked: module boundary is incomplete: bad_module" in result.stdout
     assert "read-only graph health summary: no command argv" in result.stdout
 
 
