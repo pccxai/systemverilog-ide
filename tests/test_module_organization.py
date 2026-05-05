@@ -2058,6 +2058,27 @@ def test_build_refactor_proposal_blocks_existing_port_name():
     assert proposal["safety"]["runs_validation"] is False
 
 
+def test_build_refactor_proposal_blocks_unbracketed_port_width():
+    proposal = build_refactor_proposal(
+        str(FIXTURE),
+        FIXTURE,
+        "extract-port",
+        "top_mod",
+        port_name="valid_i",
+        direction="input",
+        width="7:0",
+    )
+
+    assert proposal["proposal_state"] == "proposal-only"
+    assert proposal["writes_files"] is False
+    assert proposal["preflight"]["status"] == "blocked"
+    assert proposal["preflight"]["reasons"] == [
+        "width must be a bracketed SystemVerilog-style range"
+    ]
+    assert proposal["safety"]["applies_patch"] is False
+    assert proposal["safety"]["runs_validation"] is False
+
+
 def test_build_refactor_validation_plan_is_proposal_only():
     plan = build_refactor_validation_plan(
         str(FIXTURE),
@@ -3897,6 +3918,32 @@ def test_cli_refactor_plan_blocks_move_to_same_source_file():
     ]
     assert payload["writes_files"] is False
     assert payload["safety"]["moves_files"] is False
+
+
+def test_cli_refactor_plan_blocks_unbracketed_port_width():
+    result = _run_cli(
+        "refactor-plan",
+        str(FIXTURE),
+        "--action",
+        "extract-port",
+        "--module",
+        "top_mod",
+        "--port-name",
+        "valid_i",
+        "--direction",
+        "input",
+        "--width",
+        "7:0",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["preflight"]["status"] == "blocked"
+    assert payload["preflight"]["reasons"] == [
+        "width must be a bracketed SystemVerilog-style range"
+    ]
+    assert payload["writes_files"] is False
 
 
 def test_cli_refactor_plan_text():
