@@ -107,6 +107,16 @@ MODULE_FILE_REPORT_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+MODULE_SPAN_REPORT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module span report only",
+    "uses scanner-detected declaration start and end lines",
+    "incomplete boundaries block span review readiness",
+    "does not semantically elaborate modules or resolve packages/namespaces",
+    "does not apply refactors, write files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 REFACTOR_CANDIDATE_LIST_LIMITATIONS: tuple[str, ...] = (
     "scanner-based refactor candidate metadata only",
     "lists scanner-detected modules and proposal-only helper actions for editor menus",
@@ -519,6 +529,28 @@ def _module_file_report_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "file_layout_report_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _module_span_report_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "span_report_only": True,
         "emits_command_descriptors": False,
         "writes_files": False,
         "moves_files": False,
@@ -1662,6 +1694,83 @@ def build_module_file_report(source: str, path: Path) -> dict[str, Any]:
             1 for row in file_rows
             if row["layout_state"] == "single-module-file"
         ),
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "writes_files": False,
+    }
+
+
+def _module_span_rows(modules: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    sorted_modules = sorted(
+        modules,
+        key=lambda module: (
+            -(
+                module["span_lines"]
+                if isinstance(module["span_lines"], int)
+                else 0
+            ),
+            module["file"],
+            module["start_line"],
+            module["name"],
+        ),
+    )
+    rows: list[dict[str, Any]] = []
+    for index, module in enumerate(sorted_modules, start=1):
+        reasons: list[str] = []
+        if not module["complete"]:
+            reasons.append(f"incomplete module boundary: {module['name']}")
+        rows.append({
+            "complete": module["complete"],
+            "end_line": module["end_line"],
+            "file": module["file"],
+            "name": module["name"],
+            "rank": index,
+            "reasons": reasons,
+            "refactor_preflight_state": "blocked" if reasons else "ready-for-review",
+            "span_lines": module["span_lines"],
+            "span_state": "blocked" if reasons else "ready-for-review",
+            "start_column": module["start_column"],
+            "start_line": module["start_line"],
+        })
+    return rows
+
+
+def build_module_span_report(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    rows = _module_span_rows(modules)
+    blocked_reasons = [
+        reason
+        for row in rows
+        for reason in row["reasons"]
+    ]
+    if not modules:
+        blocked_reasons.append("no module declarations detected")
+    complete_rows = [row for row in rows if row["complete"]]
+    span_line_values = [
+        row["span_lines"]
+        for row in rows
+        if isinstance(row["span_lines"], int)
+    ]
+
+    return {
+        "blocked_reasons": blocked_reasons,
+        "complete_module_count": len(complete_rows),
+        "incomplete_module_count": len(rows) - len(complete_rows),
+        "kind": "module-span-report",
+        "limitations": list(MODULE_SPAN_REPORT_LIMITATIONS),
+        "max_span_lines": max(span_line_values, default=0),
+        "min_span_lines": min(span_line_values, default=0),
+        "module_count": len(rows),
+        "modules": rows,
+        "next_required_action": (
+            "resolve module span blockers before refactor planning"
+            if blocked_reasons
+            else "review largest scanner-detected module spans before refactor planning"
+        ),
+        "report_state": "blocked" if blocked_reasons else "spans-detected",
+        "safety": _module_span_report_safety_flags(),
+        "scanner": "line-scanner",
         "source": source,
         "tool": "pccx-ide-cli",
         "writes_files": False,
@@ -6621,6 +6730,44 @@ def format_module_file_report_text(report: dict[str, Any]) -> str:
     lines.append(f"next: {report['next_required_action']}")
     lines.append(
         "read-only file report: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_span_report_text(report: dict[str, Any]) -> str:
+    lines = [
+        f"source: {report['source']}",
+        f"module spans: {report['report_state']}",
+        f"{report['module_count']} module declaration"
+        f"{'s' if report['module_count'] != 1 else ''}",
+        (
+            f"complete: {report['complete_module_count']}; "
+            f"incomplete: {report['incomplete_module_count']}"
+        ),
+        (
+            f"span range: {report['min_span_lines']}-"
+            f"{report['max_span_lines']} lines"
+        ),
+    ]
+    if not report["modules"]:
+        lines.append("modules: none")
+    for module in report["modules"]:
+        end_line = module["end_line"] or "?"
+        lines.append(
+            f"rank {module['rank']}: {module['file']}:"
+            f"{module['start_line']}-{end_line}: "
+            f"module {module['name']} span={module['span_lines']} "
+            f"({module['span_state']}; {module['refactor_preflight_state']})"
+        )
+        for reason in module["reasons"]:
+            lines.append(f"  blocked: {reason}")
+    for reason in report["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next: {report['next_required_action']}")
+    lines.append(
+        "read-only span report: no command argv, validation, shell, "
         "refactor, patch, file write, lab, launcher, vendor tool, provider, "
         "or hardware execution"
     )
