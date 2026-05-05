@@ -227,6 +227,13 @@ jobs:
               fixtures/organization/hierarchy_top.sv \
               | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-summary-view'; assert d['safety']['writes_files'] is False"
           echo "module summary smoke ok"
+      - name: cli smoke (port connection audit exits zero)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli port-connections \
+              fixtures/organization/port_connection_audit.sv --module child_mod \
+              | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-port-connection-audit'; assert d['safety']['writes_files'] is False; assert d['safety']['emits_command_descriptors'] is False"
+          echo "port connection audit smoke ok"
       - name: cli smoke (boundary audit exits zero)
         run: |
           set -e

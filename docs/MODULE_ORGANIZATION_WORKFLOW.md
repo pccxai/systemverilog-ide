@@ -880,6 +880,57 @@ generate patches, run validation, execute shell commands, invoke
 `pccx-lab`, invoke the launcher, call providers, touch hardware, upload
 telemetry, or perform automatic repository actions.
 
+The port connection audit compares a target module's scanner-detected
+ANSI-style port names with scanner-detected named instantiation
+connections:
+
+```json
+{
+  "kind": "module-port-connection-audit",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "target": "child_mod",
+  "audit_state": "review-required",
+  "ready_for_review": false,
+  "writes_files": false,
+  "declared_port_names": ["clk", "rst_n", "done_o"],
+  "usage_site_count": 4,
+  "ready_site_count": 1,
+  "review_site_count": 3,
+  "missing_named_port_count": 2,
+  "unknown_named_port_count": 1,
+  "usage_sites": [
+    {
+      "parent": "top_mod",
+      "child": "child_mod",
+      "instance": "u_missing",
+      "connection_style": "named",
+      "named_connections": ["clk", "extra_i"],
+      "missing_named_ports": ["rst_n", "done_o"],
+      "unknown_named_ports": ["extra_i"],
+      "semantically_resolved": false
+    }
+  ],
+  "safety": {
+    "read_only": true,
+    "emits_command_descriptors": false,
+    "writes_files": false,
+    "applies_refactor": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The port connection audit is display data only. It does not semantically
+resolve ordered, wildcard, macro, generate-block, or interface/modport
+connections. Ordered and wildcard connection sites are marked for manual
+review. It does not write files, apply refactors, generate patches, run
+validation, execute shell commands, emit command argv, invoke `pccx-lab`,
+invoke the launcher, call providers, touch hardware, upload telemetry, or
+perform automatic repository actions.
+
 The module context bundle combines the existing target-specific view
 outputs into a bounded editor context packet:
 

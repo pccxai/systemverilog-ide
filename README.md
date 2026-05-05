@@ -154,6 +154,10 @@ python -m pccx_ide_cli refactor-readiness fixtures/organization/hierarchy_top.sv
 python -m pccx_ide_cli port-usage fixtures/organization/hierarchy_top.sv --module leaf_mod --format json
 python -m pccx_ide_cli port-usage fixtures/organization/hierarchy_top.sv --module leaf_mod --format text
 
+# Target port connection audit (pre-stable, read-only)
+python -m pccx_ide_cli port-connections fixtures/organization/port_connection_audit.sv --module child_mod --format json
+python -m pccx_ide_cli port-connections fixtures/organization/port_connection_audit.sv --module child_mod --format text
+
 # Target module context bundle (pre-stable, read-only)
 python -m pccx_ide_cli module-context fixtures/organization/hierarchy_top.sv --module leaf_mod --format json
 python -m pccx_ide_cli module-context fixtures/organization/hierarchy_top.sv --module leaf_mod --format text
@@ -258,9 +262,11 @@ health summary for editor status panes.
 `module-summary` renders conservative module header and port summaries
 for editor sidebars and reviewed refactoring planning. `port-usage`
 renders target port declarations with scanner-detected dependent
-instantiation connection summaries. `module-context` bundles target
-summary, dependency, port-usage, and refactor-impact review data for
-editor context panes. `refactor-candidates` lists scanner-detected
+instantiation connection summaries. `port-connections` compares
+scanner-detected target port names with named instantiation connections
+and flags ordered or wildcard sites for manual review. `module-context`
+bundles target summary, dependency, port-usage, and refactor-impact
+review data for editor context panes. `refactor-candidates` lists scanner-detected
 modules and proposal-only helper action metadata for editor action
 menus. `refactor-readiness` summarizes boundary-audit and candidate
 counts for editor status panes without selecting an action or emitting
