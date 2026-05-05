@@ -440,7 +440,9 @@ formal enough to bind to.
 
 - [pccxai/pccx][pccx] — spec / docs / roadmap / release coordination
 - [pccxai/pccx-lab][pccx-lab] — verification lab + CLI / core boundary
-- [pccxai/pccx-FPGA-NPU-LLM-kv260][pccx-fpga] — RTL / KV260 / hardware evidence
+- [pccxai/pccx-FPGA-NPU-LLM-kv260][pccx-fpga] — RTL / KV260 / hardware evidence (v002 LLM line)
+- [pccxai/pccx-LLM-v003][pccx-llm-v003] — active LLM RTL track in a separate repository
+- [pccxai/pccx-vision-v001][pccx-vision-v001] — active vision track for related KV260-oriented work
 - [pccxai/pccx-llm-launcher][pccx-launcher] — user-facing local LLM launcher
 
 ## License
@@ -451,3 +453,5 @@ Apache License 2.0 — see [LICENSE](./LICENSE).
 [pccx-lab]: https://github.com/pccxai/pccx-lab
 [pccx-fpga]: https://github.com/pccxai/pccx-FPGA-NPU-LLM-kv260
 [pccx-launcher]: https://github.com/pccxai/pccx-llm-launcher
+[pccx-llm-v003]: https://github.com/pccxai/pccx-LLM-v003
+[pccx-vision-v001]: https://github.com/pccxai/pccx-vision-v001
