@@ -5,7 +5,7 @@
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 `hierarchy-cycles`, `unresolved-instances`, `module-roots`, `module-leaves`,
-`module-orphans`, `module-depths`, `module-fanout`, `module-fanin`,
+`module-orphans`, `module-depths`, `module-paths`, `module-fanout`, `module-fanin`,
 `module-health`,
 `module-summary`,
 `boundary-audit`, `module-duplicates`, `refactor-candidates`, `port-usage`,
@@ -17,7 +17,7 @@ projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 scanner-based hierarchy data, direct dependency impact data, hierarchy cycle
 report metadata, unresolved instantiation report metadata, root-candidate
 report metadata, leaf-candidate report metadata, orphan-candidate report
-metadata, depth-level report metadata,
+metadata, depth-level report metadata, hierarchy path report metadata,
 `module-fanout-report` metadata, `module-fanin-report` metadata,
 module graph health summary metadata,
 conservative module header/port summaries, duplicate-name report metadata,
@@ -53,6 +53,8 @@ python -m pccx_ide_cli module-orphans <path> --format json
 python -m pccx_ide_cli module-orphans <path> --format text
 python -m pccx_ide_cli module-depths <path> --format json
 python -m pccx_ide_cli module-depths <path> --format text
+python -m pccx_ide_cli module-paths <path> --format json
+python -m pccx_ide_cli module-paths <path> --format text
 python -m pccx_ide_cli module-fanout <path> --format json
 python -m pccx_ide_cli module-fanout <path> --format text
 python -m pccx_ide_cli module-fanin <path> --format json
@@ -410,6 +412,46 @@ The depth report is display data only. It does not write files, apply
 refactors, generate patches, run validation, execute shell commands, emit
 command argv, invoke `pccx-lab`, invoke the launcher, call providers, touch
 hardware, upload telemetry, or perform automatic repository actions.
+
+The hierarchy path report enumerates scanner-detected root-to-leaf paths and
+blocked unresolved path terminals:
+
+```json
+{
+  "kind": "module-path-report",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "report_state": "paths-detected",
+  "path_count": 2,
+  "complete_path_count": 2,
+  "blocked_path_count": 0,
+  "root_names": ["fanout_top"],
+  "leaf_names": ["fanout_child_b", "fanout_leaf"],
+  "paths": [
+    {
+      "path_id": "path-1",
+      "module_path": ["fanout_top", "fanout_child_a", "fanout_leaf"],
+      "instance_path": ["u_child_a", "u_leaf"],
+      "path_state": "complete-root-to-leaf",
+      "refactor_preflight_state": "ready-for-review"
+    }
+  ],
+  "safety": {
+    "read_only": true,
+    "path_report_only": true,
+    "writes_files": false,
+    "emits_command_descriptors": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The hierarchy path report is display data only. It does not write files,
+apply refactors, generate patches, run validation, execute shell commands,
+emit command argv, invoke `pccx-lab`, invoke the launcher, call providers,
+touch hardware, upload telemetry, or perform automatic repository actions.
 
 The fanin report ranks modules by scanner-detected resolved direct dependents:
 

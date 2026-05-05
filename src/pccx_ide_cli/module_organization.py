@@ -196,6 +196,18 @@ MODULE_DEPTH_REPORT_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+MODULE_PATH_REPORT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module hierarchy path report only",
+    "uses root candidates and resolved dependency edges from the organization scanner",
+    "single-line instantiation candidates only",
+    "unresolved instantiation candidates are reported as blocked path terminals",
+    "cycles or missing root candidates can block path review",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "does not apply refactors, write files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 MODULE_FANOUT_REPORT_LIMITATIONS: tuple[str, ...] = (
     "scanner-based module fanout report only",
     "uses resolved direct dependency edges from the organization scanner",
@@ -644,6 +656,28 @@ def _module_depth_report_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "depth_report_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _module_path_report_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "path_report_only": True,
         "emits_command_descriptors": False,
         "writes_files": False,
         "moves_files": False,
@@ -2482,6 +2516,263 @@ def build_module_depth_report(source: str, path: Path) -> dict[str, Any]:
         "tool": "pccx-ide-cli",
         "unplaced_module_count": len(unplaced_names),
         "unplaced_module_names": unplaced_names,
+        "unresolved_edge_count": len(hierarchy["edges"]) - resolved_edge_count,
+        "writes_files": False,
+    }
+
+
+def _module_path_edge_summary(edge: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "child": edge["child"],
+        "column": edge["column"],
+        "file": edge["file"],
+        "instance": edge["instance"],
+        "line": edge["line"],
+        "parent": edge["parent"],
+        "resolved": edge["resolved"],
+    }
+
+
+def _module_path_boundary_blockers(
+    module_names: list[str],
+    modules_by_name: dict[str, dict[str, Any]],
+    declaration_counts: dict[str, int],
+) -> list[str]:
+    reasons: list[str] = []
+    for module_name in module_names:
+        module = modules_by_name.get(module_name)
+        if module is None:
+            continue
+        if not module["complete"]:
+            reasons.append(f"module boundary is incomplete: {module_name}")
+        if declaration_counts[module_name] > 1:
+            reasons.append(f"ambiguous module name: {module_name}")
+    return list(dict.fromkeys(reasons))
+
+
+def _module_path_rows(
+    modules: list[dict[str, Any]],
+    hierarchy: dict[str, Any],
+) -> list[dict[str, Any]]:
+    modules_by_name: dict[str, dict[str, Any]] = {}
+    declaration_counts: dict[str, int] = {}
+    for module in modules:
+        modules_by_name.setdefault(module["name"], module)
+        declaration_counts[module["name"]] = (
+            declaration_counts.get(module["name"], 0) + 1
+        )
+
+    children_by_parent: dict[str, list[dict[str, Any]]] = {
+        name: []
+        for name in modules_by_name
+    }
+    unresolved_by_parent: dict[str, list[dict[str, Any]]] = {
+        name: []
+        for name in modules_by_name
+    }
+
+    for edge in hierarchy["edges"]:
+        parent = edge["parent"]
+        child = edge["child"]
+        if parent not in modules_by_name:
+            continue
+        if edge["resolved"] and child in modules_by_name:
+            children_by_parent.setdefault(parent, []).append(edge)
+        elif not edge["resolved"]:
+            unresolved_by_parent.setdefault(parent, []).append(edge)
+
+    edge_sort_key = lambda edge: (
+        edge["child"],
+        edge["line"],
+        edge["column"],
+        edge["instance"],
+    )
+    for edges in children_by_parent.values():
+        edges.sort(key=edge_sort_key)
+    for edges in unresolved_by_parent.values():
+        edges.sort(key=edge_sort_key)
+
+    rows: list[dict[str, Any]] = []
+    root_names = [
+        root
+        for root in hierarchy["roots"]
+        if root in modules_by_name
+    ]
+
+    def append_path(
+        *,
+        module_path: list[str],
+        edge_path: list[dict[str, Any]],
+        path_state: str,
+        reason: str,
+        terminal_module: str,
+        terminal_state: str,
+    ) -> None:
+        blocked_reasons = _module_path_boundary_blockers(
+            module_path,
+            modules_by_name,
+            declaration_counts,
+        )
+        if path_state != "complete-root-to-leaf":
+            blocked_reasons.append(reason)
+        blocked_reasons = list(dict.fromkeys(blocked_reasons))
+        effective_state = path_state
+        if blocked_reasons and path_state == "complete-root-to-leaf":
+            effective_state = "blocked-boundary"
+        rows.append({
+            "blocked_reasons": blocked_reasons,
+            "edge_count": len(edge_path),
+            "edges": [
+                _module_path_edge_summary(edge)
+                for edge in edge_path
+            ],
+            "instance_path": [
+                edge["instance"]
+                for edge in edge_path
+            ],
+            "module_path": module_path,
+            "path_depth": max(len(module_path) - 1, 0),
+            "path_state": effective_state,
+            "reason": reason,
+            "refactor_preflight_state": (
+                "blocked" if blocked_reasons else "ready-for-review"
+            ),
+            "root": module_path[0],
+            "terminal_module": terminal_module,
+            "terminal_state": terminal_state,
+        })
+
+    def visit(
+        module_name: str,
+        module_path: list[str],
+        edge_path: list[dict[str, Any]],
+    ) -> None:
+        unresolved_edges = unresolved_by_parent.get(module_name, [])
+        for edge in unresolved_edges:
+            append_path(
+                module_path=[*module_path, edge["child"]],
+                edge_path=[*edge_path, edge],
+                path_state="blocked-unresolved",
+                reason=(
+                    "unresolved dependency on path: "
+                    f"{module_name} -> {edge['child']}"
+                ),
+                terminal_module=edge["child"],
+                terminal_state="unresolved",
+            )
+
+        resolved_children = children_by_parent.get(module_name, [])
+        if not resolved_children and not unresolved_edges:
+            append_path(
+                module_path=module_path,
+                edge_path=edge_path,
+                path_state="complete-root-to-leaf",
+                reason="scanner-detected resolved root-to-leaf path",
+                terminal_module=module_name,
+                terminal_state="leaf",
+            )
+            return
+
+        for edge in resolved_children:
+            child = edge["child"]
+            if child in module_path:
+                append_path(
+                    module_path=[*module_path, child],
+                    edge_path=[*edge_path, edge],
+                    path_state="blocked-cycle",
+                    reason=(
+                        "cycle on scanner-detected path: "
+                        f"{' -> '.join([*module_path, child])}"
+                    ),
+                    terminal_module=child,
+                    terminal_state="cycle",
+                )
+                continue
+            visit(child, [*module_path, child], [*edge_path, edge])
+
+    for root in root_names:
+        visit(root, [root], [])
+
+    for index, row in enumerate(rows, 1):
+        row["path_id"] = f"path-{index}"
+    return rows
+
+
+def build_module_path_report(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    resolved_edge_count = len([
+        edge
+        for edge in hierarchy["edges"]
+        if edge["resolved"]
+    ])
+    root_names = [
+        root
+        for root in hierarchy["roots"]
+        if any(module["name"] == root for module in modules)
+    ]
+    paths = _module_path_rows(modules, hierarchy)
+    complete_paths = [
+        row
+        for row in paths
+        if row["path_state"] == "complete-root-to-leaf"
+    ]
+    blocked_paths = [
+        row
+        for row in paths
+        if row["refactor_preflight_state"] == "blocked"
+    ]
+    blocked_reasons = list(dict.fromkeys([
+        reason
+        for row in blocked_paths
+        for reason in row["blocked_reasons"]
+    ]))
+    if modules and not root_names:
+        blocked_reasons.append("no root candidates detected")
+    if not modules:
+        blocked_reasons.append("no module declarations detected")
+
+    if paths and blocked_paths:
+        report_state = (
+            "paths-detected-with-blockers"
+            if complete_paths
+            else "blocked"
+        )
+    elif paths:
+        report_state = "paths-detected"
+    else:
+        report_state = "no-paths-detected"
+
+    return {
+        "blocked_path_count": len(blocked_paths),
+        "blocked_reasons": blocked_reasons,
+        "complete_path_count": len(complete_paths),
+        "edge_count": len(hierarchy["edges"]),
+        "kind": "module-path-report",
+        "leaf_names": sorted({
+            row["terminal_module"]
+            for row in complete_paths
+        }),
+        "limitations": list(MODULE_PATH_REPORT_LIMITATIONS),
+        "max_path_depth": max((row["path_depth"] for row in paths), default=None),
+        "module_count": len(modules),
+        "next_required_action": (
+            "resolve hierarchy blockers before path review"
+            if blocked_paths or (modules and not root_names)
+            else "review scanner-detected hierarchy paths before refactor planning"
+            if paths
+            else "add module declarations before hierarchy path review"
+        ),
+        "path_count": len(paths),
+        "paths": paths,
+        "report_state": report_state,
+        "resolved_edge_count": resolved_edge_count,
+        "root_names": root_names,
+        "safety": _module_path_report_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
         "unresolved_edge_count": len(hierarchy["edges"]) - resolved_edge_count,
         "writes_files": False,
     }
@@ -5585,6 +5876,56 @@ def format_module_depth_report_text(report: dict[str, Any]) -> str:
     lines.append(f"next: {report['next_required_action']}")
     lines.append(
         "read-only depth report: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_path_report_text(report: dict[str, Any]) -> str:
+    max_depth = (
+        report["max_path_depth"]
+        if report["max_path_depth"] is not None
+        else "none"
+    )
+    root_names = ", ".join(report["root_names"]) or "none"
+    leaf_names = ", ".join(report["leaf_names"]) or "none"
+    lines = [
+        f"source: {report['source']}",
+        f"module paths: {report['report_state']}",
+        f"{report['module_count']} module"
+        f"{'s' if report['module_count'] != 1 else ''}",
+        f"{report['path_count']} hierarchy path"
+        f"{'s' if report['path_count'] != 1 else ''}",
+        (
+            f"complete paths: {report['complete_path_count']}; "
+            f"blocked paths: {report['blocked_path_count']}; "
+            f"max depth: {max_depth}"
+        ),
+        f"root candidates: {root_names}",
+        f"leaf terminals: {leaf_names}",
+    ]
+    if not report["paths"]:
+        lines.append("paths: none")
+    for path in report["paths"]:
+        module_path = " -> ".join(path["module_path"])
+        instances = ", ".join(path["instance_path"]) or "none"
+        lines.append(
+            f"{path['path_id']}: {module_path} "
+            f"({path['refactor_preflight_state']})"
+        )
+        lines.append(
+            f"  state={path['path_state']}; terminal={path['terminal_module']} "
+            f"({path['terminal_state']}); instances={instances}; "
+            f"edges={path['edge_count']}; reason={path['reason']}"
+        )
+        for reason in path["blocked_reasons"]:
+            lines.append(f"  blocked: {reason}")
+    for reason in report["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next: {report['next_required_action']}")
+    lines.append(
+        "read-only path report: no command argv, validation, shell, "
         "refactor, patch, file write, lab, launcher, vendor tool, provider, "
         "or hardware execution"
     )

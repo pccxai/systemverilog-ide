@@ -356,6 +356,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    module_paths_cmd = sub.add_parser(
+        "module-paths",
+        help=(
+            "Render scanner-based read-only module hierarchy path report data."
+        ),
+    )
+    module_paths_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    module_paths_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     module_fanout_cmd = sub.add_parser(
         "module-fanout",
         help=(
@@ -1439,6 +1457,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_module_depth_report_text(report))
+        return 0
+
+    if args.command == "module-paths":
+        from .module_organization import (
+            build_module_path_report,
+            format_module_path_report_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        report = build_module_path_report(str(args.path), args.path)
+        if args.format == "json":
+            json.dump(report, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_module_path_report_text(report))
         return 0
 
     if args.command == "module-fanout":
