@@ -56,6 +56,7 @@ python -m pccx_ide_cli module-roots <path> --format json
 python -m pccx_ide_cli module-leaves <path> --format json
 python -m pccx_ide_cli module-orphans <path> --format json
 python -m pccx_ide_cli module-depths <path> --format json
+python -m pccx_ide_cli module-fanout <path> --format json
 python -m pccx_ide_cli module-health <path> --format json
 python -m pccx_ide_cli module-summary <path> --format json
 python -m pccx_ide_cli port-usage <path> --module <name> --format json
@@ -215,12 +216,14 @@ surfaces do not write files, apply refactors, generate patches, run validation,
 invoke pccx-lab or the launcher, run vendor tools, call providers, touch
 hardware, or perform automatic repository actions. `hierarchy`,
 `dependencies`, `hierarchy-cycles`, `unresolved-instances`, `module-roots`,
-`module-leaves`, `module-orphans`, `module-depths`, `module-health`,
+`module-leaves`, `module-orphans`, `module-depths`, `module-fanout`,
+`module-health`,
 `module-summary`, `port-usage`, `module-context`, and `refactor-impact`
 render focused read-only views from the same scanner data, including
 hierarchy cycle warnings, unresolved instantiation warnings, root-candidate
 summaries, leaf-candidate summaries, orphan-candidate summaries,
 depth-level summaries,
+fanout rankings,
 module graph health summaries,
 conservative module header/port summaries, target port usage summaries,
 target module context bundles, and

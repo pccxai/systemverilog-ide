@@ -178,6 +178,13 @@ jobs:
               fixtures/organization/hierarchy_top.sv \
               | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-dependency-view'; assert d['safety']['writes_files'] is False"
           echo "dependency view smoke ok"
+      - name: cli smoke (module fanout exits zero)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli module-fanout \
+              fixtures/organization/fanout_hierarchy.sv \
+              | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-fanout-report'; assert d['safety']['writes_files'] is False; assert d['safety']['emits_command_descriptors'] is False"
+          echo "module fanout smoke ok"
       - name: cli smoke (module summary exits zero)
         run: |
           set -e
