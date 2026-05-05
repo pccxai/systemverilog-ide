@@ -5,7 +5,8 @@
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 `hierarchy-cycles`, `unresolved-instances`, `module-roots`, `module-leaves`,
-`module-orphans`, `module-depths`, `module-health`, `module-summary`,
+`module-orphans`, `module-depths`, `module-fanout`, `module-health`,
+`module-summary`,
 `boundary-audit`, `module-duplicates`, `refactor-candidates`, `port-usage`,
 `module-context`, `refactor-impact`,
 `validation-plan`, `refactor-review`, `refactor-approval`,
@@ -16,6 +17,7 @@ scanner-based hierarchy data, direct dependency impact data, hierarchy cycle
 report metadata, unresolved instantiation report metadata, root-candidate
 report metadata, leaf-candidate report metadata, orphan-candidate report
 metadata, depth-level report metadata,
+`module-fanout-report` metadata,
 module graph health summary metadata,
 conservative module header/port summaries, duplicate-name report metadata,
 target port usage summaries, target module context bundles, target-specific
@@ -50,6 +52,8 @@ python -m pccx_ide_cli module-orphans <path> --format json
 python -m pccx_ide_cli module-orphans <path> --format text
 python -m pccx_ide_cli module-depths <path> --format json
 python -m pccx_ide_cli module-depths <path> --format text
+python -m pccx_ide_cli module-fanout <path> --format json
+python -m pccx_ide_cli module-fanout <path> --format text
 python -m pccx_ide_cli module-health <path> --format json
 python -m pccx_ide_cli module-health <path> --format text
 python -m pccx_ide_cli module-summary <path> --format json
