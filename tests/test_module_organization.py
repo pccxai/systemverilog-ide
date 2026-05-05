@@ -1696,6 +1696,35 @@ def test_build_module_graph_health_summary_blocks_incomplete_boundaries():
     assert '"argv"' not in json.dumps(report)
 
 
+def test_build_module_graph_health_summary_blocks_empty_sources():
+    empty_fixture = REPO_ROOT / "fixtures" / "empty.sv"
+    report = build_module_graph_health_summary(str(empty_fixture), empty_fixture)
+
+    assert report["health_state"] == "blocked"
+    assert report["ready_for_review"] is False
+    assert report["module_count"] == 0
+    assert report["complete_module_count"] == 0
+    assert report["incomplete_module_count"] == 0
+    assert report["root_count"] == 0
+    assert report["leaf_count"] == 0
+    assert report["max_depth"] is None
+    assert report["blocked_reasons"] == ["no module declarations detected"]
+    assert report["next_required_action"] == (
+        "add module declarations before module graph health review"
+    )
+    cards = {card["card_id"]: card for card in report["health_cards"]}
+    assert cards["boundary-completeness"]["status"] == "complete"
+    assert cards["root-candidates"]["status"] == "no-roots-detected"
+    assert cards["leaf-candidates"]["status"] == "no-leaves-detected"
+    assert cards["depth-levels"]["status"] == "no-depths-detected"
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["graph_health_summary_only"] is True
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
 def test_build_module_summary_view_reports_ports_and_safety():
     view = build_module_summary_view(str(FIXTURE), FIXTURE)
 
@@ -3870,6 +3899,44 @@ def test_cli_module_health_blocks_incomplete_boundary_text():
     assert "module graph health: blocked" in result.stdout
     assert "status: boundary-completeness (blocked)" in result.stdout
     assert "blocked: module boundary is incomplete: bad_module" in result.stdout
+    assert "read-only graph health summary: no command argv" in result.stdout
+
+
+def test_cli_module_health_blocks_empty_source_json():
+    empty_fixture = REPO_ROOT / "fixtures" / "empty.sv"
+    result = _run_cli("module-health", str(empty_fixture), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+
+    assert payload["kind"] == "module-graph-health-summary"
+    assert payload["health_state"] == "blocked"
+    assert payload["ready_for_review"] is False
+    assert payload["module_count"] == 0
+    assert payload["root_count"] == 0
+    assert payload["leaf_count"] == 0
+    assert payload["max_depth"] is None
+    assert payload["blocked_reasons"] == ["no module declarations detected"]
+    assert payload["next_required_action"] == (
+        "add module declarations before module graph health review"
+    )
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_health_blocks_empty_source_text():
+    empty_fixture = REPO_ROOT / "fixtures" / "empty.sv"
+    result = _run_cli("module-health", str(empty_fixture), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module graph health: blocked" in result.stdout
+    assert "0 modules" in result.stdout
+    assert "0 roots; 0 leaves; max depth: none" in result.stdout
+    assert "status: root-candidates (no-roots-detected)" in result.stdout
+    assert "status: leaf-candidates (no-leaves-detected)" in result.stdout
+    assert "blocked: no module declarations detected" in result.stdout
+    assert (
+        "next: add module declarations before module graph health review"
+    ) in result.stdout
     assert "read-only graph health summary: no command argv" in result.stdout
 
 
