@@ -1786,6 +1786,26 @@ def test_build_module_summary_view_inherits_port_direction(tmp_path):
     assert ports["done_o"]["state"] == "detected"
 
 
+def test_build_module_summary_view_empty_source_is_read_only():
+    empty_fixture = REPO_ROOT / "fixtures" / "empty.sv"
+    view = build_module_summary_view(str(empty_fixture), empty_fixture)
+
+    assert view["kind"] == "module-summary-view"
+    assert view["summary_state"] == "available_as_data"
+    assert view["module_count"] == 0
+    assert view["port_count"] == 0
+    assert view["modules"] == []
+    assert view["safety"]["read_only"] is True
+    assert view["safety"]["writes_files"] is False
+    assert view["safety"]["applies_refactor"] is False
+    assert view["safety"]["runs_validation"] is False
+    assert view["safety"]["invokes_pccx_lab"] is False
+    assert view["safety"]["invokes_launcher"] is False
+    assert view["safety"]["provider_calls"] is False
+    assert view["safety"]["hardware_access"] is False
+    assert '"argv"' not in json.dumps(view)
+
+
 def test_build_module_port_usage_view_reports_ports_and_usage_sites():
     view = build_module_port_usage_view(str(FIXTURE), FIXTURE, "leaf_mod")
 
@@ -3990,6 +4010,34 @@ def test_cli_module_summary_text():
     assert result.returncode == 0, result.stderr
     assert "module summary: available_as_data" in result.stdout
     assert "input clk at line 5 (detected)" in result.stdout
+
+
+def test_cli_module_summary_empty_source_json():
+    empty_fixture = REPO_ROOT / "fixtures" / "empty.sv"
+    result = _run_cli("module-summary", str(empty_fixture), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+
+    assert payload["kind"] == "module-summary-view"
+    assert payload["summary_state"] == "available_as_data"
+    assert payload["module_count"] == 0
+    assert payload["port_count"] == 0
+    assert payload["modules"] == []
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["applies_refactor"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_summary_empty_source_text():
+    empty_fixture = REPO_ROOT / "fixtures" / "empty.sv"
+    result = _run_cli("module-summary", str(empty_fixture), "--format", "text")
+    assert result.returncode == 0, result.stderr
+
+    assert "module summary: available_as_data" in result.stdout
+    assert "0 modules" in result.stdout
+    assert "0 ports" in result.stdout
+    assert "read-only: no file writes" in result.stdout
 
 
 def test_cli_port_usage_json():
