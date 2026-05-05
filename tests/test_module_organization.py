@@ -37,6 +37,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_leaf_candidate_report,
     build_module_orphan_candidate_report,
     build_module_organization_export,
+    build_module_path_report,
     build_module_port_usage_view,
     build_module_root_candidate_report,
     build_module_summary_view,
@@ -72,6 +73,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_leaf_candidate_report_text,
     format_module_orphan_candidate_report_text,
     format_module_organization_text,
+    format_module_path_report_text,
     format_module_port_usage_text,
     format_module_root_candidate_report_text,
     format_module_summary_text,
@@ -868,6 +870,105 @@ def test_build_module_depth_report_blocks_unresolved_dependencies():
     assert module["blocked_reasons"] == [
         "unresolved dependencies for depth report: missing_child"
     ]
+
+
+def test_build_module_path_report_lists_root_to_leaf_paths():
+    report = build_module_path_report(str(FANOUT_FIXTURE), FANOUT_FIXTURE)
+
+    assert report["kind"] == "module-path-report"
+    assert report["report_state"] == "paths-detected"
+    assert report["module_count"] == 4
+    assert report["edge_count"] == 3
+    assert report["resolved_edge_count"] == 3
+    assert report["unresolved_edge_count"] == 0
+    assert report["path_count"] == 2
+    assert report["complete_path_count"] == 2
+    assert report["blocked_path_count"] == 0
+    assert report["max_path_depth"] == 2
+    assert report["root_names"] == ["fanout_top"]
+    assert report["leaf_names"] == ["fanout_child_b", "fanout_leaf"]
+    assert report["blocked_reasons"] == []
+    assert report["next_required_action"] == (
+        "review scanner-detected hierarchy paths before refactor planning"
+    )
+
+    first_path = report["paths"][0]
+    assert first_path["path_id"] == "path-1"
+    assert first_path["module_path"] == [
+        "fanout_top",
+        "fanout_child_a",
+        "fanout_leaf",
+    ]
+    assert first_path["instance_path"] == ["u_child_a", "u_leaf"]
+    assert first_path["path_depth"] == 2
+    assert first_path["path_state"] == "complete-root-to-leaf"
+    assert first_path["terminal_module"] == "fanout_leaf"
+    assert first_path["terminal_state"] == "leaf"
+    assert first_path["refactor_preflight_state"] == "ready-for-review"
+    assert first_path["edges"][0]["parent"] == "fanout_top"
+    assert first_path["edges"][0]["child"] == "fanout_child_a"
+    assert first_path["edges"][0]["resolved"] is True
+
+    second_path = report["paths"][1]
+    assert second_path["module_path"] == ["fanout_top", "fanout_child_b"]
+    assert second_path["instance_path"] == ["u_child_b"]
+    assert second_path["terminal_module"] == "fanout_child_b"
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["path_report_only"] is True
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["applies_refactor"] is False
+    assert report["safety"]["generates_patch"] is False
+    assert report["safety"]["runs_validation"] is False
+    assert report["safety"]["runs_shell"] is False
+    assert report["safety"]["invokes_pccx_lab"] is False
+    assert report["safety"]["invokes_launcher"] is False
+    assert report["safety"]["invokes_vendor_tools"] is False
+    assert report["safety"]["provider_calls"] is False
+    assert report["safety"]["hardware_access"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
+def test_build_module_path_report_blocks_unresolved_path_terminals():
+    report = build_module_path_report(
+        str(UNRESOLVED_FIXTURE),
+        UNRESOLVED_FIXTURE,
+    )
+
+    assert report["report_state"] == "blocked"
+    assert report["path_count"] == 1
+    assert report["complete_path_count"] == 0
+    assert report["blocked_path_count"] == 1
+    assert report["root_names"] == ["unresolved_top"]
+    assert report["leaf_names"] == []
+    assert report["blocked_reasons"] == [
+        "unresolved dependency on path: unresolved_top -> missing_child"
+    ]
+    assert report["next_required_action"] == (
+        "resolve hierarchy blockers before path review"
+    )
+    path = report["paths"][0]
+    assert path["module_path"] == ["unresolved_top", "missing_child"]
+    assert path["instance_path"] == ["u_missing"]
+    assert path["path_state"] == "blocked-unresolved"
+    assert path["terminal_module"] == "missing_child"
+    assert path["terminal_state"] == "unresolved"
+    assert path["refactor_preflight_state"] == "blocked"
+    assert path["edges"][0]["resolved"] is False
+
+
+def test_build_module_path_report_blocks_when_no_modules_detected():
+    empty_fixture = REPO_ROOT / "fixtures" / "empty.sv"
+    report = build_module_path_report(str(empty_fixture), empty_fixture)
+
+    assert report["report_state"] == "no-paths-detected"
+    assert report["path_count"] == 0
+    assert report["paths"] == []
+    assert report["blocked_reasons"] == ["no module declarations detected"]
+    assert report["next_required_action"] == (
+        "add module declarations before hierarchy path review"
+    )
 
 
 def test_build_module_fanout_report_ranks_direct_dependencies():
@@ -2131,6 +2232,20 @@ def test_format_module_depth_report_text_mentions_boundary():
     assert "read-only depth report: no command argv" in text
 
 
+def test_format_module_path_report_text_mentions_boundary():
+    report = build_module_path_report(str(FANOUT_FIXTURE), FANOUT_FIXTURE)
+    text = format_module_path_report_text(report)
+
+    assert "module paths: paths-detected" in text
+    assert "2 hierarchy paths" in text
+    assert "complete paths: 2; blocked paths: 0; max depth: 2" in text
+    assert "root candidates: fanout_top" in text
+    assert "leaf terminals: fanout_child_b, fanout_leaf" in text
+    assert "path-1: fanout_top -> fanout_child_a -> fanout_leaf" in text
+    assert "instances=u_child_a, u_leaf" in text
+    assert "read-only path report: no command argv" in text
+
+
 def test_format_module_fanin_report_text_mentions_boundary():
     report = build_module_fanin_report(str(FANOUT_FIXTURE), FANOUT_FIXTURE)
     text = format_module_fanin_report_text(report)
@@ -2675,6 +2790,34 @@ def test_cli_module_depths_text():
     assert "depth 0: top_mod" in result.stdout
     assert "depth 1: leaf_mod" in result.stdout
     assert "read-only depth report: no command argv" in result.stdout
+
+
+def test_cli_module_paths_json():
+    result = _run_cli("module-paths", str(FANOUT_FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-path-report"
+    assert payload["report_state"] == "paths-detected"
+    assert payload["path_count"] == 2
+    assert payload["complete_path_count"] == 2
+    assert payload["blocked_path_count"] == 0
+    assert payload["paths"][0]["module_path"] == [
+        "fanout_top",
+        "fanout_child_a",
+        "fanout_leaf",
+    ]
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_paths_text():
+    result = _run_cli("module-paths", str(FANOUT_FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module paths: paths-detected" in result.stdout
+    assert "path-1: fanout_top -> fanout_child_a -> fanout_leaf" in result.stdout
+    assert "read-only path report: no command argv" in result.stdout
 
 
 def test_cli_module_fanout_json():
@@ -3377,6 +3520,12 @@ def test_cli_module_orphans_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_module_paths_missing_path_exits_nonzero():
+    result = _run_cli("module-paths", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_cli_module_fanout_missing_path_exits_nonzero():
     result = _run_cli("module-fanout", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -3563,6 +3712,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-leaves <path>" in contract
     assert "module-orphans <path>" in contract
     assert "module-depths <path>" in contract
+    assert "module-paths <path>" in contract
     assert "module-fanout <path>" in contract
     assert "module-fanin <path>" in contract
     assert "module-health <path>" in contract
@@ -3591,6 +3741,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-leaf-candidate-report" in workflow
     assert "module-orphan-candidate-report" in workflow
     assert "module-depth-report" in workflow
+    assert "module-path-report" in workflow
     assert "module-fanout-report" in workflow
     assert "module-fanin-report" in workflow
     assert "module-graph-health-summary" in workflow
@@ -3620,6 +3771,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "hierarchy cycle report" in workflow
     assert "unresolved instantiation report" in workflow
     assert "root-candidate report" in workflow
+    assert "hierarchy path report" in workflow
     assert "module graph health summary" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow
