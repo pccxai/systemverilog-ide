@@ -97,6 +97,16 @@ MODULE_DUPLICATE_REPORT_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+MODULE_FILE_REPORT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module file layout report only",
+    "groups scanner-detected module declaration spans by source file",
+    "does not move modules, rewrite declarations, or generate patches",
+    "does not semantically elaborate modules or resolve packages/namespaces",
+    "does not apply refactors, write files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 REFACTOR_CANDIDATE_LIST_LIMITATIONS: tuple[str, ...] = (
     "scanner-based refactor candidate metadata only",
     "lists scanner-detected modules and proposal-only helper actions for editor menus",
@@ -487,6 +497,28 @@ def _module_duplicate_report_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "duplicate_report_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _module_file_report_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "file_layout_report_only": True,
         "emits_command_descriptors": False,
         "writes_files": False,
         "moves_files": False,
@@ -1509,6 +1541,129 @@ def build_module_duplicate_report(source: str, path: Path) -> dict[str, Any]:
         "source": source,
         "tool": "pccx-ide-cli",
         "unique_module_name_count": len({module["name"] for module in modules}),
+        "writes_files": False,
+    }
+
+
+def _module_file_rows(
+    modules: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    modules_by_file: dict[str, list[dict[str, Any]]] = {}
+    for module in modules:
+        modules_by_file.setdefault(module["file"], []).append(module)
+
+    rows: list[dict[str, Any]] = []
+    for file_name, declarations in sorted(modules_by_file.items()):
+        sorted_declarations = sorted(
+            declarations,
+            key=lambda module: (module["start_line"], module["start_column"]),
+        )
+        incomplete_modules = [
+            module
+            for module in sorted_declarations
+            if not module["complete"]
+        ]
+        reasons: list[str] = []
+        for module in incomplete_modules:
+            reasons.append(f"incomplete module boundary: {module['name']}")
+
+        if incomplete_modules:
+            layout_state = "blocked"
+            refactor_preflight_state = "blocked"
+        elif len(sorted_declarations) > 1:
+            layout_state = "multi-module-file"
+            refactor_preflight_state = "ready-for-review"
+        else:
+            layout_state = "single-module-file"
+            refactor_preflight_state = "ready-for-review"
+
+        rows.append({
+            "complete_module_count": len(sorted_declarations) - len(incomplete_modules),
+            "file": file_name,
+            "incomplete_module_count": len(incomplete_modules),
+            "layout_state": layout_state,
+            "module_count": len(sorted_declarations),
+            "module_names": [module["name"] for module in sorted_declarations],
+            "modules": [
+                {
+                    "complete": module["complete"],
+                    "end_line": module["end_line"],
+                    "name": module["name"],
+                    "span_lines": module["span_lines"],
+                    "start_column": module["start_column"],
+                    "start_line": module["start_line"],
+                }
+                for module in sorted_declarations
+            ],
+            "reasons": reasons,
+            "refactor_preflight_state": refactor_preflight_state,
+        })
+    return rows
+
+
+def _module_file_report_state(
+    file_rows: list[dict[str, Any]],
+    duplicates: list[dict[str, Any]],
+) -> str:
+    if not file_rows:
+        return "blocked"
+    if any(row["layout_state"] == "blocked" for row in file_rows):
+        return "blocked"
+    if duplicates:
+        return "blocked"
+    if any(row["layout_state"] == "multi-module-file" for row in file_rows):
+        return "multi-module-review"
+    return "ready-for-review"
+
+
+def build_module_file_report(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    file_rows = _module_file_rows(modules)
+    duplicates = _module_duplicate_rows(modules)
+    blocked_reasons: list[str] = []
+    if not modules:
+        blocked_reasons.append("no module declarations detected")
+    for row in file_rows:
+        blocked_reasons.extend(
+            f"{row['file']}: {reason}"
+            for reason in row["reasons"]
+        )
+    blocked_reasons.extend(row["reason"] for row in duplicates)
+    report_state = _module_file_report_state(file_rows, duplicates)
+
+    return {
+        "blocked_reasons": blocked_reasons,
+        "duplicate_name_count": len(duplicates),
+        "duplicate_names": [row["name"] for row in duplicates],
+        "file_count": len(file_rows),
+        "files": file_rows,
+        "incomplete_module_count": sum(
+            row["incomplete_module_count"] for row in file_rows
+        ),
+        "kind": "module-file-report",
+        "limitations": list(MODULE_FILE_REPORT_LIMITATIONS),
+        "module_count": len(modules),
+        "multi_module_file_count": sum(
+            1 for row in file_rows
+            if row["layout_state"] == "multi-module-file"
+        ),
+        "next_required_action": (
+            "resolve module file layout blockers before refactor planning"
+            if report_state == "blocked"
+            else "review multi-module files before move-module planning"
+            if report_state == "multi-module-review"
+            else "continue module organization and refactor review"
+        ),
+        "report_state": report_state,
+        "safety": _module_file_report_safety_flags(),
+        "scanner": "line-scanner",
+        "single_module_file_count": sum(
+            1 for row in file_rows
+            if row["layout_state"] == "single-module-file"
+        ),
+        "source": source,
+        "tool": "pccx-ide-cli",
         "writes_files": False,
     }
 
@@ -6421,6 +6576,51 @@ def format_module_duplicate_report_text(report: dict[str, Any]) -> str:
     lines.append(f"next: {report['next_required_action']}")
     lines.append(
         "read-only duplicate report: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_file_report_text(report: dict[str, Any]) -> str:
+    lines = [
+        f"source: {report['source']}",
+        f"module files: {report['report_state']}",
+        f"{report['file_count']} source file"
+        f"{'s' if report['file_count'] != 1 else ''}",
+        f"{report['module_count']} module declaration"
+        f"{'s' if report['module_count'] != 1 else ''}",
+        (
+            f"single-module files: {report['single_module_file_count']}; "
+            f"multi-module files: {report['multi_module_file_count']}; "
+            f"incomplete modules: {report['incomplete_module_count']}"
+        ),
+    ]
+    if not report["files"]:
+        lines.append("files: none")
+    for file_row in report["files"]:
+        names = ", ".join(file_row["module_names"]) or "none"
+        lines.append(
+            f"{file_row['file']}: {file_row['module_count']} module"
+            f"{'s' if file_row['module_count'] != 1 else ''} "
+            f"({file_row['layout_state']}; "
+            f"{file_row['refactor_preflight_state']})"
+        )
+        lines.append(f"  modules: {names}")
+        for module in file_row["modules"]:
+            end_line = module["end_line"] or "?"
+            state = "complete" if module["complete"] else "incomplete"
+            lines.append(
+                f"  {module['name']} lines {module['start_line']}-{end_line} "
+                f"({state}; span={module['span_lines']})"
+            )
+        for reason in file_row["reasons"]:
+            lines.append(f"  blocked: {reason}")
+    for reason in report["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next: {report['next_required_action']}")
+    lines.append(
+        "read-only file report: no command argv, validation, shell, "
         "refactor, patch, file write, lab, launcher, vendor tool, provider, "
         "or hardware execution"
     )

@@ -780,6 +780,48 @@ emit command argv, invoke `pccx-lab`, invoke the launcher, run vendor
 tools, call providers, touch hardware, upload telemetry, or perform
 automatic repository actions.
 
+The module file report groups scanner-detected module declarations by
+source file for file-layout and move-module review:
+
+```json
+{
+  "kind": "module-file-report",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "report_state": "multi-module-review",
+  "file_count": 1,
+  "module_count": 2,
+  "single_module_file_count": 0,
+  "multi_module_file_count": 1,
+  "files": [
+    {
+      "file": "fixtures/organization/hierarchy_top.sv",
+      "layout_state": "multi-module-file",
+      "refactor_preflight_state": "ready-for-review",
+      "module_names": ["leaf_mod", "top_mod"],
+      "modules": []
+    }
+  ],
+  "safety": {
+    "read_only": true,
+    "file_layout_report_only": true,
+    "emits_command_descriptors": false,
+    "writes_files": false,
+    "moves_files": false,
+    "applies_refactor": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The module file report is display data only. It does not move modules,
+rewrite declarations, generate patches, run validation, execute shell
+commands, emit command argv, invoke `pccx-lab`, invoke the launcher, run
+vendor tools, call providers, touch hardware, upload telemetry, or perform
+automatic repository actions.
+
 The refactor candidate list reports scanner-detected modules and
 proposal-only helper action metadata for editor menus:
 
