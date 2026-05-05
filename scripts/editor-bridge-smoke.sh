@@ -32,6 +32,7 @@ run_json declarations declarations fixtures/modules --format json
 run_json locate locate fixtures/modules/simple_module.sv simple_mod --format json
 run_json module-hierarchy-view hierarchy fixtures/organization/hierarchy_top.sv --format json
 run_json module-dependency-view dependencies fixtures/organization/hierarchy_top.sv --format json
+run_json module-hierarchy-cycle-report hierarchy-cycles fixtures/organization/cyclic_hierarchy.sv --format json
 run_json module-summary-view module-summary fixtures/organization/hierarchy_top.sv --format json
 run_json module-refactor-candidate-list refactor-candidates fixtures/organization/hierarchy_top.sv --format json
 run_json module-refactor-readiness-summary refactor-readiness fixtures/organization/hierarchy_top.sv --format json

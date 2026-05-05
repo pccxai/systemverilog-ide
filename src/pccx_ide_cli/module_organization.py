@@ -124,6 +124,16 @@ DEPENDENCY_VIEW_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+HIERARCHY_CYCLE_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module hierarchy cycle report only",
+    "single-line instantiation candidates only",
+    "resolved module dependency edges only",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "does not apply refactors, write files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 MODULE_SUMMARY_LIMITATIONS: tuple[str, ...] = (
     "scanner-based module header and port summary data only",
     "ANSI-style port declarations are detected conservatively",
@@ -397,6 +407,28 @@ def _dependency_safety_flags() -> dict[str, bool]:
         "runs_shell": False,
         "invokes_pccx_lab": False,
         "invokes_launcher": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _hierarchy_cycle_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "cycle_report_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
         "provider_calls": False,
         "hardware_access": False,
         "telemetry": False,
@@ -1354,6 +1386,125 @@ def build_module_dependency_view(source: str, path: Path) -> dict[str, Any]:
             for edge in hierarchy["edges"]
             if not edge["resolved"]
         ]),
+    }
+
+
+def _cycle_key(module_path: list[str]) -> tuple[str, ...]:
+    cycle = module_path[:-1]
+    if not cycle:
+        return tuple(module_path)
+
+    rotations = [
+        tuple(cycle[index:] + cycle[:index])
+        for index in range(len(cycle))
+    ]
+    return min(rotations)
+
+
+def _cycle_edge_summary(edge: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "child": edge["child"],
+        "column": edge["column"],
+        "file": edge["file"],
+        "instance": edge["instance"],
+        "line": edge["line"],
+        "parent": edge["parent"],
+    }
+
+
+def _hierarchy_cycle_rows(hierarchy: dict[str, Any]) -> list[dict[str, Any]]:
+    adjacency: dict[str, list[dict[str, Any]]] = {}
+    module_names: set[str] = set()
+    for edge in hierarchy["edges"]:
+        module_names.add(edge["parent"])
+        if not edge["resolved"]:
+            continue
+        module_names.add(edge["child"])
+        adjacency.setdefault(edge["parent"], []).append(edge)
+
+    for edges in adjacency.values():
+        edges.sort(key=lambda e: (e["child"], e["line"], e["column"], e["instance"]))
+
+    seen: set[tuple[str, ...]] = set()
+    cycles: list[dict[str, Any]] = []
+
+    def visit(
+        start: str,
+        current: str,
+        module_path: list[str],
+        edge_path: list[dict[str, Any]],
+    ) -> None:
+        for edge in adjacency.get(current, []):
+            child = edge["child"]
+            if child == start:
+                completed_modules = [*module_path, child]
+                key = _cycle_key(completed_modules)
+                if key in seen:
+                    continue
+                seen.add(key)
+                completed_edges = [*edge_path, edge]
+                cycles.append({
+                    "cycle_state": "detected",
+                    "edge_count": len(completed_edges),
+                    "edges": [
+                        _cycle_edge_summary(cycle_edge)
+                        for cycle_edge in completed_edges
+                    ],
+                    "module_path": completed_modules,
+                    "summary": " -> ".join(completed_modules),
+                })
+                continue
+            if child in module_path:
+                continue
+            visit(start, child, [*module_path, child], [*edge_path, edge])
+
+    for module_name in sorted(module_names):
+        visit(module_name, module_name, [module_name], [])
+
+    cycles.sort(key=lambda row: (row["summary"], row["edge_count"]))
+    for index, cycle in enumerate(cycles, 1):
+        cycle["cycle_id"] = f"cycle-{index}"
+    return cycles
+
+
+def build_module_hierarchy_cycle_report(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    resolved_edge_count = len([
+        edge
+        for edge in hierarchy["edges"]
+        if edge["resolved"]
+    ])
+    cycles = _hierarchy_cycle_rows(hierarchy)
+    blocked_reasons = [
+        f"scanner-detected hierarchy cycle: {cycle['summary']}"
+        for cycle in cycles
+    ]
+
+    return {
+        "blocked_reasons": blocked_reasons,
+        "cycle_count": len(cycles),
+        "cycle_state": "cycles-detected" if cycles else "no-cycles-detected",
+        "cycles": cycles,
+        "edge_count": len(hierarchy["edges"]),
+        "has_cycles": bool(cycles),
+        "kind": "module-hierarchy-cycle-report",
+        "limitations": list(HIERARCHY_CYCLE_LIMITATIONS),
+        "module_count": len(modules),
+        "next_required_action": (
+            "review scanner-detected hierarchy cycles before refactor planning"
+            if cycles
+            else "continue hierarchy and refactor review"
+        ),
+        "resolved_edge_count": resolved_edge_count,
+        "safety": _hierarchy_cycle_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "unresolved": hierarchy["unresolved"],
+        "unresolved_edge_count": len(hierarchy["edges"]) - resolved_edge_count,
+        "writes_files": False,
     }
 
 
@@ -3751,6 +3902,35 @@ def format_module_dependency_text(view: dict[str, Any]) -> str:
     lines.append(
         "read-only: no file writes, refactors, validation, lab, launcher, "
         "provider, or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_hierarchy_cycle_text(report: dict[str, Any]) -> str:
+    lines = [
+        f"source: {report['source']}",
+        f"hierarchy cycles: {report['cycle_state']}",
+        f"{report['module_count']} module"
+        f"{'s' if report['module_count'] != 1 else ''}",
+        f"{report['cycle_count']} cycle"
+        f"{'s' if report['cycle_count'] != 1 else ''}",
+    ]
+    if not report["cycles"]:
+        lines.append("cycles: none")
+    for cycle in report["cycles"]:
+        lines.append(f"{cycle['cycle_id']}: {cycle['summary']}")
+        for edge in cycle["edges"]:
+            lines.append(
+                f"  {edge['parent']} -> {edge['child']} as {edge['instance']} "
+                f"at {edge['file']}:{edge['line']}:{edge['column']}"
+            )
+    for reason in report["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next: {report['next_required_action']}")
+    lines.append(
+        "read-only cycle report: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
     )
     return "\n".join(lines) + "\n"
 

@@ -12,6 +12,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC = REPO_ROOT / "src"
 FIXTURE = REPO_ROOT / "fixtures" / "organization" / "hierarchy_top.sv"
+CYCLIC_FIXTURE = REPO_ROOT / "fixtures" / "organization" / "cyclic_hierarchy.sv"
 INCOMPLETE_FIXTURE = REPO_ROOT / "fixtures" / "missing_endmodule.sv"
 CONTRACT_DOC = REPO_ROOT / "docs" / "EDITOR_BRIDGE_CONTRACT.md"
 WORKFLOW_DOC = REPO_ROOT / "docs" / "MODULE_ORGANIZATION_WORKFLOW.md"
@@ -22,6 +23,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_dependency_view,
     build_module_boundary_audit,
     build_module_context_bundle,
+    build_module_hierarchy_cycle_report,
     build_module_hierarchy_view,
     build_module_organization_export,
     build_module_port_usage_view,
@@ -47,6 +49,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_boundary_audit_text,
     format_module_dependency_text,
     format_module_context_text,
+    format_module_hierarchy_cycle_text,
     format_module_hierarchy_text,
     format_module_organization_text,
     format_module_port_usage_text,
@@ -358,6 +361,64 @@ def test_build_module_dependency_view_is_read_only():
     assert view["safety"]["invokes_launcher"] is False
     assert view["safety"]["provider_calls"] is False
     assert view["safety"]["hardware_access"] is False
+
+
+def test_build_module_hierarchy_cycle_report_detects_cycles():
+    report = build_module_hierarchy_cycle_report(
+        str(CYCLIC_FIXTURE),
+        CYCLIC_FIXTURE,
+    )
+
+    assert report["kind"] == "module-hierarchy-cycle-report"
+    assert report["cycle_state"] == "cycles-detected"
+    assert report["has_cycles"] is True
+    assert report["module_count"] == 2
+    assert report["edge_count"] == 2
+    assert report["resolved_edge_count"] == 2
+    assert report["cycle_count"] == 1
+    assert report["cycles"][0]["cycle_id"] == "cycle-1"
+    assert report["cycles"][0]["module_path"] == [
+        "alpha_mod",
+        "beta_mod",
+        "alpha_mod",
+    ]
+    assert report["cycles"][0]["summary"] == "alpha_mod -> beta_mod -> alpha_mod"
+    assert [edge["instance"] for edge in report["cycles"][0]["edges"]] == [
+        "u_beta",
+        "u_alpha",
+    ]
+    assert report["blocked_reasons"] == [
+        "scanner-detected hierarchy cycle: alpha_mod -> beta_mod -> alpha_mod"
+    ]
+    assert report["next_required_action"] == (
+        "review scanner-detected hierarchy cycles before refactor planning"
+    )
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["cycle_report_only"] is True
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["applies_refactor"] is False
+    assert report["safety"]["generates_patch"] is False
+    assert report["safety"]["runs_validation"] is False
+    assert report["safety"]["runs_shell"] is False
+    assert report["safety"]["invokes_pccx_lab"] is False
+    assert report["safety"]["invokes_launcher"] is False
+    assert report["safety"]["invokes_vendor_tools"] is False
+    assert report["safety"]["provider_calls"] is False
+    assert report["safety"]["hardware_access"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
+def test_build_module_hierarchy_cycle_report_allows_acyclic_hierarchy():
+    report = build_module_hierarchy_cycle_report(str(FIXTURE), FIXTURE)
+
+    assert report["cycle_state"] == "no-cycles-detected"
+    assert report["has_cycles"] is False
+    assert report["cycle_count"] == 0
+    assert report["cycles"] == []
+    assert report["blocked_reasons"] == []
+    assert report["next_required_action"] == "continue hierarchy and refactor review"
 
 
 def test_build_module_summary_view_reports_ports_and_safety():
@@ -1259,6 +1320,20 @@ def test_format_module_dependency_text_mentions_impact_and_boundary():
     assert "read-only: no file writes" in text
 
 
+def test_format_module_hierarchy_cycle_text_mentions_cycle_and_boundary():
+    report = build_module_hierarchy_cycle_report(
+        str(CYCLIC_FIXTURE),
+        CYCLIC_FIXTURE,
+    )
+    text = format_module_hierarchy_cycle_text(report)
+
+    assert "hierarchy cycles: cycles-detected" in text
+    assert "cycle-1: alpha_mod -> beta_mod -> alpha_mod" in text
+    assert "alpha_mod -> beta_mod as u_beta" in text
+    assert "blocked: scanner-detected hierarchy cycle" in text
+    assert "read-only cycle report: no command argv" in text
+
+
 def test_format_module_summary_text_mentions_ports_and_boundary():
     view = build_module_summary_view(str(FIXTURE), FIXTURE)
     text = format_module_summary_text(view)
@@ -1606,6 +1681,32 @@ def test_cli_dependencies_text():
     assert result.returncode == 0, result.stderr
     assert "dependency view: available_as_data" in result.stdout
     assert "leaf_mod: dependencies=none; dependents=top_mod" in result.stdout
+
+
+def test_cli_hierarchy_cycles_json():
+    result = _run_cli("hierarchy-cycles", str(CYCLIC_FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-hierarchy-cycle-report"
+    assert payload["cycle_state"] == "cycles-detected"
+    assert payload["cycle_count"] == 1
+    assert payload["cycles"][0]["module_path"] == [
+        "alpha_mod",
+        "beta_mod",
+        "alpha_mod",
+    ]
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_hierarchy_cycles_text():
+    result = _run_cli("hierarchy-cycles", str(CYCLIC_FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "hierarchy cycles: cycles-detected" in result.stdout
+    assert "cycle-1: alpha_mod -> beta_mod -> alpha_mod" in result.stdout
+    assert "read-only cycle report: no command argv" in result.stdout
 
 
 def test_cli_module_summary_json():
@@ -2196,6 +2297,12 @@ def test_cli_dependencies_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_hierarchy_cycles_missing_path_exits_nonzero():
+    result = _run_cli("hierarchy-cycles", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_cli_module_summary_missing_path_exits_nonzero():
     result = _run_cli("module-summary", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -2363,6 +2470,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "refactor-readiness <path>" in contract
     assert "hierarchy <path>" in contract
     assert "dependencies <path>" in contract
+    assert "hierarchy-cycles <path>" in contract
     assert "module-summary <path>" in contract
     assert "port-usage <path>" in contract
     assert "module-context <path>" in contract
@@ -2381,6 +2489,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-refactor-readiness-summary" in workflow
     assert "module-hierarchy-view" in workflow
     assert "module-dependency-view" in workflow
+    assert "module-hierarchy-cycle-report" in workflow
     assert "module-summary-view" in workflow
     assert "module-port-usage-view" in workflow
     assert "module-context-bundle" in workflow
@@ -2403,5 +2512,6 @@ def test_docs_cover_organization_flow_and_limits():
     assert "refactor session status metadata" in workflow
     assert "boundary audit data" in workflow
     assert "readiness metadata" in workflow
+    assert "hierarchy cycle report" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow
