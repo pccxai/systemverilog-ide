@@ -16,6 +16,7 @@ _INSTANCE_RE = re.compile(
 _IDENT_RE = re.compile(r"\b[A-Za-z_]\w*\b")
 _PORT_DIRECTION_RE = re.compile(r"\b(input|output|inout)\b")
 _PORT_WIDTH_RE = re.compile(r"(\[[^\]]+\])")
+_PORT_WIDTH_LITERAL_RE = re.compile(r"(?:\[[^\[\]\r\n]+\])+")
 _PORT_NAMED_CONNECTION_RE = re.compile(r"\.\s*([A-Za-z_]\w*)\s*\(")
 _PORT_WILDCARD_CONNECTION_RE = re.compile(r"\.\s*\*")
 _PORT_CONNECTION_SCAN_LINE_LIMIT = 40
@@ -464,6 +465,10 @@ _REFACTOR_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
 
 def _safe_identifier(value: str | None) -> bool:
     return bool(value and re.fullmatch(r"[A-Za-z_]\w*", value))
+
+
+def _safe_port_width(value: str | None) -> bool:
+    return bool(value and _PORT_WIDTH_LITERAL_RE.fullmatch(value.strip()))
 
 
 def _refactor_safety_flags() -> dict[str, bool]:
@@ -5120,6 +5125,8 @@ def _preflight(
                 "port-name already exists in scanned module header: "
                 f"{requested['port_name']}"
             )
+        if requested["width"] and not _safe_port_width(str(requested["width"])):
+            reasons.append("width must be a bracketed SystemVerilog-style range")
 
     if action == "move-module" and requested["destination"]:
         destination = str(requested["destination"])
