@@ -46,6 +46,7 @@ python -m pccx_ide_cli locate <path> <name> --kind any --format json
 # Module organization for editor project trees
 python -m pccx_ide_cli organization <path> --format json
 python -m pccx_ide_cli boundary-audit <path> --format json
+python -m pccx_ide_cli refactor-readiness <path> --format json
 python -m pccx_ide_cli hierarchy <path> --format json
 python -m pccx_ide_cli dependencies <path> --format json
 python -m pccx_ide_cli module-summary <path> --format json
@@ -200,7 +201,9 @@ adds scanner-based module boundary spans, hierarchy edges, root candidates,
 and proposal-only refactoring metadata for project tree and reviewed
 refactoring workflows. `boundary-audit` emits read-only module boundary
 completeness and refactor-readiness audit data from the same scanner output;
-it does not write files, apply refactors, generate patches, run validation,
+`refactor-readiness` summarizes that audit plus refactor-candidate counts for
+editor status panes without selecting an action or emitting command argv. These
+surfaces do not write files, apply refactors, generate patches, run validation,
 invoke pccx-lab or the launcher, run vendor tools, call providers, touch
 hardware, or perform automatic repository actions. `hierarchy`,
 `dependencies`, `module-summary`, `port-usage`, `module-context`, and

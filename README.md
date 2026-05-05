@@ -134,6 +134,7 @@ python -m pccx_ide_cli module-summary fixtures/organization/hierarchy_top.sv --f
 # Module boundary audit and refactor candidate list (pre-stable, read-only)
 python -m pccx_ide_cli boundary-audit fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli refactor-candidates fixtures/organization/hierarchy_top.sv --format text
+python -m pccx_ide_cli refactor-readiness fixtures/organization/hierarchy_top.sv --format json
 
 # Target port usage view (pre-stable, read-only)
 python -m pccx_ide_cli port-usage fixtures/organization/hierarchy_top.sv --module leaf_mod --format json
@@ -220,7 +221,9 @@ instantiation connection summaries. `module-context` bundles target
 summary, dependency, port-usage, and refactor-impact review data for
 editor context panes. `refactor-candidates` lists scanner-detected
 modules and proposal-only helper action metadata for editor action
-menus. `refactor-impact` renders target-specific declaration,
+menus. `refactor-readiness` summarizes boundary-audit and candidate
+counts for editor status panes without selecting an action or emitting
+command argv. `refactor-impact` renders target-specific declaration,
 dependent, and dependency review data for a named module.
 These commands do not edit files, apply
 refactors, execute validation, run vendor tools, invoke `pccx-lab` or the
