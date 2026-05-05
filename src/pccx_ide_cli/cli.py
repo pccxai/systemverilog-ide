@@ -302,6 +302,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    module_leaves_cmd = sub.add_parser(
+        "module-leaves",
+        help=(
+            "Render scanner-based read-only module leaf-candidate report data."
+        ),
+    )
+    module_leaves_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    module_leaves_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     module_summary_cmd = sub.add_parser(
         "module-summary",
         help=(
@@ -1277,6 +1295,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_module_root_candidate_report_text(report))
+        return 0
+
+    if args.command == "module-leaves":
+        from .module_organization import (
+            build_module_leaf_candidate_report,
+            format_module_leaf_candidate_report_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        report = build_module_leaf_candidate_report(str(args.path), args.path)
+        if args.format == "json":
+            json.dump(report, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_module_leaf_candidate_report_text(report))
         return 0
 
     if args.command == "module-summary":

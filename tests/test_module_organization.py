@@ -28,6 +28,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_duplicate_report,
     build_module_hierarchy_cycle_report,
     build_module_hierarchy_view,
+    build_module_leaf_candidate_report,
     build_module_organization_export,
     build_module_port_usage_view,
     build_module_root_candidate_report,
@@ -57,6 +58,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_duplicate_report_text,
     format_module_hierarchy_cycle_text,
     format_module_hierarchy_text,
+    format_module_leaf_candidate_report_text,
     format_module_organization_text,
     format_module_port_usage_text,
     format_module_root_candidate_report_text,
@@ -592,6 +594,87 @@ def test_build_module_root_candidate_report_blocks_when_no_roots_detected():
     assert report["blocked_reasons"] == ["no root candidates detected"]
     assert report["next_required_action"] == (
         "resolve hierarchy blockers before root-candidate review"
+    )
+
+
+def test_build_module_leaf_candidate_report_detects_leaf_modules():
+    report = build_module_leaf_candidate_report(str(FIXTURE), FIXTURE)
+
+    assert report["kind"] == "module-leaf-candidate-report"
+    assert report["report_state"] == "leaves-detected"
+    assert report["module_count"] == 2
+    assert report["edge_count"] == 1
+    assert report["resolved_edge_count"] == 1
+    assert report["unresolved_edge_count"] == 0
+    assert report["leaf_count"] == 1
+    assert report["leaf_names"] == ["leaf_mod"]
+    assert report["blocked_reasons"] == []
+    assert report["next_required_action"] == (
+        "review scanner-detected leaf candidates for dependency-end organization"
+    )
+    leaf = report["leaves"][0]
+    assert leaf["name"] == "leaf_mod"
+    assert leaf["file"] == str(FIXTURE)
+    assert leaf["start_line"] == 4
+    assert leaf["start_column"] == 1
+    assert leaf["complete"] is True
+    assert leaf["declaration_count"] == 1
+    assert leaf["direct_dependents"] == ["top_mod"]
+    assert leaf["direct_dependent_count"] == 1
+    assert leaf["unresolved_dependencies"] == []
+    assert leaf["unresolved_dependency_count"] == 0
+    assert leaf["refactor_preflight_state"] == "ready-for-review"
+    assert leaf["reason"] == "does not instantiate another resolved module"
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["leaf_candidate_report_only"] is True
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["applies_refactor"] is False
+    assert report["safety"]["generates_patch"] is False
+    assert report["safety"]["runs_validation"] is False
+    assert report["safety"]["runs_shell"] is False
+    assert report["safety"]["invokes_pccx_lab"] is False
+    assert report["safety"]["invokes_launcher"] is False
+    assert report["safety"]["invokes_vendor_tools"] is False
+    assert report["safety"]["provider_calls"] is False
+    assert report["safety"]["hardware_access"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
+def test_build_module_leaf_candidate_report_blocks_unresolved_dependencies():
+    report = build_module_leaf_candidate_report(
+        str(UNRESOLVED_FIXTURE),
+        UNRESOLVED_FIXTURE,
+    )
+
+    assert report["report_state"] == "leaves-detected"
+    assert report["leaf_names"] == ["unresolved_top"]
+    assert report["blocked_reasons"] == [
+        "unresolved dependencies for leaf candidate: missing_child"
+    ]
+    leaf = report["leaves"][0]
+    assert leaf["refactor_preflight_state"] == "blocked"
+    assert leaf["unresolved_dependencies"] == ["missing_child"]
+    assert leaf["unresolved_dependency_count"] == 1
+    assert leaf["blocked_reasons"] == [
+        "unresolved dependencies for leaf candidate: missing_child"
+    ]
+
+
+def test_build_module_leaf_candidate_report_blocks_when_no_leaves_detected():
+    report = build_module_leaf_candidate_report(
+        str(CYCLIC_FIXTURE),
+        CYCLIC_FIXTURE,
+    )
+
+    assert report["report_state"] == "no-leaves-detected"
+    assert report["leaf_count"] == 0
+    assert report["leaf_names"] == []
+    assert report["leaves"] == []
+    assert report["blocked_reasons"] == ["no leaf candidates detected"]
+    assert report["next_required_action"] == (
+        "resolve hierarchy blockers before leaf-candidate review"
     )
 
 
@@ -1543,6 +1626,17 @@ def test_format_module_root_candidate_report_text_mentions_boundary():
     assert "read-only root report: no command argv" in text
 
 
+def test_format_module_leaf_candidate_report_text_mentions_boundary():
+    report = build_module_leaf_candidate_report(str(FIXTURE), FIXTURE)
+    text = format_module_leaf_candidate_report_text(report)
+
+    assert "module leaves: leaves-detected" in text
+    assert "1 leaf candidate" in text
+    assert "module leaf_mod (ready-for-review)" in text
+    assert "dependents=top_mod; unresolved=none" in text
+    assert "read-only leaf report: no command argv" in text
+
+
 def test_format_module_summary_text_mentions_ports_and_boundary():
     view = build_module_summary_view(str(FIXTURE), FIXTURE)
     text = format_module_summary_text(view)
@@ -1991,6 +2085,28 @@ def test_cli_module_roots_text():
     assert "module roots: roots-detected" in result.stdout
     assert "module top_mod (ready-for-review)" in result.stdout
     assert "read-only root report: no command argv" in result.stdout
+
+
+def test_cli_module_leaves_json():
+    result = _run_cli("module-leaves", str(FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-leaf-candidate-report"
+    assert payload["report_state"] == "leaves-detected"
+    assert payload["leaf_names"] == ["leaf_mod"]
+    assert payload["leaves"][0]["direct_dependents"] == ["top_mod"]
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_leaves_text():
+    result = _run_cli("module-leaves", str(FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module leaves: leaves-detected" in result.stdout
+    assert "module leaf_mod (ready-for-review)" in result.stdout
+    assert "read-only leaf report: no command argv" in result.stdout
 
 
 def test_cli_module_summary_json():
@@ -2776,6 +2892,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "hierarchy-cycles <path>" in contract
     assert "unresolved-instances <path>" in contract
     assert "module-roots <path>" in contract
+    assert "module-leaves <path>" in contract
     assert "module-summary <path>" in contract
     assert "port-usage <path>" in contract
     assert "module-context <path>" in contract
@@ -2798,6 +2915,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-hierarchy-cycle-report" in workflow
     assert "module-unresolved-instance-report" in workflow
     assert "module-root-candidate-report" in workflow
+    assert "module-leaf-candidate-report" in workflow
     assert "module-summary-view" in workflow
     assert "module-port-usage-view" in workflow
     assert "module-context-bundle" in workflow
