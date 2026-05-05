@@ -48,6 +48,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_port_usage_view,
     build_module_reachability_report,
     build_module_root_candidate_report,
+    build_module_span_report,
     build_module_summary_view,
     build_module_unresolved_instance_report,
     build_refactor_candidate_list,
@@ -89,6 +90,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_port_usage_text,
     format_module_reachability_report_text,
     format_module_root_candidate_report_text,
+    format_module_span_report_text,
     format_module_summary_text,
     format_module_unresolved_instance_report_text,
     format_refactor_candidate_list_text,
@@ -309,6 +311,63 @@ def test_build_module_file_report_blocks_incomplete_boundaries():
     ]
     assert report["next_required_action"] == (
         "resolve module file layout blockers before refactor planning"
+    )
+
+
+def test_build_module_span_report_ranks_modules_by_span():
+    report = build_module_span_report(str(FIXTURE), FIXTURE)
+
+    assert report["kind"] == "module-span-report"
+    assert report["report_state"] == "spans-detected"
+    assert report["module_count"] == 2
+    assert report["complete_module_count"] == 2
+    assert report["incomplete_module_count"] == 0
+    assert report["min_span_lines"] == 4
+    assert report["max_span_lines"] == 7
+    assert report["blocked_reasons"] == []
+    assert report["next_required_action"] == (
+        "review largest scanner-detected module spans before refactor planning"
+    )
+    assert [module["name"] for module in report["modules"]] == [
+        "top_mod",
+        "leaf_mod",
+    ]
+    assert report["modules"][0]["rank"] == 1
+    assert report["modules"][0]["span_lines"] == 7
+    assert report["modules"][0]["span_state"] == "ready-for-review"
+    assert report["modules"][0]["refactor_preflight_state"] == "ready-for-review"
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["span_report_only"] is True
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["moves_files"] is False
+    assert report["safety"]["applies_refactor"] is False
+    assert report["safety"]["generates_patch"] is False
+    assert report["safety"]["runs_validation"] is False
+    assert report["safety"]["invokes_pccx_lab"] is False
+    assert report["safety"]["invokes_launcher"] is False
+    assert report["safety"]["hardware_access"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
+def test_build_module_span_report_blocks_incomplete_boundaries():
+    report = build_module_span_report(str(INCOMPLETE_FIXTURE), INCOMPLETE_FIXTURE)
+
+    assert report["report_state"] == "blocked"
+    assert report["module_count"] == 1
+    assert report["complete_module_count"] == 0
+    assert report["incomplete_module_count"] == 1
+    assert report["modules"][0]["name"] == "bad_module"
+    assert report["modules"][0]["span_state"] == "blocked"
+    assert report["modules"][0]["reasons"] == [
+        "incomplete module boundary: bad_module"
+    ]
+    assert report["blocked_reasons"] == [
+        "incomplete module boundary: bad_module"
+    ]
+    assert report["next_required_action"] == (
+        "resolve module span blockers before refactor planning"
     )
 
 
@@ -2555,6 +2614,19 @@ def test_format_module_file_report_text_mentions_layout_and_no_execution():
     assert "read-only file report: no command argv" in text
 
 
+def test_format_module_span_report_text_mentions_ranks_and_no_execution():
+    report = build_module_span_report(str(FIXTURE), FIXTURE)
+    text = format_module_span_report_text(report)
+
+    assert "module spans: spans-detected" in text
+    assert "2 module declarations" in text
+    assert "span range: 4-7 lines" in text
+    assert "rank 1:" in text
+    assert "module top_mod span=7" in text
+    assert "next: review largest scanner-detected module spans" in text
+    assert "read-only span report: no command argv" in text
+
+
 def test_format_refactor_candidate_list_text_mentions_actions_and_no_execution():
     candidates = build_refactor_candidate_list(str(FIXTURE), FIXTURE)
     text = format_refactor_candidate_list_text(candidates)
@@ -3075,6 +3147,28 @@ def test_cli_module_files_text():
     assert "module files: multi-module-review" in result.stdout
     assert "modules: leaf_mod, top_mod" in result.stdout
     assert "read-only file report: no command argv" in result.stdout
+
+
+def test_cli_module_spans_json():
+    result = _run_cli("module-spans", str(FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-span-report"
+    assert payload["report_state"] == "spans-detected"
+    assert payload["max_span_lines"] == 7
+    assert payload["modules"][0]["name"] == "top_mod"
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_spans_text():
+    result = _run_cli("module-spans", str(FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module spans: spans-detected" in result.stdout
+    assert "module top_mod span=7" in result.stdout
+    assert "read-only span report: no command argv" in result.stdout
 
 
 def test_cli_refactor_candidates_json():
@@ -4125,6 +4219,12 @@ def test_cli_module_duplicates_missing_path_exits_nonzero():
 
 def test_cli_module_files_missing_path_exits_nonzero():
     result = _run_cli("module-files", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
+def test_cli_module_spans_missing_path_exits_nonzero():
+    result = _run_cli("module-spans", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
     assert "does not exist" in result.stderr
 

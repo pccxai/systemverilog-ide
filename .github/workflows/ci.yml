@@ -248,6 +248,13 @@ jobs:
               fixtures/organization/hierarchy_top.sv \
               | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-file-report'; assert d['safety']['writes_files'] is False; assert d['safety']['emits_command_descriptors'] is False"
           echo "module files smoke ok"
+      - name: cli smoke (module spans exits zero)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli module-spans \
+              fixtures/organization/hierarchy_top.sv \
+              | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-span-report'; assert d['safety']['writes_files'] is False; assert d['safety']['emits_command_descriptors'] is False"
+          echo "module spans smoke ok"
       - name: cli smoke (refactor candidates exits zero)
         run: |
           set -e

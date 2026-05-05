@@ -822,6 +822,50 @@ commands, emit command argv, invoke `pccx-lab`, invoke the launcher, run
 vendor tools, call providers, touch hardware, upload telemetry, or perform
 automatic repository actions.
 
+The module span report ranks scanner-detected module declaration spans for
+large-module review:
+
+```json
+{
+  "kind": "module-span-report",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "report_state": "spans-detected",
+  "module_count": 2,
+  "complete_module_count": 2,
+  "incomplete_module_count": 0,
+  "min_span_lines": 4,
+  "max_span_lines": 7,
+  "modules": [
+    {
+      "rank": 1,
+      "name": "top_mod",
+      "file": "fixtures/organization/hierarchy_top.sv",
+      "start_line": 9,
+      "end_line": 15,
+      "span_lines": 7,
+      "span_state": "ready-for-review"
+    }
+  ],
+  "safety": {
+    "read_only": true,
+    "span_report_only": true,
+    "emits_command_descriptors": false,
+    "writes_files": false,
+    "applies_refactor": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The module span report is display data only. It does not rewrite modules,
+extract code, generate patches, run validation, execute shell commands,
+emit command argv, invoke `pccx-lab`, invoke the launcher, run vendor tools,
+call providers, touch hardware, upload telemetry, or perform automatic
+repository actions.
+
 The refactor candidate list reports scanner-detected modules and
 proposal-only helper action metadata for editor menus:
 

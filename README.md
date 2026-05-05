@@ -148,6 +148,7 @@ python -m pccx_ide_cli module-summary fixtures/organization/hierarchy_top.sv --f
 python -m pccx_ide_cli boundary-audit fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli module-duplicates fixtures/organization/duplicate_modules.sv --format text
 python -m pccx_ide_cli module-files fixtures/organization/hierarchy_top.sv --format text
+python -m pccx_ide_cli module-spans fixtures/organization/hierarchy_top.sv --format text
 python -m pccx_ide_cli refactor-candidates fixtures/organization/hierarchy_top.sv --format text
 python -m pccx_ide_cli refactor-readiness fixtures/organization/hierarchy_top.sv --format json
 
@@ -275,6 +276,8 @@ command argv. `module-duplicates` reports scanner-detected duplicate
 module names that would block unambiguous refactor planning.
 `module-files` groups scanner-detected module declarations by source file
 for move-module and file-layout review without moving or rewriting files.
+`module-spans` ranks scanner-detected module declaration spans for
+large-module review without semantic elaboration or rewrite actions.
 `refactor-impact` renders target-specific declaration,
 dependent, and dependency review data for a named module.
 These commands do not edit files, apply
