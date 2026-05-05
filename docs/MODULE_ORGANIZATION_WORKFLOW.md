@@ -1300,7 +1300,7 @@ request is not ready for review. For example, a missing module, missing
 required input, existing rename target, existing target port name, absolute
 destination path, destination that matches the current module source file,
 invalid extract-port width, invalid extract-port direction, or invalid
-identifier produces
+identifier, or an input that does not belong to the selected action produces
 `preflight.status: "blocked"` with reasons.
 
 This boundary is intentionally limited to proposal metadata. It does not

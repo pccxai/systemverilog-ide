@@ -2058,6 +2058,47 @@ def test_build_refactor_proposal_blocks_invalid_port_direction():
     assert proposal["safety"]["runs_validation"] is False
 
 
+def test_build_refactor_proposal_blocks_unused_rename_input():
+    proposal = build_refactor_proposal(
+        str(FIXTURE),
+        FIXTURE,
+        "rename-module",
+        "top_mod",
+        new_name="top_mod_next",
+        port_name="valid_i",
+    )
+
+    assert proposal["proposal_state"] == "proposal-only"
+    assert proposal["writes_files"] is False
+    assert proposal["preflight"]["status"] == "blocked"
+    assert proposal["preflight"]["reasons"] == [
+        "port-name is not used by rename-module proposals"
+    ]
+    assert proposal["safety"]["applies_patch"] is False
+    assert proposal["safety"]["runs_validation"] is False
+
+
+def test_build_refactor_proposal_blocks_unused_extract_destination():
+    proposal = build_refactor_proposal(
+        str(FIXTURE),
+        FIXTURE,
+        "extract-port",
+        "top_mod",
+        port_name="valid_i",
+        direction="input",
+        destination="rtl/top_mod.sv",
+    )
+
+    assert proposal["proposal_state"] == "proposal-only"
+    assert proposal["writes_files"] is False
+    assert proposal["preflight"]["status"] == "blocked"
+    assert proposal["preflight"]["reasons"] == [
+        "destination is not used by extract-port proposals"
+    ]
+    assert proposal["safety"]["applies_patch"] is False
+    assert proposal["safety"]["runs_validation"] is False
+
+
 def test_build_refactor_proposal_blocks_existing_port_name():
     proposal = build_refactor_proposal(
         str(FIXTURE),
@@ -3986,6 +4027,27 @@ def test_cli_refactor_plan_blocks_unbracketed_port_width():
         "width must be a bracketed SystemVerilog-style range"
     ]
     assert payload["writes_files"] is False
+
+
+def test_cli_refactor_plan_text_blocks_unused_move_input():
+    result = _run_cli(
+        "refactor-plan",
+        str(FIXTURE),
+        "--action",
+        "move-module",
+        "--module",
+        "leaf_mod",
+        "--destination",
+        "rtl/leaf_mod.sv",
+        "--new-name",
+        "leaf_mod_next",
+        "--format",
+        "text",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "preflight: blocked" in result.stdout
+    assert "blocked: new-name is not used by move-module proposals" in result.stdout
+    assert "writes files: no" in result.stdout
 
 
 def test_cli_refactor_plan_text():

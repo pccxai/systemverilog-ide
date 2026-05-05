@@ -461,6 +461,18 @@ _REFACTOR_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "extract-port": ("port_name", "direction"),
     "move-module": ("destination",),
 }
+_REFACTOR_INPUT_FIELDS = (
+    "new_name",
+    "port_name",
+    "direction",
+    "width",
+    "destination",
+)
+_REFACTOR_ALLOWED_FIELDS: dict[str, tuple[str, ...]] = {
+    "rename-module": ("new_name",),
+    "extract-port": ("port_name", "direction", "width"),
+    "move-module": ("destination",),
+}
 _REFACTOR_PORT_DIRECTIONS = ("input", "output", "inout")
 
 
@@ -474,6 +486,10 @@ def _safe_port_width(value: str | None) -> bool:
 
 def _safe_port_direction(value: str | None) -> bool:
     return value in _REFACTOR_PORT_DIRECTIONS
+
+
+def _field_label(field: str) -> str:
+    return field.replace("_", "-")
 
 
 def _refactor_safety_flags() -> dict[str, bool]:
@@ -5097,9 +5113,14 @@ def _preflight(
 ) -> dict[str, Any]:
     reasons: list[str] = []
     required = _REFACTOR_REQUIRED_FIELDS[action]
+    allowed = _REFACTOR_ALLOWED_FIELDS[action]
     for field in required:
         if not requested[field]:
-            reasons.append(f"missing required {field.replace('_', '-')}")
+            reasons.append(f"missing required {_field_label(field)}")
+
+    for field in _REFACTOR_INPUT_FIELDS:
+        if field not in allowed and requested[field]:
+            reasons.append(f"{_field_label(field)} is not used by {action} proposals")
 
     if len(matches) == 0:
         reasons.append(f"module not found: {module_name}")
