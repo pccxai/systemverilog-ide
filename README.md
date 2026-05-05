@@ -130,6 +130,7 @@ python -m pccx_ide_cli hierarchy-cycles fixtures/organization/cyclic_hierarchy.s
 python -m pccx_ide_cli unresolved-instances fixtures/organization/unresolved_instances.sv --format text
 python -m pccx_ide_cli module-roots fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli module-leaves fixtures/organization/hierarchy_top.sv --format json
+python -m pccx_ide_cli module-orphans fixtures/organization/orphan_modules.sv --format json
 python -m pccx_ide_cli module-depths fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli module-health fixtures/organization/hierarchy_top.sv --format json
 
@@ -229,6 +230,8 @@ whose target module is not declared in the scanned input.
 module entry-point review.
 `module-leaves` reports scanner-detected leaf candidates for dependency-end
 organization review.
+`module-orphans` reports scanner-detected isolated module candidates with no
+resolved dependencies or dependents.
 `module-depths` groups scanner-detected hierarchy levels from root candidates
 for module organization review.
 `module-health` combines scanner-detected root, leaf, depth, cycle,

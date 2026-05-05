@@ -174,6 +174,17 @@ MODULE_LEAF_REPORT_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+MODULE_ORPHAN_REPORT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module orphan-candidate report only",
+    "uses resolved dependency and dependent edges from the organization scanner",
+    "single-line instantiation candidates only",
+    "unresolved instantiation candidates block orphan-candidate readiness",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "does not apply refactors, write files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 MODULE_DEPTH_REPORT_LIMITATIONS: tuple[str, ...] = (
     "scanner-based module hierarchy depth report only",
     "uses root candidates and resolved dependency edges from the organization scanner",
@@ -567,6 +578,28 @@ def _module_leaf_report_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "leaf_candidate_report_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _module_orphan_report_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "orphan_candidate_report_only": True,
         "emits_command_descriptors": False,
         "writes_files": False,
         "moves_files": False,
@@ -2085,6 +2118,138 @@ def build_module_leaf_candidate_report(source: str, path: Path) -> dict[str, Any
         "report_state": "leaves-detected" if leaves else "no-leaves-detected",
         "resolved_edge_count": resolved_edge_count,
         "safety": _module_leaf_report_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "unresolved_edge_count": len(hierarchy["edges"]) - resolved_edge_count,
+        "writes_files": False,
+    }
+
+
+def _module_orphan_rows(
+    modules: list[dict[str, Any]],
+    hierarchy: dict[str, Any],
+) -> list[dict[str, Any]]:
+    modules_by_name: dict[str, dict[str, Any]] = {}
+    declaration_counts: dict[str, int] = {}
+    for module in modules:
+        modules_by_name.setdefault(module["name"], module)
+        declaration_counts[module["name"]] = (
+            declaration_counts.get(module["name"], 0) + 1
+        )
+
+    resolved_dependencies_by_module: dict[str, set[str]] = {
+        name: set()
+        for name in modules_by_name
+    }
+    direct_dependents_by_module: dict[str, set[str]] = {
+        name: set()
+        for name in modules_by_name
+    }
+    unresolved_dependencies_by_module: dict[str, set[str]] = {
+        name: set()
+        for name in modules_by_name
+    }
+    for edge in hierarchy["edges"]:
+        parent = edge["parent"]
+        child = edge["child"]
+        if parent not in modules_by_name:
+            continue
+        if edge["resolved"]:
+            resolved_dependencies_by_module.setdefault(parent, set()).add(child)
+            if child in direct_dependents_by_module:
+                direct_dependents_by_module[child].add(parent)
+        else:
+            unresolved_dependencies_by_module.setdefault(parent, set()).add(child)
+
+    rows: list[dict[str, Any]] = []
+    for orphan_name in sorted(modules_by_name):
+        direct_dependencies = sorted(
+            resolved_dependencies_by_module.get(orphan_name, set())
+        )
+        direct_dependents = sorted(
+            direct_dependents_by_module.get(orphan_name, set())
+        )
+        if direct_dependencies or direct_dependents:
+            continue
+
+        module = modules_by_name[orphan_name]
+        unresolved_dependencies = sorted(
+            unresolved_dependencies_by_module.get(orphan_name, set())
+        )
+        blocked_reasons: list[str] = []
+        if not module["complete"]:
+            blocked_reasons.append(f"module boundary is incomplete: {orphan_name}")
+        if declaration_counts[orphan_name] > 1:
+            blocked_reasons.append(f"ambiguous module name: {orphan_name}")
+        if unresolved_dependencies:
+            blocked_reasons.append(
+                "unresolved dependencies for orphan candidate: "
+                f"{', '.join(unresolved_dependencies)}"
+            )
+        rows.append({
+            "blocked_reasons": blocked_reasons,
+            "complete": module["complete"],
+            "declaration_count": declaration_counts[orphan_name],
+            "direct_dependencies": direct_dependencies,
+            "direct_dependency_count": len(direct_dependencies),
+            "direct_dependents": direct_dependents,
+            "direct_dependent_count": len(direct_dependents),
+            "file": module["file"],
+            "name": orphan_name,
+            "orphan_state": "orphan-candidate",
+            "reason": "no resolved dependencies or dependents detected by scanner",
+            "refactor_preflight_state": (
+                "blocked" if blocked_reasons else "ready-for-review"
+            ),
+            "start_column": module["start_column"],
+            "start_line": module["start_line"],
+            "unresolved_dependencies": unresolved_dependencies,
+            "unresolved_dependency_count": len(unresolved_dependencies),
+        })
+    return rows
+
+
+def build_module_orphan_candidate_report(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    resolved_edge_count = len([
+        edge
+        for edge in hierarchy["edges"]
+        if edge["resolved"]
+    ])
+    orphans = _module_orphan_rows(modules, hierarchy)
+    blocked_reasons = list(dict.fromkeys([
+        reason
+        for orphan in orphans
+        for reason in orphan["blocked_reasons"]
+    ]))
+    if modules and not orphans:
+        blocked_reasons.append("no orphan candidates detected")
+    if not modules:
+        blocked_reasons.append("no module declarations detected")
+
+    return {
+        "blocked_reasons": blocked_reasons,
+        "edge_count": len(hierarchy["edges"]),
+        "kind": "module-orphan-candidate-report",
+        "limitations": list(MODULE_ORPHAN_REPORT_LIMITATIONS),
+        "module_count": len(modules),
+        "next_required_action": (
+            "review scanner-detected orphan candidates for isolation or cleanup"
+            if orphans
+            else "continue module organization review"
+        ),
+        "orphan_count": len(orphans),
+        "orphan_names": [
+            orphan["name"]
+            for orphan in orphans
+        ],
+        "orphans": orphans,
+        "report_state": "orphans-detected" if orphans else "no-orphans-detected",
+        "resolved_edge_count": resolved_edge_count,
+        "safety": _module_orphan_report_safety_flags(),
         "scanner": "line-scanner",
         "source": source,
         "tool": "pccx-ide-cli",
@@ -4980,6 +5145,40 @@ def format_module_leaf_candidate_report_text(report: dict[str, Any]) -> str:
     lines.append(f"next: {report['next_required_action']}")
     lines.append(
         "read-only leaf report: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_orphan_candidate_report_text(report: dict[str, Any]) -> str:
+    lines = [
+        f"source: {report['source']}",
+        f"module orphans: {report['report_state']}",
+        f"{report['module_count']} module"
+        f"{'s' if report['module_count'] != 1 else ''}",
+        f"{report['orphan_count']} orphan candidate"
+        f"{'s' if report['orphan_count'] != 1 else ''}",
+    ]
+    if not report["orphans"]:
+        lines.append("orphans: none")
+    for orphan in report["orphans"]:
+        unresolved = ", ".join(orphan["unresolved_dependencies"]) or "none"
+        lines.append(
+            f"{orphan['file']}:{orphan['start_line']}: module {orphan['name']} "
+            f"({orphan['refactor_preflight_state']})"
+        )
+        lines.append(
+            "  dependencies=none; dependents=none; "
+            f"unresolved={unresolved}; reason={orphan['reason']}"
+        )
+        for reason in orphan["blocked_reasons"]:
+            lines.append(f"  blocked: {reason}")
+    for reason in report["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next: {report['next_required_action']}")
+    lines.append(
+        "read-only orphan report: no command argv, validation, shell, "
         "refactor, patch, file write, lab, launcher, vendor tool, provider, "
         "or hardware execution"
     )
