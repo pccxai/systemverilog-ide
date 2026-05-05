@@ -1299,7 +1299,8 @@ Blocked proposals still return JSON so editor consumers can display why a
 request is not ready for review. For example, a missing module, missing
 required input, existing rename target, existing target port name, absolute
 destination path, destination that matches the current module source file,
-invalid extract-port width, or invalid identifier produces
+invalid extract-port width, invalid extract-port direction, or invalid
+identifier produces
 `preflight.status: "blocked"` with reasons.
 
 This boundary is intentionally limited to proposal metadata. It does not

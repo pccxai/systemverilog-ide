@@ -461,6 +461,7 @@ _REFACTOR_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "extract-port": ("port_name", "direction"),
     "move-module": ("destination",),
 }
+_REFACTOR_PORT_DIRECTIONS = ("input", "output", "inout")
 
 
 def _safe_identifier(value: str | None) -> bool:
@@ -469,6 +470,10 @@ def _safe_identifier(value: str | None) -> bool:
 
 def _safe_port_width(value: str | None) -> bool:
     return bool(value and _PORT_WIDTH_LITERAL_RE.fullmatch(value.strip()))
+
+
+def _safe_port_direction(value: str | None) -> bool:
+    return value in _REFACTOR_PORT_DIRECTIONS
 
 
 def _refactor_safety_flags() -> dict[str, bool]:
@@ -5125,6 +5130,10 @@ def _preflight(
                 "port-name already exists in scanned module header: "
                 f"{requested['port_name']}"
             )
+        if requested["direction"] and not _safe_port_direction(
+            str(requested["direction"])
+        ):
+            reasons.append("direction must be input, output, or inout")
         if requested["width"] and not _safe_port_width(str(requested["width"])):
             reasons.append("width must be a bracketed SystemVerilog-style range")
 

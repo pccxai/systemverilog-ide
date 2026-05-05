@@ -2038,6 +2038,26 @@ def test_build_refactor_proposal_extract_port_requires_direction():
     assert proposal["safety"]["writes_files"] is False
 
 
+def test_build_refactor_proposal_blocks_invalid_port_direction():
+    proposal = build_refactor_proposal(
+        str(FIXTURE),
+        FIXTURE,
+        "extract-port",
+        "top_mod",
+        port_name="enable_i",
+        direction="wire",
+    )
+
+    assert proposal["proposal_state"] == "proposal-only"
+    assert proposal["writes_files"] is False
+    assert proposal["preflight"]["status"] == "blocked"
+    assert proposal["preflight"]["reasons"] == [
+        "direction must be input, output, or inout"
+    ]
+    assert proposal["safety"]["applies_patch"] is False
+    assert proposal["safety"]["runs_validation"] is False
+
+
 def test_build_refactor_proposal_blocks_existing_port_name():
     proposal = build_refactor_proposal(
         str(FIXTURE),
@@ -2140,6 +2160,28 @@ def test_build_refactor_validation_plan_blocks_post_change_commands():
     assert groups["post-change-local-validation"]["commands"] == []
     assert groups["post-change-local-validation"]["blocked_by"] == [
         "missing required direction"
+    ]
+
+
+def test_build_refactor_validation_plan_blocks_invalid_port_direction():
+    plan = build_refactor_validation_plan(
+        str(FIXTURE),
+        FIXTURE,
+        "extract-port",
+        "top_mod",
+        port_name="valid_i",
+        direction="wire",
+    )
+
+    assert plan["validation_state"] == "blocked"
+    assert plan["preflight"]["reasons"] == [
+        "direction must be input, output, or inout"
+    ]
+    groups = {group["phase"]: group for group in plan["validation_groups"]}
+    assert groups["post-change-local-validation"]["status"] == "blocked"
+    assert groups["post-change-local-validation"]["commands"] == []
+    assert groups["post-change-local-validation"]["blocked_by"] == [
+        "direction must be input, output, or inout"
     ]
 
 
