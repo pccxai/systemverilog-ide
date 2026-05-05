@@ -14,6 +14,7 @@ SRC = REPO_ROOT / "src"
 FIXTURE = REPO_ROOT / "fixtures" / "organization" / "hierarchy_top.sv"
 CYCLIC_FIXTURE = REPO_ROOT / "fixtures" / "organization" / "cyclic_hierarchy.sv"
 DUPLICATE_FIXTURE = REPO_ROOT / "fixtures" / "organization" / "duplicate_modules.sv"
+UNRESOLVED_FIXTURE = REPO_ROOT / "fixtures" / "organization" / "unresolved_instances.sv"
 INCOMPLETE_FIXTURE = REPO_ROOT / "fixtures" / "missing_endmodule.sv"
 CONTRACT_DOC = REPO_ROOT / "docs" / "EDITOR_BRIDGE_CONTRACT.md"
 WORKFLOW_DOC = REPO_ROOT / "docs" / "MODULE_ORGANIZATION_WORKFLOW.md"
@@ -30,6 +31,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_organization_export,
     build_module_port_usage_view,
     build_module_summary_view,
+    build_module_unresolved_instance_report,
     build_refactor_candidate_list,
     build_refactor_approval_decision,
     build_refactor_application_result,
@@ -57,6 +59,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_organization_text,
     format_module_port_usage_text,
     format_module_summary_text,
+    format_module_unresolved_instance_report_text,
     format_refactor_candidate_list_text,
     format_refactor_impact_text,
     format_refactor_proposal_text,
@@ -467,6 +470,67 @@ def test_build_module_hierarchy_cycle_report_allows_acyclic_hierarchy():
     assert report["has_cycles"] is False
     assert report["cycle_count"] == 0
     assert report["cycles"] == []
+    assert report["blocked_reasons"] == []
+    assert report["next_required_action"] == "continue hierarchy and refactor review"
+
+
+def test_build_module_unresolved_instance_report_detects_missing_modules():
+    report = build_module_unresolved_instance_report(
+        str(UNRESOLVED_FIXTURE),
+        UNRESOLVED_FIXTURE,
+    )
+
+    assert report["kind"] == "module-unresolved-instance-report"
+    assert report["report_state"] == "unresolved-instances-detected"
+    assert report["has_unresolved_instances"] is True
+    assert report["module_count"] == 1
+    assert report["edge_count"] == 1
+    assert report["resolved_edge_count"] == 0
+    assert report["unresolved_instance_count"] == 1
+    assert report["unresolved_module_count"] == 1
+    assert report["unresolved_modules"] == ["missing_child"]
+    assert report["blocked_reasons"] == [
+        "unresolved module instantiation: missing_child as u_missing in unresolved_top"
+    ]
+    assert report["next_required_action"] == (
+        "resolve scanner-detected unresolved instantiations before refactor planning"
+    )
+    instance = report["unresolved_instances"][0]
+    assert instance["unresolved_id"] == "unresolved-1"
+    assert instance["target_module"] == "missing_child"
+    assert instance["parent"] == "unresolved_top"
+    assert instance["instance"] == "u_missing"
+    assert instance["file"] == str(UNRESOLVED_FIXTURE)
+    assert instance["line"] == 5
+    assert instance["column"] == 5
+    assert instance["resolution_state"] == "unresolved"
+    assert instance["refactor_preflight_state"] == "blocked"
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["unresolved_instance_report_only"] is True
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["applies_refactor"] is False
+    assert report["safety"]["generates_patch"] is False
+    assert report["safety"]["runs_validation"] is False
+    assert report["safety"]["runs_shell"] is False
+    assert report["safety"]["invokes_pccx_lab"] is False
+    assert report["safety"]["invokes_launcher"] is False
+    assert report["safety"]["invokes_vendor_tools"] is False
+    assert report["safety"]["provider_calls"] is False
+    assert report["safety"]["hardware_access"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
+def test_build_module_unresolved_instance_report_allows_resolved_hierarchy():
+    report = build_module_unresolved_instance_report(str(FIXTURE), FIXTURE)
+
+    assert report["report_state"] == "no-unresolved-instances-detected"
+    assert report["has_unresolved_instances"] is False
+    assert report["unresolved_instance_count"] == 0
+    assert report["unresolved_module_count"] == 0
+    assert report["unresolved_instances"] == []
+    assert report["unresolved_modules"] == []
     assert report["blocked_reasons"] == []
     assert report["next_required_action"] == "continue hierarchy and refactor review"
 
@@ -1394,6 +1458,20 @@ def test_format_module_hierarchy_cycle_text_mentions_cycle_and_boundary():
     assert "read-only cycle report: no command argv" in text
 
 
+def test_format_module_unresolved_instance_report_text_mentions_boundary():
+    report = build_module_unresolved_instance_report(
+        str(UNRESOLVED_FIXTURE),
+        UNRESOLVED_FIXTURE,
+    )
+    text = format_module_unresolved_instance_report_text(report)
+
+    assert "unresolved instances: unresolved-instances-detected" in text
+    assert "unresolved modules: missing_child" in text
+    assert "unresolved-1: unresolved_top -> missing_child as u_missing" in text
+    assert "blocked: unresolved module instantiation" in text
+    assert "read-only unresolved report: no command argv" in text
+
+
 def test_format_module_summary_text_mentions_ports_and_boundary():
     view = build_module_summary_view(str(FIXTURE), FIXTURE)
     text = format_module_summary_text(view)
@@ -1788,6 +1866,38 @@ def test_cli_hierarchy_cycles_text():
     assert "hierarchy cycles: cycles-detected" in result.stdout
     assert "cycle-1: alpha_mod -> beta_mod -> alpha_mod" in result.stdout
     assert "read-only cycle report: no command argv" in result.stdout
+
+
+def test_cli_unresolved_instances_json():
+    result = _run_cli(
+        "unresolved-instances",
+        str(UNRESOLVED_FIXTURE),
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-unresolved-instance-report"
+    assert payload["report_state"] == "unresolved-instances-detected"
+    assert payload["unresolved_modules"] == ["missing_child"]
+    assert payload["unresolved_instances"][0]["target_module"] == "missing_child"
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_unresolved_instances_text():
+    result = _run_cli(
+        "unresolved-instances",
+        str(UNRESOLVED_FIXTURE),
+        "--format",
+        "text",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "unresolved instances: unresolved-instances-detected" in result.stdout
+    assert "unresolved-1: unresolved_top -> missing_child as u_missing" in result.stdout
+    assert "read-only unresolved report: no command argv" in result.stdout
 
 
 def test_cli_module_summary_json():
@@ -2390,6 +2500,12 @@ def test_cli_hierarchy_cycles_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_unresolved_instances_missing_path_exits_nonzero():
+    result = _run_cli("unresolved-instances", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_cli_module_summary_missing_path_exits_nonzero():
     result = _run_cli("module-summary", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -2559,6 +2675,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "hierarchy <path>" in contract
     assert "dependencies <path>" in contract
     assert "hierarchy-cycles <path>" in contract
+    assert "unresolved-instances <path>" in contract
     assert "module-summary <path>" in contract
     assert "port-usage <path>" in contract
     assert "module-context <path>" in contract
@@ -2579,6 +2696,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-hierarchy-view" in workflow
     assert "module-dependency-view" in workflow
     assert "module-hierarchy-cycle-report" in workflow
+    assert "module-unresolved-instance-report" in workflow
     assert "module-summary-view" in workflow
     assert "module-port-usage-view" in workflow
     assert "module-context-bundle" in workflow
@@ -2603,5 +2721,6 @@ def test_docs_cover_organization_flow_and_limits():
     assert "duplicate-name report" in workflow
     assert "readiness metadata" in workflow
     assert "hierarchy cycle report" in workflow
+    assert "unresolved instantiation report" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow
