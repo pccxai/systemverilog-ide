@@ -4,19 +4,19 @@
 
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
-`module-summary`, `boundary-audit`, `refactor-candidates`, `port-usage`,
-`module-context`, `refactor-impact`, `validation-plan`, `refactor-review`,
-`refactor-approval`, `refactor-application`, `refactor-result`,
+`hierarchy-cycles`, `module-summary`, `boundary-audit`, `refactor-candidates`,
+`port-usage`, `module-context`, `refactor-impact`, `validation-plan`,
+`refactor-review`, `refactor-approval`, `refactor-application`, `refactor-result`,
 `refactor-handoff`, `refactor-checklist`, and `refactor-session` CLI surfaces
 that report module boundary spans, scanner-based hierarchy data, direct
-dependency impact data, conservative module header/port summaries, target port
-usage summaries, target module context bundles, target-specific refactor impact
-data, boundary audit data, refactor candidate metadata for editor action
-menus, proposal-only validation command descriptors, a summary-only review
-packet, approval decision metadata, application request metadata, and
-application result metadata plus refactor handoff metadata, refactor checklist
-metadata, and refactor session status metadata for editor navigation and
-reviewed refactoring planning.
+dependency impact data, hierarchy cycle report metadata, conservative module
+header/port summaries, target port usage summaries, target module context
+bundles, target-specific refactor impact data, boundary audit data, refactor
+candidate metadata for editor action menus, proposal-only validation command
+descriptors, a summary-only review packet, approval decision metadata,
+application request metadata, and application result metadata plus refactor
+handoff metadata, refactor checklist metadata, and refactor session status
+metadata for editor navigation and reviewed refactoring planning.
 
 It is not a full SystemVerilog parser, not semantic elaboration, not an LSP
 implementation, and not a write-capable refactoring engine.
@@ -30,6 +30,8 @@ python -m pccx_ide_cli hierarchy <path> --format json
 python -m pccx_ide_cli hierarchy <path> --format text
 python -m pccx_ide_cli dependencies <path> --format json
 python -m pccx_ide_cli dependencies <path> --format text
+python -m pccx_ide_cli hierarchy-cycles <path> --format json
+python -m pccx_ide_cli hierarchy-cycles <path> --format text
 python -m pccx_ide_cli module-summary <path> --format json
 python -m pccx_ide_cli module-summary <path> --format text
 python -m pccx_ide_cli boundary-audit <path> --format json
@@ -159,6 +161,41 @@ The dependency view is display data only. It does not write files, apply
 refactors, generate patches, run validation, execute shell commands,
 invoke `pccx-lab`, invoke the launcher, call providers, touch hardware,
 upload telemetry, or perform automatic repository actions.
+
+The hierarchy cycle report uses resolved scanner dependency edges and emits
+cycle-warning metadata for editor consumers:
+
+```json
+{
+  "kind": "module-hierarchy-cycle-report",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "cycle_state": "cycles-detected",
+  "has_cycles": true,
+  "cycle_count": 1,
+  "cycles": [
+    {
+      "cycle_id": "cycle-1",
+      "module_path": ["alpha_mod", "beta_mod", "alpha_mod"],
+      "summary": "alpha_mod -> beta_mod -> alpha_mod",
+      "edges": []
+    }
+  ],
+  "safety": {
+    "read_only": true,
+    "writes_files": false,
+    "applies_refactor": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The hierarchy cycle report is display data only. It does not write files,
+apply refactors, generate patches, run validation, execute shell commands,
+emit command argv, invoke `pccx-lab`, invoke the launcher, call providers,
+touch hardware, upload telemetry, or perform automatic repository actions.
 
 The module summary view reports conservative scanner-detected module
 header and port metadata:

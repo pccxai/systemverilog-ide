@@ -49,6 +49,7 @@ python -m pccx_ide_cli boundary-audit <path> --format json
 python -m pccx_ide_cli refactor-readiness <path> --format json
 python -m pccx_ide_cli hierarchy <path> --format json
 python -m pccx_ide_cli dependencies <path> --format json
+python -m pccx_ide_cli hierarchy-cycles <path> --format json
 python -m pccx_ide_cli module-summary <path> --format json
 python -m pccx_ide_cli port-usage <path> --module <name> --format json
 python -m pccx_ide_cli module-context <path> --module <name> --format json
