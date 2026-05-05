@@ -26,6 +26,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_organization_export,
     build_module_port_usage_view,
     build_module_summary_view,
+    build_refactor_candidate_list,
     build_refactor_approval_decision,
     build_refactor_application_result,
     build_refactor_application_request,
@@ -49,6 +50,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_organization_text,
     format_module_port_usage_text,
     format_module_summary_text,
+    format_refactor_candidate_list_text,
     format_refactor_impact_text,
     format_refactor_proposal_text,
     format_refactor_review_packet_text,
@@ -161,6 +163,77 @@ def test_build_module_boundary_audit_blocks_incomplete_boundaries():
         "missing endmodule for module: bad_module"
     ]
     assert audit["writes_files"] is False
+
+
+def test_build_refactor_candidate_list_reports_action_enablement():
+    candidates = build_refactor_candidate_list(str(FIXTURE), FIXTURE)
+
+    assert candidates["kind"] == "module-refactor-candidate-list"
+    assert candidates["candidate_state"] == "available_as_data"
+    assert candidates["module_count"] == 2
+    assert candidates["ready_module_count"] == 2
+    assert candidates["blocked_module_count"] == 0
+    assert candidates["action_count"] == 3
+    assert candidates["blocked_reasons"] == []
+    assert [action["action"] for action in candidates["actions"]] == [
+        "rename-module",
+        "extract-port",
+        "move-module",
+    ]
+    leaf = candidates["candidates"][0]
+    assert leaf["module"]["name"] == "leaf_mod"
+    assert leaf["candidate_state"] == "ready-for-request"
+    assert leaf["blocked_reasons"] == []
+    actions = {action["action"]: action for action in leaf["actions"]}
+    assert actions["rename-module"]["required_inputs"] == ["new_name"]
+    assert actions["extract-port"]["required_inputs"] == [
+        "port_name",
+        "direction",
+    ]
+    assert actions["extract-port"]["optional_inputs"] == ["width"]
+    assert actions["move-module"]["required_inputs"] == ["destination"]
+    assert all(action["proposal_only"] is True for action in leaf["actions"])
+    assert all(action["writes_files"] is False for action in leaf["actions"])
+    assert all(action["applies_refactor"] is False for action in leaf["actions"])
+    assert candidates["safety"]["read_only"] is True
+    assert candidates["safety"]["candidate_metadata_only"] is True
+    assert candidates["safety"]["action_enablement_only"] is True
+    assert candidates["safety"]["emits_command_descriptors"] is False
+    assert candidates["safety"]["writes_files"] is False
+    assert candidates["safety"]["applies_refactor"] is False
+    assert candidates["safety"]["runs_validation"] is False
+    assert candidates["safety"]["runs_shell"] is False
+    assert candidates["safety"]["invokes_pccx_lab"] is False
+    assert candidates["safety"]["invokes_launcher"] is False
+    assert candidates["safety"]["hardware_access"] is False
+    assert '"argv"' not in json.dumps(candidates)
+
+
+def test_build_refactor_candidate_list_blocks_incomplete_boundaries():
+    candidates = build_refactor_candidate_list(
+        str(INCOMPLETE_FIXTURE),
+        INCOMPLETE_FIXTURE,
+    )
+
+    assert candidates["candidate_state"] == "available_as_data"
+    assert candidates["ready_module_count"] == 0
+    assert candidates["blocked_module_count"] == 1
+    assert candidates["blocked_reasons"] == [
+        "module boundary is incomplete: bad_module"
+    ]
+    candidate = candidates["candidates"][0]
+    assert candidate["candidate_state"] == "blocked"
+    assert candidate["blocked_reasons"] == [
+        "module boundary is incomplete: bad_module"
+    ]
+    assert all(action["state"] == "blocked" for action in candidate["actions"])
+    assert all(
+        action["blocked_reasons"] == [
+            "module boundary is incomplete: bad_module"
+        ]
+        for action in candidate["actions"]
+    )
+    assert candidates["writes_files"] is False
 
 
 def test_build_module_hierarchy_view_tree_is_read_only():
@@ -1090,6 +1163,20 @@ def test_format_module_boundary_audit_text_mentions_read_only_gate():
     assert "read-only: no file writes" in text
 
 
+def test_format_refactor_candidate_list_text_mentions_actions_and_no_execution():
+    candidates = build_refactor_candidate_list(str(FIXTURE), FIXTURE)
+    text = format_refactor_candidate_list_text(candidates)
+
+    assert "refactor candidates: available_as_data" in text
+    assert "2 modules; 2 ready; 0 blocked" in text
+    assert "rename-module: ready-for-request" in text
+    assert "required=new_name" in text
+    assert "extract-port: ready-for-request" in text
+    assert "optional=width" in text
+    assert "writes files: no" in text
+    assert "read-only candidate metadata: no command argv" in text
+
+
 def test_format_module_hierarchy_text_mentions_tree_and_boundary():
     view = build_module_hierarchy_view(str(FIXTURE), FIXTURE)
     text = format_module_hierarchy_text(view)
@@ -1375,6 +1462,28 @@ def test_cli_boundary_audit_text():
     assert "module bad_module (incomplete; blocked)" in result.stdout
     assert "blocked: missing endmodule for module: bad_module" in result.stdout
     assert "read-only: no file writes" in result.stdout
+
+
+def test_cli_refactor_candidates_json():
+    result = _run_cli("refactor-candidates", str(FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-refactor-candidate-list"
+    assert payload["candidate_state"] == "available_as_data"
+    assert payload["ready_module_count"] == 2
+    assert payload["blocked_module_count"] == 0
+    assert payload["candidates"][0]["actions"][0]["action"] == "rename-module"
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_refactor_candidates_text():
+    result = _run_cli("refactor-candidates", str(FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "refactor candidates: available_as_data" in result.stdout
+    assert "rename-module: ready-for-request" in result.stdout
+    assert "read-only candidate metadata: no command argv" in result.stdout
 
 
 def test_cli_hierarchy_json():

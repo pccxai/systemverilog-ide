@@ -87,6 +87,15 @@ MODULE_BOUNDARY_AUDIT_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+REFACTOR_CANDIDATE_LIST_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based refactor candidate metadata only",
+    "lists scanner-detected modules and proposal-only helper actions for editor menus",
+    "does not include command argv; use refactor-plan for reviewed proposal metadata",
+    "does not apply refactors, write files, move files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 HIERARCHY_VIEW_LIMITATIONS: tuple[str, ...] = (
     "scanner-based hierarchy visualization data only",
     "single-line instantiation candidates only",
@@ -287,6 +296,29 @@ def _module_boundary_audit_safety_flags() -> dict[str, bool]:
         "writes_files": False,
         "applies_refactor": False,
         "moves_files": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _refactor_candidate_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "candidate_metadata_only": True,
+        "action_enablement_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
         "applies_patch": False,
         "generates_patch": False,
         "runs_validation": False,
@@ -861,6 +893,141 @@ def build_module_boundary_audit(source: str, path: Path) -> dict[str, Any]:
         "source": source,
         "tool": "pccx-ide-cli",
         "unresolved_dependency_count": len(organization["hierarchy"]["unresolved"]),
+        "writes_files": False,
+    }
+
+
+def _candidate_module_summary(module: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "complete": module["complete"],
+        "end_column": module["end_column"],
+        "end_line": module["end_line"],
+        "file": module["file"],
+        "name": module["name"],
+        "span_lines": module["span_lines"],
+        "start_column": module["start_column"],
+        "start_line": module["start_line"],
+    }
+
+
+def _candidate_action_required_inputs(action: str) -> list[str]:
+    return list(_REFACTOR_REQUIRED_FIELDS[action])
+
+
+def _candidate_action_optional_inputs(action: str) -> list[str]:
+    if action == "extract-port":
+        return ["width"]
+    return []
+
+
+def _candidate_action_descriptor(
+    action: str,
+    state: str,
+    reasons: list[str],
+) -> dict[str, Any]:
+    return {
+        "action": action,
+        "applies_refactor": False,
+        "optional_inputs": _candidate_action_optional_inputs(action),
+        "proposal_command": "refactor-plan",
+        "proposal_only": True,
+        "required_inputs": _candidate_action_required_inputs(action),
+        "requires_explicit_approval_before_write": True,
+        "state": state,
+        "blocked_reasons": list(reasons),
+        "writes_files": False,
+    }
+
+
+def _candidate_blocked_reasons(
+    module: dict[str, Any],
+    name_counts: dict[str, int],
+) -> list[str]:
+    reasons: list[str] = []
+    if not module["complete"]:
+        reasons.append(f"module boundary is incomplete: {module['name']}")
+    if name_counts.get(module["name"], 0) > 1:
+        reasons.append(f"ambiguous module name: {module['name']}")
+    return reasons
+
+
+def _refactor_candidate_rows(
+    modules: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    name_counts: dict[str, int] = {}
+    for module in modules:
+        name_counts[module["name"]] = name_counts.get(module["name"], 0) + 1
+
+    rows: list[dict[str, Any]] = []
+    for module in modules:
+        reasons = _candidate_blocked_reasons(module, name_counts)
+        state = "blocked" if reasons else "ready-for-request"
+        rows.append({
+            "actions": [
+                _candidate_action_descriptor(action, state, reasons)
+                for action in REFACTOR_ACTIONS
+            ],
+            "blocked_reasons": reasons,
+            "candidate_state": state,
+            "module": _candidate_module_summary(module),
+        })
+    return rows
+
+
+def build_refactor_candidate_list(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    candidates = _refactor_candidate_rows(modules)
+    ready_candidates = [
+        candidate
+        for candidate in candidates
+        if candidate["candidate_state"] == "ready-for-request"
+    ]
+    blocked_candidates = [
+        candidate
+        for candidate in candidates
+        if candidate["candidate_state"] == "blocked"
+    ]
+    blocked_reasons = [
+        reason
+        for candidate in blocked_candidates
+        for reason in candidate["blocked_reasons"]
+    ]
+    blocked_reasons = list(dict.fromkeys(blocked_reasons))
+    if not candidates:
+        blocked_reasons.append("no module declarations detected")
+
+    return {
+        "action_count": len(REFACTOR_ACTIONS),
+        "actions": [
+            {
+                "action": action,
+                "optional_inputs": _candidate_action_optional_inputs(action),
+                "proposal_command": "refactor-plan",
+                "proposal_only": True,
+                "required_inputs": _candidate_action_required_inputs(action),
+                "requires_explicit_approval_before_write": True,
+                "writes_files": False,
+            }
+            for action in REFACTOR_ACTIONS
+        ],
+        "blocked_module_count": len(blocked_candidates),
+        "blocked_reasons": blocked_reasons,
+        "candidate_count": len(candidates),
+        "candidate_state": (
+            "available_as_data"
+            if candidates
+            else "blocked"
+        ),
+        "candidates": candidates,
+        "kind": "module-refactor-candidate-list",
+        "limitations": list(REFACTOR_CANDIDATE_LIST_LIMITATIONS),
+        "module_count": len(modules),
+        "ready_module_count": len(ready_candidates),
+        "safety": _refactor_candidate_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
         "writes_files": False,
     }
 
@@ -3316,6 +3483,56 @@ def format_module_boundary_audit_text(audit: dict[str, Any]) -> str:
     lines.append(
         "read-only: no file writes, refactors, validation, shell, lab, "
         "launcher, vendor tool, provider, or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_refactor_candidate_list_text(candidates: dict[str, Any]) -> str:
+    lines = [
+        f"source: {candidates['source']}",
+        f"refactor candidates: {candidates['candidate_state']}",
+        "writes files: no",
+        (
+            f"{candidates['module_count']} module"
+            f"{'s' if candidates['module_count'] != 1 else ''}; "
+            f"{candidates['ready_module_count']} ready; "
+            f"{candidates['blocked_module_count']} blocked"
+        ),
+        (
+            f"{candidates['action_count']} proposal-only action"
+            f"{'s' if candidates['action_count'] != 1 else ''}"
+        ),
+    ]
+    if not candidates["candidates"]:
+        lines.append("candidates: none")
+    for candidate in candidates["candidates"]:
+        module = candidate["module"]
+        end = (
+            f"{module['end_line']}:{module['end_column']}"
+            if module["complete"]
+            else "missing"
+        )
+        lines.append(
+            f"{module['file']}:{module['start_line']}:"
+            f"{module['start_column']}-{end}: module {module['name']} "
+            f"({candidate['candidate_state']})"
+        )
+        for action in candidate["actions"]:
+            required = ", ".join(action["required_inputs"]) or "none"
+            optional = ", ".join(action["optional_inputs"]) or "none"
+            lines.append(
+                f"  {action['action']}: {action['state']}; "
+                f"required={required}; optional={optional}; "
+                "proposal-only"
+            )
+        for reason in candidate["blocked_reasons"]:
+            lines.append(f"  blocked: {reason}")
+    for reason in candidates["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(
+        "read-only candidate metadata: no command argv, file writes, "
+        "refactors, validation, shell, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
     )
     return "\n".join(lines) + "\n"
 

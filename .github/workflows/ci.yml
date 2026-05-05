@@ -192,6 +192,13 @@ jobs:
               fixtures/organization/hierarchy_top.sv \
               | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-boundary-audit'; assert d['safety']['writes_files'] is False"
           echo "boundary audit smoke ok"
+      - name: cli smoke (refactor candidates exits zero)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli refactor-candidates \
+              fixtures/organization/hierarchy_top.sv \
+              | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-refactor-candidate-list'; assert d['safety']['writes_files'] is False; assert d['safety']['emits_command_descriptors'] is False"
+          echo "refactor candidates smoke ok"
       - name: cli smoke (module context exits zero)
         run: |
           set -e

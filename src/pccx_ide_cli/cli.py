@@ -155,6 +155,25 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    refactor_candidates_cmd = sub.add_parser(
+        "refactor-candidates",
+        help=(
+            "Emit read-only scanner-based module refactor candidate "
+            "metadata for editor action menus."
+        ),
+    )
+    refactor_candidates_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    refactor_candidates_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     hierarchy_cmd = sub.add_parser(
         "hierarchy",
         help=(
@@ -1023,6 +1042,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_module_boundary_audit_text(audit))
+        return 0
+
+    if args.command == "refactor-candidates":
+        from .module_organization import (
+            build_refactor_candidate_list,
+            format_refactor_candidate_list_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        candidates = build_refactor_candidate_list(str(args.path), args.path)
+        if args.format == "json":
+            json.dump(candidates, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_refactor_candidate_list_text(candidates))
         return 0
 
     if args.command == "hierarchy":

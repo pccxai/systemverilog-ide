@@ -4,18 +4,19 @@
 
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
-`module-summary`, `boundary-audit`, `port-usage`, `module-context`,
-`refactor-impact`, `validation-plan`, `refactor-review`, `refactor-approval`,
-`refactor-application`, `refactor-result`, `refactor-handoff`,
-`refactor-checklist`, and `refactor-session` CLI surfaces
+`module-summary`, `boundary-audit`, `refactor-candidates`, `port-usage`,
+`module-context`, `refactor-impact`, `validation-plan`, `refactor-review`,
+`refactor-approval`, `refactor-application`, `refactor-result`,
+`refactor-handoff`, `refactor-checklist`, and `refactor-session` CLI surfaces
 that report module boundary spans, scanner-based hierarchy data, direct
 dependency impact data, conservative module header/port summaries, target port
 usage summaries, target module context bundles, target-specific refactor impact
-data, boundary audit data, proposal-only validation command descriptors, a
-summary-only review packet, approval decision metadata, application request
-metadata, and application result metadata plus refactor handoff metadata,
-refactor checklist metadata, and refactor session status metadata for editor
-navigation and reviewed refactoring planning.
+data, boundary audit data, refactor candidate metadata for editor action
+menus, proposal-only validation command descriptors, a summary-only review
+packet, approval decision metadata, application request metadata, and
+application result metadata plus refactor handoff metadata, refactor checklist
+metadata, and refactor session status metadata for editor navigation and
+reviewed refactoring planning.
 
 It is not a full SystemVerilog parser, not semantic elaboration, not an LSP
 implementation, and not a write-capable refactoring engine.
@@ -33,6 +34,8 @@ python -m pccx_ide_cli module-summary <path> --format json
 python -m pccx_ide_cli module-summary <path> --format text
 python -m pccx_ide_cli boundary-audit <path> --format json
 python -m pccx_ide_cli boundary-audit <path> --format text
+python -m pccx_ide_cli refactor-candidates <path> --format json
+python -m pccx_ide_cli refactor-candidates <path> --format text
 python -m pccx_ide_cli port-usage <path> --module <name> --format json
 python -m pccx_ide_cli port-usage <path> --module <name> --format text
 python -m pccx_ide_cli module-context <path> --module <name> --format json
@@ -239,6 +242,52 @@ refactors, generate patches, run validation, execute shell commands,
 invoke `pccx-lab`, invoke the launcher, run vendor tools, call providers,
 touch hardware, upload telemetry, or perform automatic repository actions.
 
+The refactor candidate list reports scanner-detected modules and
+proposal-only helper action metadata for editor menus:
+
+```json
+{
+  "kind": "module-refactor-candidate-list",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "candidate_state": "available_as_data",
+  "module_count": 2,
+  "ready_module_count": 2,
+  "blocked_module_count": 0,
+  "actions": [
+    {
+      "action": "rename-module",
+      "proposal_command": "refactor-plan",
+      "required_inputs": ["new_name"],
+      "proposal_only": true,
+      "writes_files": false
+    }
+  ],
+  "candidates": [],
+  "safety": {
+    "read_only": true,
+    "candidate_metadata_only": true,
+    "action_enablement_only": true,
+    "emits_command_descriptors": false,
+    "writes_files": false,
+    "applies_refactor": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The candidate list is action-enablement metadata only. It does not include
+command argv, does not record requested refactor inputs, and does not create a
+proposal. Consumers that need a reviewed proposal envelope should call
+`refactor-plan` with explicit inputs.
+
+This boundary does not write files, apply refactors, move files, generate
+patches, run validation, execute shell commands, invoke `pccx-lab`, invoke the
+launcher, run vendor tools, call providers, touch hardware, upload telemetry,
+or perform automatic repository actions.
+
 The port usage view reports a target module's conservative port
 declarations and scanner-detected dependent instantiation usage sites:
 
@@ -422,6 +471,8 @@ The `port-usage` command renders a target module's conservative port data
 and dependent instantiation connection summaries.
 The `module-context` command bundles target summary, dependency,
 port-usage, and refactor-impact review data for editor context panes.
+The `refactor-candidates` command lists scanner-detected modules and
+proposal-only helper action metadata for editor action menus.
 These commands do not run elaboration, expand macros, interpret generate
 blocks, or replace vendor tooling.
 
@@ -492,6 +543,7 @@ inputs for later helpers:
 - target-specific port usage summaries
 - target-specific module context bundles
 - target-specific refactor impact review data
+- refactor candidate action metadata for editor action menus
 - planned helper names for rename, extract-port, and move-module workflows
 - summary-only checklist metadata for maintainer review
 
@@ -1096,7 +1148,8 @@ This workflow advances
 with read-only module boundary detection, a focused hierarchy view, a
 direct dependency view, conservative module header/port summaries,
 target-specific port usage summaries, target-specific module context
-bundles, target-specific refactor impact review data, and a
+bundles, refactor candidate action metadata, target-specific refactor
+impact review data, and a
 proposal-only refactoring, validation planning, review packet, approval
 decision, application request, application result, handoff summary, and
 checklist summary boundary.
