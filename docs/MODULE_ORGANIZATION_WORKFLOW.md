@@ -1297,8 +1297,9 @@ review steps, and safety flags. Example shape:
 
 Blocked proposals still return JSON so editor consumers can display why a
 request is not ready for review. For example, a missing module, missing
-required input, existing rename target, absolute destination path, or invalid
-identifier produces `preflight.status: "blocked"` with reasons.
+required input, existing rename target, existing target port name, absolute
+destination path, or invalid identifier produces `preflight.status: "blocked"`
+with reasons.
 
 This boundary is intentionally limited to proposal metadata. It does not
 rewrite symbols, edit ports, move files, generate patches, run validation,

@@ -5082,6 +5082,7 @@ def _preflight(
     matches: list[dict[str, Any]],
     requested: dict[str, Any],
     modules: list[dict[str, Any]] | None = None,
+    existing_port_names: list[str] | None = None,
 ) -> dict[str, Any]:
     reasons: list[str] = []
     required = _REFACTOR_REQUIRED_FIELDS[action]
@@ -5113,6 +5114,11 @@ def _preflight(
     if action == "extract-port" and requested["port_name"]:
         if not _safe_identifier(requested["port_name"]):
             reasons.append("port-name must be a SystemVerilog-style identifier")
+        if requested["port_name"] in (existing_port_names or []):
+            reasons.append(
+                "port-name already exists in scanned module header: "
+                f"{requested['port_name']}"
+            )
 
     if action == "move-module" and requested["destination"]:
         destination = str(requested["destination"])
@@ -5154,14 +5160,28 @@ def build_refactor_proposal(
         width=width,
         destination=destination,
     )
+    selected_module = matches[0] if len(matches) == 1 else None
+    existing_port_names: list[str] = []
+    if (
+        action == "extract-port"
+        and requested["port_name"]
+        and selected_module is not None
+    ):
+        visible_lines = _visible_lines(Path(selected_module["file"]))
+        header = _module_header(selected_module, visible_lines)
+        existing_port_names = [
+            port["name"]
+            for port in _scan_header_ports(selected_module, header["lines"])
+        ]
+
     preflight = _preflight(
         action,
         module_name,
         matches,
         requested,
         organization["modules"],
+        existing_port_names,
     )
-    selected_module = matches[0] if len(matches) == 1 else None
 
     return {
         "action": action,
