@@ -40,6 +40,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_organization_export,
     build_module_path_report,
     build_module_port_usage_view,
+    build_module_reachability_report,
     build_module_root_candidate_report,
     build_module_summary_view,
     build_module_unresolved_instance_report,
@@ -77,6 +78,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_organization_text,
     format_module_path_report_text,
     format_module_port_usage_text,
+    format_module_reachability_report_text,
     format_module_root_candidate_report_text,
     format_module_summary_text,
     format_module_unresolved_instance_report_text,
@@ -1057,6 +1059,94 @@ def test_build_module_edge_report_blocks_when_no_modules_detected():
     assert report["report_state"] == "no-edges-detected"
     assert report["edge_count"] == 0
     assert report["edges"] == []
+    assert report["blocked_reasons"] == ["no module declarations detected"]
+    assert report["next_required_action"] == "continue module organization review"
+
+
+def test_build_module_reachability_report_lists_transitive_links():
+    report = build_module_reachability_report(str(FANOUT_FIXTURE), FANOUT_FIXTURE)
+
+    assert report["kind"] == "module-reachability-report"
+    assert report["report_state"] == "reachability-detected"
+    assert report["module_count"] == 4
+    assert report["edge_count"] == 3
+    assert report["resolved_edge_count"] == 3
+    assert report["unresolved_edge_count"] == 0
+    assert report["reachable_module_count"] == 4
+    assert report["blocked_module_count"] == 0
+    assert report["max_transitive_dependency_count"] == 3
+    assert report["max_transitive_dependent_count"] == 2
+    assert report["blocked_reasons"] == []
+    assert report["next_required_action"] == (
+        "review scanner-detected transitive reachability before refactor planning"
+    )
+    modules = {module["name"]: module for module in report["modules"]}
+    top = modules["fanout_top"]
+    assert top["direct_dependencies"] == ["fanout_child_a", "fanout_child_b"]
+    assert top["transitive_dependencies"] == [
+        "fanout_child_a",
+        "fanout_child_b",
+        "fanout_leaf",
+    ]
+    assert top["transitive_dependents"] == []
+    assert top["reachability_state"] == "has-reachable-modules"
+    assert top["refactor_preflight_state"] == "ready-for-review"
+    leaf = modules["fanout_leaf"]
+    assert leaf["direct_dependencies"] == []
+    assert leaf["direct_dependents"] == ["fanout_child_a"]
+    assert leaf["transitive_dependencies"] == []
+    assert leaf["transitive_dependents"] == [
+        "fanout_child_a",
+        "fanout_top",
+    ]
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["reachability_report_only"] is True
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["applies_refactor"] is False
+    assert report["safety"]["generates_patch"] is False
+    assert report["safety"]["runs_validation"] is False
+    assert report["safety"]["runs_shell"] is False
+    assert report["safety"]["invokes_pccx_lab"] is False
+    assert report["safety"]["invokes_launcher"] is False
+    assert report["safety"]["invokes_vendor_tools"] is False
+    assert report["safety"]["provider_calls"] is False
+    assert report["safety"]["hardware_access"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
+def test_build_module_reachability_report_marks_unresolved_edges_blocked():
+    report = build_module_reachability_report(
+        str(UNRESOLVED_FIXTURE),
+        UNRESOLVED_FIXTURE,
+    )
+
+    assert report["report_state"] == "blocked"
+    assert report["reachable_module_count"] == 0
+    assert report["blocked_module_count"] == 1
+    assert report["blocked_reasons"] == [
+        "unresolved dependencies for reachability report: missing_child"
+    ]
+    module = report["modules"][0]
+    assert module["name"] == "unresolved_top"
+    assert module["transitive_dependencies"] == []
+    assert module["transitive_dependents"] == []
+    assert module["unresolved_dependencies"] == ["missing_child"]
+    assert module["refactor_preflight_state"] == "blocked"
+    assert module["blocked_reasons"] == report["blocked_reasons"]
+    assert report["next_required_action"] == (
+        "resolve reachability blockers before refactor planning"
+    )
+
+
+def test_build_module_reachability_report_blocks_when_no_modules_detected():
+    empty_fixture = REPO_ROOT / "fixtures" / "empty.sv"
+    report = build_module_reachability_report(str(empty_fixture), empty_fixture)
+
+    assert report["report_state"] == "no-reachability-detected"
+    assert report["reachable_module_count"] == 0
+    assert report["modules"] == []
     assert report["blocked_reasons"] == ["no module declarations detected"]
     assert report["next_required_action"] == "continue module organization review"
 
@@ -2348,6 +2438,21 @@ def test_format_module_edge_report_text_mentions_boundary():
     assert "read-only edge report: no command argv" in text
 
 
+def test_format_module_reachability_report_text_mentions_boundary():
+    report = build_module_reachability_report(str(FANOUT_FIXTURE), FANOUT_FIXTURE)
+    text = format_module_reachability_report_text(report)
+
+    assert "module reachability: reachability-detected" in text
+    assert "4 reachable modules" in text
+    assert "max transitive dependencies: 3; max transitive dependents: 2" in text
+    assert "module fanout_top (ready-for-review)" in text
+    assert (
+        "transitive_dependencies=fanout_child_a, fanout_child_b, fanout_leaf"
+        in text
+    )
+    assert "read-only reachability report: no command argv" in text
+
+
 def test_format_module_fanin_report_text_mentions_boundary():
     report = build_module_fanin_report(str(FANOUT_FIXTURE), FANOUT_FIXTURE)
     text = format_module_fanin_report_text(report)
@@ -2945,6 +3050,34 @@ def test_cli_module_edges_text():
     assert "module edges: edges-detected" in result.stdout
     assert "edge-1: fanout_child_a -> fanout_leaf as u_leaf" in result.stdout
     assert "read-only edge report: no command argv" in result.stdout
+
+
+def test_cli_module_reachability_json():
+    result = _run_cli("module-reachability", str(FANOUT_FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-reachability-report"
+    assert payload["report_state"] == "reachability-detected"
+    assert payload["reachable_module_count"] == 4
+    assert payload["max_transitive_dependency_count"] == 3
+    modules = {module["name"]: module for module in payload["modules"]}
+    assert modules["fanout_top"]["transitive_dependencies"] == [
+        "fanout_child_a",
+        "fanout_child_b",
+        "fanout_leaf",
+    ]
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_reachability_text():
+    result = _run_cli("module-reachability", str(FANOUT_FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module reachability: reachability-detected" in result.stdout
+    assert "module fanout_top (ready-for-review)" in result.stdout
+    assert "read-only reachability report: no command argv" in result.stdout
 
 
 def test_cli_module_fanout_json():
@@ -3659,6 +3792,12 @@ def test_cli_module_edges_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_module_reachability_missing_path_exits_nonzero():
+    result = _run_cli("module-reachability", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_cli_module_fanout_missing_path_exits_nonzero():
     result = _run_cli("module-fanout", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -3847,6 +3986,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-depths <path>" in contract
     assert "module-paths <path>" in contract
     assert "module-edges <path>" in contract
+    assert "module-reachability <path>" in contract
     assert "module-fanout <path>" in contract
     assert "module-fanin <path>" in contract
     assert "module-health <path>" in contract
@@ -3877,6 +4017,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-depth-report" in workflow
     assert "module-path-report" in workflow
     assert "module-edge-report" in workflow
+    assert "module-reachability-report" in workflow
     assert "module-fanout-report" in workflow
     assert "module-fanin-report" in workflow
     assert "module-graph-health-summary" in workflow

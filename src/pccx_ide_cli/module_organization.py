@@ -219,6 +219,18 @@ MODULE_EDGE_REPORT_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+MODULE_REACHABILITY_REPORT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module reachability report only",
+    "uses resolved direct instantiation edges from the organization scanner",
+    "reports transitive dependency and dependent names only",
+    "single-line instantiation candidates only",
+    "unresolved instantiation candidates block reachability review readiness",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "does not apply refactors, write files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 MODULE_FANOUT_REPORT_LIMITATIONS: tuple[str, ...] = (
     "scanner-based module fanout report only",
     "uses resolved direct dependency edges from the organization scanner",
@@ -711,6 +723,28 @@ def _module_edge_report_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "edge_report_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _module_reachability_report_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "reachability_report_only": True,
         "emits_command_descriptors": False,
         "writes_files": False,
         "moves_files": False,
@@ -2925,6 +2959,204 @@ def build_module_edge_report(source: str, path: Path) -> dict[str, Any]:
             edge["child"]
             for edge in unresolved_edges
         }),
+        "writes_files": False,
+    }
+
+
+def _reachable_names(
+    start: str,
+    adjacency: dict[str, set[str]],
+) -> tuple[list[str], list[str]]:
+    reachable: set[str] = set()
+    cycle_markers: set[str] = set()
+
+    def visit(current: str, stack: tuple[str, ...]) -> None:
+        for child in sorted(adjacency.get(current, set())):
+            if child == start or child in stack:
+                cycle_markers.add(child)
+                continue
+            if child in reachable:
+                continue
+            reachable.add(child)
+            visit(child, (*stack, child))
+
+    visit(start, (start,))
+    return sorted(reachable), sorted(cycle_markers)
+
+
+def _module_reachability_rows(
+    modules: list[dict[str, Any]],
+    hierarchy: dict[str, Any],
+) -> list[dict[str, Any]]:
+    modules_by_name: dict[str, dict[str, Any]] = {}
+    declaration_counts: dict[str, int] = {}
+    for module in modules:
+        modules_by_name.setdefault(module["name"], module)
+        declaration_counts[module["name"]] = (
+            declaration_counts.get(module["name"], 0) + 1
+        )
+
+    module_names = sorted(modules_by_name)
+    adjacency: dict[str, set[str]] = {
+        name: set()
+        for name in module_names
+    }
+    reverse_adjacency: dict[str, set[str]] = {
+        name: set()
+        for name in module_names
+    }
+    unresolved_by_module: dict[str, set[str]] = {
+        name: set()
+        for name in module_names
+    }
+
+    for edge in hierarchy["edges"]:
+        parent = edge["parent"]
+        child = edge["child"]
+        if parent not in modules_by_name:
+            continue
+        if edge["resolved"] and child in modules_by_name:
+            adjacency.setdefault(parent, set()).add(child)
+            reverse_adjacency.setdefault(child, set()).add(parent)
+        elif not edge["resolved"]:
+            unresolved_by_module.setdefault(parent, set()).add(child)
+
+    rows: list[dict[str, Any]] = []
+    for module_name in module_names:
+        module = modules_by_name[module_name]
+        direct_dependencies = sorted(adjacency.get(module_name, set()))
+        direct_dependents = sorted(reverse_adjacency.get(module_name, set()))
+        transitive_dependencies, dependency_cycles = _reachable_names(
+            module_name,
+            adjacency,
+        )
+        transitive_dependents, dependent_cycles = _reachable_names(
+            module_name,
+            reverse_adjacency,
+        )
+        unresolved_dependencies = sorted(unresolved_by_module.get(module_name, set()))
+        blocked_reasons: list[str] = []
+        if not module["complete"]:
+            blocked_reasons.append(f"module boundary is incomplete: {module_name}")
+        if declaration_counts[module_name] > 1:
+            blocked_reasons.append(f"ambiguous module name: {module_name}")
+        if unresolved_dependencies:
+            blocked_reasons.append(
+                "unresolved dependencies for reachability report: "
+                f"{', '.join(unresolved_dependencies)}"
+            )
+        if dependency_cycles or dependent_cycles:
+            blocked_reasons.append(
+                "cycle encountered during reachability review: "
+                f"{module_name}"
+            )
+        has_reachability = bool(transitive_dependencies or transitive_dependents)
+        rows.append({
+            "blocked_reasons": blocked_reasons,
+            "complete": module["complete"],
+            "declaration_count": declaration_counts[module_name],
+            "dependency_cycle_markers": dependency_cycles,
+            "dependent_cycle_markers": dependent_cycles,
+            "direct_dependencies": direct_dependencies,
+            "direct_dependency_count": len(direct_dependencies),
+            "direct_dependents": direct_dependents,
+            "direct_dependent_count": len(direct_dependents),
+            "file": module["file"],
+            "name": module_name,
+            "reachability_state": (
+                "has-reachable-modules"
+                if has_reachability
+                else "no-reachable-modules"
+            ),
+            "reason": "scanner-detected transitive module reachability",
+            "refactor_preflight_state": (
+                "blocked" if blocked_reasons else "ready-for-review"
+            ),
+            "start_column": module["start_column"],
+            "start_line": module["start_line"],
+            "transitive_dependencies": transitive_dependencies,
+            "transitive_dependency_count": len(transitive_dependencies),
+            "transitive_dependents": transitive_dependents,
+            "transitive_dependent_count": len(transitive_dependents),
+            "unresolved_dependencies": unresolved_dependencies,
+            "unresolved_dependency_count": len(unresolved_dependencies),
+        })
+    return rows
+
+
+def build_module_reachability_report(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    resolved_edge_count = len([
+        edge
+        for edge in hierarchy["edges"]
+        if edge["resolved"]
+    ])
+    rows = _module_reachability_rows(modules, hierarchy)
+    reachable_rows = [
+        row
+        for row in rows
+        if (
+            row["transitive_dependency_count"]
+            or row["transitive_dependent_count"]
+        )
+    ]
+    blocked_rows = [
+        row
+        for row in rows
+        if row["blocked_reasons"]
+    ]
+    blocked_reasons = list(dict.fromkeys([
+        reason
+        for row in blocked_rows
+        for reason in row["blocked_reasons"]
+    ]))
+    if modules and not reachable_rows and not blocked_reasons:
+        blocked_reasons.append("no reachable module links detected")
+    if not modules:
+        blocked_reasons.append("no module declarations detected")
+
+    if blocked_rows and reachable_rows:
+        report_state = "reachability-detected-with-blockers"
+    elif blocked_rows:
+        report_state = "blocked"
+    elif reachable_rows:
+        report_state = "reachability-detected"
+    else:
+        report_state = "no-reachability-detected"
+
+    return {
+        "blocked_module_count": len(blocked_rows),
+        "blocked_reasons": blocked_reasons,
+        "edge_count": len(hierarchy["edges"]),
+        "kind": "module-reachability-report",
+        "limitations": list(MODULE_REACHABILITY_REPORT_LIMITATIONS),
+        "max_transitive_dependency_count": max(
+            (row["transitive_dependency_count"] for row in rows),
+            default=0,
+        ),
+        "max_transitive_dependent_count": max(
+            (row["transitive_dependent_count"] for row in rows),
+            default=0,
+        ),
+        "module_count": len(modules),
+        "modules": rows,
+        "next_required_action": (
+            "resolve reachability blockers before refactor planning"
+            if blocked_rows
+            else "review scanner-detected transitive reachability before refactor planning"
+            if reachable_rows
+            else "continue module organization review"
+        ),
+        "reachable_module_count": len(reachable_rows),
+        "report_state": report_state,
+        "resolved_edge_count": resolved_edge_count,
+        "safety": _module_reachability_report_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "unresolved_edge_count": len(hierarchy["edges"]) - resolved_edge_count,
         "writes_files": False,
     }
 
@@ -6114,6 +6346,55 @@ def format_module_edge_report_text(report: dict[str, Any]) -> str:
     lines.append(f"next: {report['next_required_action']}")
     lines.append(
         "read-only edge report: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_reachability_report_text(report: dict[str, Any]) -> str:
+    lines = [
+        f"source: {report['source']}",
+        f"module reachability: {report['report_state']}",
+        f"{report['module_count']} module"
+        f"{'s' if report['module_count'] != 1 else ''}",
+        f"{report['reachable_module_count']} reachable module"
+        f"{'s' if report['reachable_module_count'] != 1 else ''}",
+        (
+            f"max transitive dependencies: "
+            f"{report['max_transitive_dependency_count']}; "
+            f"max transitive dependents: "
+            f"{report['max_transitive_dependent_count']}"
+        ),
+    ]
+    if not report["modules"]:
+        lines.append("modules: none")
+    for module in report["modules"]:
+        dependencies = ", ".join(module["transitive_dependencies"]) or "none"
+        dependents = ", ".join(module["transitive_dependents"]) or "none"
+        direct_dependencies = ", ".join(module["direct_dependencies"]) or "none"
+        direct_dependents = ", ".join(module["direct_dependents"]) or "none"
+        unresolved = ", ".join(module["unresolved_dependencies"]) or "none"
+        lines.append(
+            f"{module['file']}:{module['start_line']}: "
+            f"module {module['name']} ({module['refactor_preflight_state']})"
+        )
+        lines.append(
+            f"  transitive_dependencies={dependencies}; "
+            f"transitive_dependents={dependents}"
+        )
+        lines.append(
+            f"  direct_dependencies={direct_dependencies}; "
+            f"direct_dependents={direct_dependents}; unresolved={unresolved}; "
+            f"reason={module['reason']}"
+        )
+        for reason in module["blocked_reasons"]:
+            lines.append(f"  blocked: {reason}")
+    for reason in report["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next: {report['next_required_action']}")
+    lines.append(
+        "read-only reachability report: no command argv, validation, shell, "
         "refactor, patch, file write, lab, launcher, vendor tool, provider, "
         "or hardware execution"
     )

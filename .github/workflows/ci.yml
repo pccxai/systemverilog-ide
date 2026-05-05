@@ -206,6 +206,13 @@ jobs:
               fixtures/organization/fanout_hierarchy.sv \
               | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-edge-report'; assert d['safety']['writes_files'] is False; assert d['safety']['emits_command_descriptors'] is False"
           echo "module edges smoke ok"
+      - name: cli smoke (module reachability exits zero)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli module-reachability \
+              fixtures/organization/fanout_hierarchy.sv \
+              | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-reachability-report'; assert d['safety']['writes_files'] is False; assert d['safety']['emits_command_descriptors'] is False"
+          echo "module reachability smoke ok"
       - name: cli smoke (module summary exits zero)
         run: |
           set -e

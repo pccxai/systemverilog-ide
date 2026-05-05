@@ -134,6 +134,7 @@ python -m pccx_ide_cli module-orphans fixtures/organization/orphan_modules.sv --
 python -m pccx_ide_cli module-depths fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli module-paths fixtures/organization/fanout_hierarchy.sv --format json
 python -m pccx_ide_cli module-edges fixtures/organization/fanout_hierarchy.sv --format json
+python -m pccx_ide_cli module-reachability fixtures/organization/fanout_hierarchy.sv --format json
 python -m pccx_ide_cli module-fanout fixtures/organization/fanout_hierarchy.sv --format json
 python -m pccx_ide_cli module-fanin fixtures/organization/fanout_hierarchy.sv --format json
 python -m pccx_ide_cli module-health fixtures/organization/hierarchy_top.sv --format json
@@ -242,6 +243,8 @@ for module organization review.
 blocked unresolved path terminals for path review.
 `module-edges` lists scanner-detected direct instantiation edges, including
 blocked unresolved targets, for dependency edge review.
+`module-reachability` reports scanner-detected transitive dependency and
+dependent names for reachability review.
 `module-fanout` ranks scanner-detected modules by resolved direct dependency
 count for fanout review.
 `module-fanin` ranks scanner-detected modules by resolved direct dependent
