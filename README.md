@@ -291,10 +291,11 @@ move-module planning envelopes over scanner-detected module boundaries.
 It records requested inputs, a bounded preflight status including existing
 rename-target conflicts, target-port conflicts, invalid rename or port
 identifier syntax, invalid extract-port width syntax, invalid extract-port
-direction, unused action inputs, and same-file move destinations, and planned
-review steps, but it does not write files, apply patches, run validation,
-invoke `pccx-lab` or the launcher, call providers, touch hardware, or perform
-automatic repository actions.
+direction, unused action inputs, and unsafe move destinations such as
+absolute paths, parent traversal, unsupported extensions, or same-file moves,
+and planned review steps, but it does not write files, apply patches, run
+validation, invoke `pccx-lab` or the launcher, call providers, touch hardware,
+or perform automatic repository actions.
 `validation-plan`, `refactor-review`, `refactor-approval`,
 `refactor-application`, `refactor-result`, `refactor-handoff`,
 `refactor-checklist`, and `refactor-session` extend that reviewed flow with
