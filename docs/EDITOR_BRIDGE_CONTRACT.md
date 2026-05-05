@@ -51,6 +51,7 @@ python -m pccx_ide_cli refactor-readiness <path> --format json
 python -m pccx_ide_cli hierarchy <path> --format json
 python -m pccx_ide_cli dependencies <path> --format json
 python -m pccx_ide_cli hierarchy-cycles <path> --format json
+python -m pccx_ide_cli unresolved-instances <path> --format json
 python -m pccx_ide_cli module-summary <path> --format json
 python -m pccx_ide_cli port-usage <path> --module <name> --format json
 python -m pccx_ide_cli module-context <path> --module <name> --format json
@@ -208,11 +209,12 @@ editor status panes without selecting an action or emitting command argv. These
 surfaces do not write files, apply refactors, generate patches, run validation,
 invoke pccx-lab or the launcher, run vendor tools, call providers, touch
 hardware, or perform automatic repository actions. `hierarchy`,
-`dependencies`, `module-summary`, `port-usage`, `module-context`, and
-`refactor-impact` render focused read-only views from the same scanner data,
-including conservative module header/port summaries, target port usage
-summaries, target module context bundles, and target-specific refactor impact
-review data. The
+`dependencies`, `hierarchy-cycles`, `unresolved-instances`, `module-summary`,
+`port-usage`, `module-context`, and `refactor-impact` render focused
+read-only views from the same scanner data, including hierarchy cycle warnings,
+unresolved instantiation warnings, conservative module header/port summaries,
+target port usage summaries, target module context bundles, and
+target-specific refactor impact review data. The
 organization surface is documented in
 [`MODULE_ORGANIZATION_WORKFLOW.md`](./MODULE_ORGANIZATION_WORKFLOW.md).
 `refactor-plan` extends the same boundary with proposal-only

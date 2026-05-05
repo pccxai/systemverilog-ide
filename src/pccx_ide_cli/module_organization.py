@@ -143,6 +143,16 @@ HIERARCHY_CYCLE_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+UNRESOLVED_INSTANCE_REPORT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based unresolved module instantiation report only",
+    "single-line instantiation candidates only",
+    "uses module declaration names from the same scan path",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "does not apply refactors, write files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 MODULE_SUMMARY_LIMITATIONS: tuple[str, ...] = (
     "scanner-based module header and port summary data only",
     "ANSI-style port declarations are detected conservatively",
@@ -449,6 +459,28 @@ def _hierarchy_cycle_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "cycle_report_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _unresolved_instance_report_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "unresolved_instance_report_only": True,
         "emits_command_descriptors": False,
         "writes_files": False,
         "moves_files": False,
@@ -1610,6 +1642,94 @@ def build_module_hierarchy_cycle_report(source: str, path: Path) -> dict[str, An
         "tool": "pccx-ide-cli",
         "unresolved": hierarchy["unresolved"],
         "unresolved_edge_count": len(hierarchy["edges"]) - resolved_edge_count,
+        "writes_files": False,
+    }
+
+
+def _unresolved_instance_rows(hierarchy: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    unresolved_edges = [
+        edge
+        for edge in hierarchy["edges"]
+        if not edge["resolved"]
+    ]
+    unresolved_edges.sort(
+        key=lambda edge: (
+            edge["file"],
+            edge["line"],
+            edge["column"],
+            edge["parent"],
+            edge["child"],
+            edge["instance"],
+        )
+    )
+
+    for index, edge in enumerate(unresolved_edges, 1):
+        rows.append({
+            "column": edge["column"],
+            "file": edge["file"],
+            "instance": edge["instance"],
+            "line": edge["line"],
+            "parent": edge["parent"],
+            "reason": (
+                f"unresolved module instantiation: {edge['child']} "
+                f"as {edge['instance']} in {edge['parent']}"
+            ),
+            "refactor_preflight_state": "blocked",
+            "resolution_state": "unresolved",
+            "target_module": edge["child"],
+            "unresolved_id": f"unresolved-{index}",
+        })
+    return rows
+
+
+def build_module_unresolved_instance_report(
+    source: str, path: Path
+) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    resolved_edge_count = len([
+        edge
+        for edge in hierarchy["edges"]
+        if edge["resolved"]
+    ])
+    unresolved_instances = _unresolved_instance_rows(hierarchy)
+    unresolved_modules = sorted({
+        instance["target_module"]
+        for instance in unresolved_instances
+    })
+    blocked_reasons = [
+        instance["reason"]
+        for instance in unresolved_instances
+    ]
+
+    return {
+        "blocked_reasons": blocked_reasons,
+        "edge_count": len(hierarchy["edges"]),
+        "has_unresolved_instances": bool(unresolved_instances),
+        "kind": "module-unresolved-instance-report",
+        "limitations": list(UNRESOLVED_INSTANCE_REPORT_LIMITATIONS),
+        "module_count": len(modules),
+        "next_required_action": (
+            "resolve scanner-detected unresolved instantiations before refactor planning"
+            if unresolved_instances
+            else "continue hierarchy and refactor review"
+        ),
+        "report_state": (
+            "unresolved-instances-detected"
+            if unresolved_instances
+            else "no-unresolved-instances-detected"
+        ),
+        "resolved_edge_count": resolved_edge_count,
+        "safety": _unresolved_instance_report_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "unresolved_instance_count": len(unresolved_instances),
+        "unresolved_instances": unresolved_instances,
+        "unresolved_module_count": len(unresolved_modules),
+        "unresolved_modules": unresolved_modules,
         "writes_files": False,
     }
 
@@ -4067,6 +4187,36 @@ def format_module_hierarchy_cycle_text(report: dict[str, Any]) -> str:
     lines.append(f"next: {report['next_required_action']}")
     lines.append(
         "read-only cycle report: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_unresolved_instance_report_text(report: dict[str, Any]) -> str:
+    lines = [
+        f"source: {report['source']}",
+        f"unresolved instances: {report['report_state']}",
+        f"{report['module_count']} module"
+        f"{'s' if report['module_count'] != 1 else ''}",
+        f"{report['unresolved_instance_count']} unresolved instance"
+        f"{'s' if report['unresolved_instance_count'] != 1 else ''}",
+    ]
+    if not report["unresolved_instances"]:
+        lines.append("unresolved instances: none")
+    if report["unresolved_modules"]:
+        lines.append(f"unresolved modules: {', '.join(report['unresolved_modules'])}")
+    for instance in report["unresolved_instances"]:
+        lines.append(
+            f"{instance['unresolved_id']}: {instance['parent']} -> "
+            f"{instance['target_module']} as {instance['instance']} "
+            f"at {instance['file']}:{instance['line']}:{instance['column']}"
+        )
+    for reason in report["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next: {report['next_required_action']}")
+    lines.append(
+        "read-only unresolved report: no command argv, validation, shell, "
         "refactor, patch, file write, lab, launcher, vendor tool, provider, "
         "or hardware execution"
     )
