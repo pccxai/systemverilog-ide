@@ -3873,6 +3873,41 @@ def test_cli_module_health_blocks_incomplete_boundary_text():
     assert "read-only graph health summary: no command argv" in result.stdout
 
 
+def test_cli_module_health_blocks_duplicate_modules_json():
+    result = _run_cli("module-health", str(DUPLICATE_FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+
+    assert payload["kind"] == "module-graph-health-summary"
+    assert payload["health_state"] == "blocked"
+    assert payload["ready_for_review"] is False
+    assert payload["duplicate_name_count"] == 1
+    assert payload["duplicate_names"] == ["dup_mod"]
+    assert payload["blocked_reasons"] == ["ambiguous module name: dup_mod"]
+    cards = {card["card_id"]: card for card in payload["health_cards"]}
+    assert cards["duplicate-modules"]["status"] == "duplicates-detected"
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_health_blocks_unresolved_instances_text():
+    result = _run_cli("module-health", str(UNRESOLVED_FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module graph health: blocked" in result.stdout
+    assert "status: unresolved-instances (unresolved-instances-detected)" in (
+        result.stdout
+    )
+    assert (
+        "blocked: unresolved module instantiation: missing_child as u_missing "
+        "in unresolved_top"
+    ) in result.stdout
+    assert "blocked: unresolved dependencies for depth report: missing_child" in (
+        result.stdout
+    )
+    assert "read-only graph health summary: no command argv" in result.stdout
+
+
 def test_cli_module_summary_json():
     result = _run_cli("module-summary", str(FIXTURE), "--format", "json")
     assert result.returncode == 0, result.stderr
