@@ -185,6 +185,13 @@ jobs:
               fixtures/organization/fanout_hierarchy.sv \
               | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-fanout-report'; assert d['safety']['writes_files'] is False; assert d['safety']['emits_command_descriptors'] is False"
           echo "module fanout smoke ok"
+      - name: cli smoke (module fanin exits zero)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli module-fanin \
+              fixtures/organization/fanout_hierarchy.sv \
+              | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-fanin-report'; assert d['safety']['writes_files'] is False; assert d['safety']['emits_command_descriptors'] is False"
+          echo "module fanin smoke ok"
       - name: cli smoke (module summary exits zero)
         run: |
           set -e

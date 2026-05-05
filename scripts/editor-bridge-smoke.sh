@@ -37,6 +37,7 @@ run_json module-unresolved-instance-report unresolved-instances fixtures/organiz
 run_json module-root-candidate-report module-roots fixtures/organization/hierarchy_top.sv --format json
 run_json module-orphan-candidate-report module-orphans fixtures/organization/orphan_modules.sv --format json
 run_json module-fanout-report module-fanout fixtures/organization/fanout_hierarchy.sv --format json
+run_json module-fanin-report module-fanin fixtures/organization/fanout_hierarchy.sv --format json
 run_json module-duplicate-report module-duplicates fixtures/organization/duplicate_modules.sv --format json
 run_json module-summary-view module-summary fixtures/organization/hierarchy_top.sv --format json
 run_json module-refactor-candidate-list refactor-candidates fixtures/organization/hierarchy_top.sv --format json

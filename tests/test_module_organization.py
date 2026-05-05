@@ -29,6 +29,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_context_bundle,
     build_module_depth_report,
     build_module_duplicate_report,
+    build_module_fanin_report,
     build_module_fanout_report,
     build_module_graph_health_summary,
     build_module_hierarchy_cycle_report,
@@ -63,6 +64,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_context_text,
     format_module_depth_report_text,
     format_module_duplicate_report_text,
+    format_module_fanin_report_text,
     format_module_fanout_report_text,
     format_module_graph_health_summary_text,
     format_module_hierarchy_cycle_text,
@@ -951,6 +953,103 @@ def test_build_module_fanout_report_blocks_when_no_modules_detected():
 
     assert report["report_state"] == "no-fanout-detected"
     assert report["fanout_count"] == 0
+    assert report["modules"] == []
+    assert report["blocked_reasons"] == ["no module declarations detected"]
+    assert report["next_required_action"] == "continue module organization review"
+
+
+def test_build_module_fanin_report_ranks_direct_dependents():
+    report = build_module_fanin_report(str(FANOUT_FIXTURE), FANOUT_FIXTURE)
+
+    assert report["kind"] == "module-fanin-report"
+    assert report["report_state"] == "fanin-detected"
+    assert report["module_count"] == 4
+    assert report["edge_count"] == 3
+    assert report["resolved_edge_count"] == 3
+    assert report["unresolved_edge_count"] == 0
+    assert report["fanin_count"] == 3
+    assert report["fanin_names"] == [
+        "fanout_child_a",
+        "fanout_child_b",
+        "fanout_leaf",
+    ]
+    assert report["max_direct_dependent_count"] == 1
+    assert report["blocked_reasons"] == []
+    assert report["next_required_action"] == (
+        "review scanner-detected fanin before refactor planning"
+    )
+    modules = {module["name"]: module for module in report["modules"]}
+    assert list(modules) == [
+        "fanout_child_a",
+        "fanout_child_b",
+        "fanout_leaf",
+        "fanout_top",
+    ]
+    child_a = modules["fanout_child_a"]
+    assert child_a["rank"] == 1
+    assert child_a["direct_dependencies"] == ["fanout_leaf"]
+    assert child_a["direct_dependents"] == ["fanout_top"]
+    assert child_a["direct_dependent_count"] == 1
+    assert child_a["fanin_state"] == "has-resolved-fanin"
+    child_b = modules["fanout_child_b"]
+    assert child_b["rank"] == 2
+    assert child_b["direct_dependencies"] == []
+    assert child_b["direct_dependents"] == ["fanout_top"]
+    assert child_b["fanin_state"] == "has-resolved-fanin"
+    leaf = modules["fanout_leaf"]
+    assert leaf["rank"] == 3
+    assert leaf["direct_dependencies"] == []
+    assert leaf["direct_dependents"] == ["fanout_child_a"]
+    assert leaf["fanin_state"] == "has-resolved-fanin"
+    top = modules["fanout_top"]
+    assert top["rank"] == 4
+    assert top["direct_dependents"] == []
+    assert top["fanin_state"] == "no-resolved-fanin"
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["fanin_report_only"] is True
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["applies_refactor"] is False
+    assert report["safety"]["generates_patch"] is False
+    assert report["safety"]["runs_validation"] is False
+    assert report["safety"]["runs_shell"] is False
+    assert report["safety"]["invokes_pccx_lab"] is False
+    assert report["safety"]["invokes_launcher"] is False
+    assert report["safety"]["invokes_vendor_tools"] is False
+    assert report["safety"]["provider_calls"] is False
+    assert report["safety"]["hardware_access"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
+def test_build_module_fanin_report_blocks_unresolved_dependencies():
+    report = build_module_fanin_report(
+        str(UNRESOLVED_FIXTURE),
+        UNRESOLVED_FIXTURE,
+    )
+
+    assert report["report_state"] == "no-fanin-detected"
+    assert report["fanin_count"] == 0
+    assert report["fanin_names"] == []
+    assert report["blocked_reasons"] == [
+        "unresolved dependencies for fanin report: missing_child",
+        "no resolved fanin detected",
+    ]
+    module = report["modules"][0]
+    assert module["name"] == "unresolved_top"
+    assert module["refactor_preflight_state"] == "blocked"
+    assert module["unresolved_dependencies"] == ["missing_child"]
+    assert module["blocked_reasons"] == [
+        "unresolved dependencies for fanin report: missing_child"
+    ]
+
+
+def test_build_module_fanin_report_blocks_when_no_modules_detected():
+    empty_fixture = REPO_ROOT / "fixtures" / "empty.sv"
+    report = build_module_fanin_report(str(empty_fixture), empty_fixture)
+
+    assert report["report_state"] == "no-fanin-detected"
+    assert report["fanin_count"] == 0
     assert report["modules"] == []
     assert report["blocked_reasons"] == ["no module declarations detected"]
     assert report["next_required_action"] == "continue module organization review"
@@ -2032,6 +2131,19 @@ def test_format_module_depth_report_text_mentions_boundary():
     assert "read-only depth report: no command argv" in text
 
 
+def test_format_module_fanin_report_text_mentions_boundary():
+    report = build_module_fanin_report(str(FANOUT_FIXTURE), FANOUT_FIXTURE)
+    text = format_module_fanin_report_text(report)
+
+    assert "module fanin: fanin-detected" in text
+    assert "3 fanin modules" in text
+    assert "max direct dependents: 1" in text
+    assert "rank 1:" in text
+    assert "module fanout_child_a (ready-for-review)" in text
+    assert "dependencies=fanout_leaf; dependents=fanout_top" in text
+    assert "read-only fanin report: no command argv" in text
+
+
 def test_format_module_graph_health_summary_text_mentions_boundary():
     report = build_module_graph_health_summary(str(FIXTURE), FIXTURE)
     text = format_module_graph_health_summary_text(report)
@@ -2592,6 +2704,36 @@ def test_cli_module_fanout_text():
     assert "module fanout_top (ready-for-review)" in result.stdout
     assert "dependencies=fanout_child_a, fanout_child_b" in result.stdout
     assert "read-only fanout report: no command argv" in result.stdout
+
+
+def test_cli_module_fanin_json():
+    result = _run_cli("module-fanin", str(FANOUT_FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-fanin-report"
+    assert payload["report_state"] == "fanin-detected"
+    assert payload["fanin_names"] == [
+        "fanout_child_a",
+        "fanout_child_b",
+        "fanout_leaf",
+    ]
+    assert payload["max_direct_dependent_count"] == 1
+    assert payload["modules"][0]["name"] == "fanout_child_a"
+    assert payload["modules"][0]["direct_dependents"] == ["fanout_top"]
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_fanin_text():
+    result = _run_cli("module-fanin", str(FANOUT_FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module fanin: fanin-detected" in result.stdout
+    assert "rank 1:" in result.stdout
+    assert "module fanout_child_a (ready-for-review)" in result.stdout
+    assert "dependents=fanout_top" in result.stdout
+    assert "read-only fanin report: no command argv" in result.stdout
 
 
 def test_cli_module_health_json():
@@ -3241,6 +3383,12 @@ def test_cli_module_fanout_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_module_fanin_missing_path_exits_nonzero():
+    result = _run_cli("module-fanin", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_cli_module_summary_missing_path_exits_nonzero():
     result = _run_cli("module-summary", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -3416,6 +3564,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-orphans <path>" in contract
     assert "module-depths <path>" in contract
     assert "module-fanout <path>" in contract
+    assert "module-fanin <path>" in contract
     assert "module-health <path>" in contract
     assert "module-summary <path>" in contract
     assert "port-usage <path>" in contract
@@ -3443,6 +3592,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-orphan-candidate-report" in workflow
     assert "module-depth-report" in workflow
     assert "module-fanout-report" in workflow
+    assert "module-fanin-report" in workflow
     assert "module-graph-health-summary" in workflow
     assert "module-summary-view" in workflow
     assert "module-port-usage-view" in workflow
