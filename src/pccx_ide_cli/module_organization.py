@@ -87,6 +87,15 @@ MODULE_BOUNDARY_AUDIT_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+MODULE_DUPLICATE_REPORT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module duplicate-name report only",
+    "uses declaration names and locations from the organization scanner",
+    "does not semantically elaborate modules or resolve packages/namespaces",
+    "does not apply refactors, write files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 REFACTOR_CANDIDATE_LIST_LIMITATIONS: tuple[str, ...] = (
     "scanner-based refactor candidate metadata only",
     "lists scanner-detected modules and proposal-only helper actions for editor menus",
@@ -315,6 +324,28 @@ def _module_boundary_audit_safety_flags() -> dict[str, bool]:
         "writes_files": False,
         "applies_refactor": False,
         "moves_files": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _module_duplicate_report_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "duplicate_report_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
         "applies_patch": False,
         "generates_patch": False,
         "runs_validation": False,
@@ -964,6 +995,81 @@ def build_module_boundary_audit(source: str, path: Path) -> dict[str, Any]:
         "source": source,
         "tool": "pccx-ide-cli",
         "unresolved_dependency_count": len(organization["hierarchy"]["unresolved"]),
+        "writes_files": False,
+    }
+
+
+def _module_duplicate_rows(
+    modules: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    modules_by_name: dict[str, list[dict[str, Any]]] = {}
+    for module in modules:
+        modules_by_name.setdefault(module["name"], []).append(module)
+
+    rows: list[dict[str, Any]] = []
+    for name, declarations in sorted(modules_by_name.items()):
+        if len(declarations) <= 1:
+            continue
+        rows.append({
+            "declaration_count": len(declarations),
+            "duplicate_state": "duplicate",
+            "locations": [
+                {
+                    "complete": declaration["complete"],
+                    "end_line": declaration["end_line"],
+                    "file": declaration["file"],
+                    "start_line": declaration["start_line"],
+                    "start_column": declaration["start_column"],
+                }
+                for declaration in sorted(
+                    declarations,
+                    key=lambda row: (row["file"], row["start_line"], row["name"]),
+                )
+            ],
+            "name": name,
+            "refactor_preflight_state": "blocked",
+            "reason": f"ambiguous module name: {name}",
+        })
+    return rows
+
+
+def build_module_duplicate_report(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    duplicates = _module_duplicate_rows(modules)
+    duplicate_declaration_count = sum(
+        row["declaration_count"]
+        for row in duplicates
+    )
+    duplicate_names = [
+        row["name"]
+        for row in duplicates
+    ]
+    blocked_reasons = [
+        row["reason"]
+        for row in duplicates
+    ]
+
+    return {
+        "blocked_reasons": blocked_reasons,
+        "duplicate_declaration_count": duplicate_declaration_count,
+        "duplicate_name_count": len(duplicates),
+        "duplicate_names": duplicate_names,
+        "duplicates": duplicates,
+        "kind": "module-duplicate-report",
+        "limitations": list(MODULE_DUPLICATE_REPORT_LIMITATIONS),
+        "module_count": len(modules),
+        "next_required_action": (
+            "rename or disambiguate duplicate module declarations before refactor planning"
+            if duplicates
+            else "continue module organization and refactor review"
+        ),
+        "report_state": "duplicates-detected" if duplicates else "no-duplicates-detected",
+        "safety": _module_duplicate_report_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "unique_module_name_count": len({module["name"] for module in modules}),
         "writes_files": False,
     }
 
@@ -3745,6 +3851,38 @@ def format_module_boundary_audit_text(audit: dict[str, Any]) -> str:
     lines.append(
         "read-only: no file writes, refactors, validation, shell, lab, "
         "launcher, vendor tool, provider, or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_duplicate_report_text(report: dict[str, Any]) -> str:
+    lines = [
+        f"source: {report['source']}",
+        f"module duplicates: {report['report_state']}",
+        f"{report['module_count']} module declaration"
+        f"{'s' if report['module_count'] != 1 else ''}",
+        f"{report['duplicate_name_count']} duplicate name"
+        f"{'s' if report['duplicate_name_count'] != 1 else ''}",
+    ]
+    if not report["duplicates"]:
+        lines.append("duplicates: none")
+    for duplicate in report["duplicates"]:
+        lines.append(
+            f"{duplicate['name']}: {duplicate['declaration_count']} declarations"
+        )
+        for location in duplicate["locations"]:
+            end_line = location["end_line"] or "?"
+            lines.append(
+                f"  {location['file']}:{location['start_line']}:"
+                f"{location['start_column']} end={end_line}"
+            )
+    for reason in report["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next: {report['next_required_action']}")
+    lines.append(
+        "read-only duplicate report: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
     )
     return "\n".join(lines) + "\n"
 

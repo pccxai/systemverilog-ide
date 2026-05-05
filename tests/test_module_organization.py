@@ -13,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC = REPO_ROOT / "src"
 FIXTURE = REPO_ROOT / "fixtures" / "organization" / "hierarchy_top.sv"
 CYCLIC_FIXTURE = REPO_ROOT / "fixtures" / "organization" / "cyclic_hierarchy.sv"
+DUPLICATE_FIXTURE = REPO_ROOT / "fixtures" / "organization" / "duplicate_modules.sv"
 INCOMPLETE_FIXTURE = REPO_ROOT / "fixtures" / "missing_endmodule.sv"
 CONTRACT_DOC = REPO_ROOT / "docs" / "EDITOR_BRIDGE_CONTRACT.md"
 WORKFLOW_DOC = REPO_ROOT / "docs" / "MODULE_ORGANIZATION_WORKFLOW.md"
@@ -23,6 +24,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_dependency_view,
     build_module_boundary_audit,
     build_module_context_bundle,
+    build_module_duplicate_report,
     build_module_hierarchy_cycle_report,
     build_module_hierarchy_view,
     build_module_organization_export,
@@ -49,6 +51,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_boundary_audit_text,
     format_module_dependency_text,
     format_module_context_text,
+    format_module_duplicate_report_text,
     format_module_hierarchy_cycle_text,
     format_module_hierarchy_text,
     format_module_organization_text,
@@ -168,6 +171,53 @@ def test_build_module_boundary_audit_blocks_incomplete_boundaries():
         "missing endmodule for module: bad_module"
     ]
     assert audit["writes_files"] is False
+
+
+def test_build_module_duplicate_report_detects_ambiguous_names():
+    report = build_module_duplicate_report(str(DUPLICATE_FIXTURE), DUPLICATE_FIXTURE)
+
+    assert report["kind"] == "module-duplicate-report"
+    assert report["report_state"] == "duplicates-detected"
+    assert report["module_count"] == 3
+    assert report["unique_module_name_count"] == 2
+    assert report["duplicate_name_count"] == 1
+    assert report["duplicate_declaration_count"] == 2
+    assert report["duplicate_names"] == ["dup_mod"]
+    assert report["blocked_reasons"] == ["ambiguous module name: dup_mod"]
+    assert report["next_required_action"] == (
+        "rename or disambiguate duplicate module declarations before refactor planning"
+    )
+    duplicate = report["duplicates"][0]
+    assert duplicate["name"] == "dup_mod"
+    assert duplicate["declaration_count"] == 2
+    assert duplicate["refactor_preflight_state"] == "blocked"
+    assert [location["start_line"] for location in duplicate["locations"]] == [4, 10]
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["duplicate_report_only"] is True
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["applies_refactor"] is False
+    assert report["safety"]["generates_patch"] is False
+    assert report["safety"]["runs_validation"] is False
+    assert report["safety"]["runs_shell"] is False
+    assert report["safety"]["invokes_pccx_lab"] is False
+    assert report["safety"]["invokes_launcher"] is False
+    assert report["safety"]["invokes_vendor_tools"] is False
+    assert report["safety"]["provider_calls"] is False
+    assert report["safety"]["hardware_access"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
+def test_build_module_duplicate_report_allows_unique_names():
+    report = build_module_duplicate_report(str(FIXTURE), FIXTURE)
+
+    assert report["report_state"] == "no-duplicates-detected"
+    assert report["duplicate_name_count"] == 0
+    assert report["duplicate_declaration_count"] == 0
+    assert report["duplicates"] == []
+    assert report["blocked_reasons"] == []
+    assert report["next_required_action"] == "continue module organization and refactor review"
 
 
 def test_build_refactor_candidate_list_reports_action_enablement():
@@ -1285,6 +1335,16 @@ def test_format_module_boundary_audit_text_mentions_read_only_gate():
     assert "read-only: no file writes" in text
 
 
+def test_format_module_duplicate_report_text_mentions_duplicates_and_boundary():
+    report = build_module_duplicate_report(str(DUPLICATE_FIXTURE), DUPLICATE_FIXTURE)
+    text = format_module_duplicate_report_text(report)
+
+    assert "module duplicates: duplicates-detected" in text
+    assert "dup_mod: 2 declarations" in text
+    assert "blocked: ambiguous module name: dup_mod" in text
+    assert "read-only duplicate report: no command argv" in text
+
+
 def test_format_refactor_candidate_list_text_mentions_actions_and_no_execution():
     candidates = build_refactor_candidate_list(str(FIXTURE), FIXTURE)
     text = format_refactor_candidate_list_text(candidates)
@@ -1598,6 +1658,27 @@ def test_cli_boundary_audit_text():
     assert "module bad_module (incomplete; blocked)" in result.stdout
     assert "blocked: missing endmodule for module: bad_module" in result.stdout
     assert "read-only: no file writes" in result.stdout
+
+
+def test_cli_module_duplicates_json():
+    result = _run_cli("module-duplicates", str(DUPLICATE_FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-duplicate-report"
+    assert payload["report_state"] == "duplicates-detected"
+    assert payload["duplicate_names"] == ["dup_mod"]
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_duplicates_text():
+    result = _run_cli("module-duplicates", str(DUPLICATE_FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module duplicates: duplicates-detected" in result.stdout
+    assert "dup_mod: 2 declarations" in result.stdout
+    assert "read-only duplicate report: no command argv" in result.stdout
 
 
 def test_cli_refactor_candidates_json():
@@ -2285,6 +2366,12 @@ def test_cli_boundary_audit_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_module_duplicates_missing_path_exits_nonzero():
+    result = _run_cli("module-duplicates", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_cli_hierarchy_missing_path_exits_nonzero():
     result = _run_cli("hierarchy", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -2467,6 +2554,7 @@ def test_docs_cover_organization_flow_and_limits():
     workflow = WORKFLOW_DOC.read_text(encoding="utf-8")
     assert "organization <path>" in contract
     assert "boundary-audit <path>" in contract
+    assert "module-duplicates <path>" in contract
     assert "refactor-readiness <path>" in contract
     assert "hierarchy <path>" in contract
     assert "dependencies <path>" in contract
@@ -2486,6 +2574,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "MODULE_ORGANIZATION_WORKFLOW.md" in contract
     assert "proposal-only" in workflow
     assert "module-boundary-audit" in workflow
+    assert "module-duplicate-report" in workflow
     assert "module-refactor-readiness-summary" in workflow
     assert "module-hierarchy-view" in workflow
     assert "module-dependency-view" in workflow
@@ -2511,6 +2600,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "refactor checklist metadata" in workflow
     assert "refactor session status metadata" in workflow
     assert "boundary audit data" in workflow
+    assert "duplicate-name report" in workflow
     assert "readiness metadata" in workflow
     assert "hierarchy cycle report" in workflow
     assert "does not write files" in workflow

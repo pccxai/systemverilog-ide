@@ -46,6 +46,7 @@ python -m pccx_ide_cli locate <path> <name> --kind any --format json
 # Module organization for editor project trees
 python -m pccx_ide_cli organization <path> --format json
 python -m pccx_ide_cli boundary-audit <path> --format json
+python -m pccx_ide_cli module-duplicates <path> --format json
 python -m pccx_ide_cli refactor-readiness <path> --format json
 python -m pccx_ide_cli hierarchy <path> --format json
 python -m pccx_ide_cli dependencies <path> --format json

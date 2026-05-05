@@ -155,6 +155,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    module_duplicates_cmd = sub.add_parser(
+        "module-duplicates",
+        help=(
+            "Emit read-only scanner-based duplicate module declaration report data."
+        ),
+    )
+    module_duplicates_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    module_duplicates_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     refactor_candidates_cmd = sub.add_parser(
         "refactor-candidates",
         help=(
@@ -1079,6 +1097,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_module_boundary_audit_text(audit))
+        return 0
+
+    if args.command == "module-duplicates":
+        from .module_organization import (
+            build_module_duplicate_report,
+            format_module_duplicate_report_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        report = build_module_duplicate_report(str(args.path), args.path)
+        if args.format == "json":
+            json.dump(report, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_module_duplicate_report_text(report))
         return 0
 
     if args.command == "refactor-candidates":

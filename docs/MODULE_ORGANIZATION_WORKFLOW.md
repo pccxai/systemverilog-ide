@@ -4,13 +4,13 @@
 
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
-`hierarchy-cycles`, `module-summary`, `boundary-audit`, `refactor-candidates`,
-`port-usage`, `module-context`, `refactor-impact`, `validation-plan`,
+`hierarchy-cycles`, `module-summary`, `boundary-audit`, `module-duplicates`,
+`refactor-candidates`, `port-usage`, `module-context`, `refactor-impact`, `validation-plan`,
 `refactor-review`, `refactor-approval`, `refactor-application`, `refactor-result`,
 `refactor-handoff`, `refactor-checklist`, and `refactor-session` CLI surfaces
 that report module boundary spans, scanner-based hierarchy data, direct
 dependency impact data, hierarchy cycle report metadata, conservative module
-header/port summaries, target port usage summaries, target module context
+header/port summaries, duplicate-name report metadata, target port usage summaries, target module context
 bundles, target-specific refactor impact data, boundary audit data, refactor
 candidate metadata for editor action menus, proposal-only validation command
 descriptors, a summary-only review packet, approval decision metadata,
@@ -36,6 +36,8 @@ python -m pccx_ide_cli module-summary <path> --format json
 python -m pccx_ide_cli module-summary <path> --format text
 python -m pccx_ide_cli boundary-audit <path> --format json
 python -m pccx_ide_cli boundary-audit <path> --format text
+python -m pccx_ide_cli module-duplicates <path> --format json
+python -m pccx_ide_cli module-duplicates <path> --format text
 python -m pccx_ide_cli refactor-candidates <path> --format json
 python -m pccx_ide_cli refactor-candidates <path> --format text
 python -m pccx_ide_cli refactor-readiness <path> --format json
@@ -280,6 +282,38 @@ The boundary audit is status data only. It does not write files, apply
 refactors, generate patches, run validation, execute shell commands,
 invoke `pccx-lab`, invoke the launcher, run vendor tools, call providers,
 touch hardware, upload telemetry, or perform automatic repository actions.
+
+The duplicate module report surfaces scanner-detected ambiguous module
+declaration names that would block unambiguous refactor planning:
+
+```json
+{
+  "kind": "module-duplicate-report",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "report_state": "duplicates-detected",
+  "module_count": 3,
+  "duplicate_name_count": 1,
+  "duplicate_names": ["dup_mod"],
+  "duplicates": [],
+  "blocked_reasons": ["ambiguous module name: dup_mod"],
+  "safety": {
+    "read_only": true,
+    "duplicate_report_only": true,
+    "emits_command_descriptors": false,
+    "writes_files": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The duplicate-name report is status data only. It does not write files,
+apply refactors, generate patches, run validation, execute shell commands,
+emit command argv, invoke `pccx-lab`, invoke the launcher, run vendor
+tools, call providers, touch hardware, upload telemetry, or perform
+automatic repository actions.
 
 The refactor candidate list reports scanner-detected modules and
 proposal-only helper action metadata for editor menus:
