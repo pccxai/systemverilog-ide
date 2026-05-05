@@ -5,7 +5,8 @@
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 `hierarchy-cycles`, `unresolved-instances`, `module-roots`, `module-leaves`,
-`module-orphans`, `module-depths`, `module-paths`, `module-fanout`, `module-fanin`,
+`module-orphans`, `module-depths`, `module-paths`, `module-edges`,
+`module-fanout`, `module-fanin`,
 `module-health`,
 `module-summary`,
 `boundary-audit`, `module-duplicates`, `refactor-candidates`, `port-usage`,
@@ -18,7 +19,8 @@ scanner-based hierarchy data, direct dependency impact data, hierarchy cycle
 report metadata, unresolved instantiation report metadata, root-candidate
 report metadata, leaf-candidate report metadata, orphan-candidate report
 metadata, depth-level report metadata, hierarchy path report metadata,
-`module-fanout-report` metadata, `module-fanin-report` metadata,
+`module-edge-report` metadata, `module-fanout-report` metadata,
+`module-fanin-report` metadata,
 module graph health summary metadata,
 conservative module header/port summaries, duplicate-name report metadata,
 target port usage summaries, target module context bundles, target-specific
@@ -55,6 +57,8 @@ python -m pccx_ide_cli module-depths <path> --format json
 python -m pccx_ide_cli module-depths <path> --format text
 python -m pccx_ide_cli module-paths <path> --format json
 python -m pccx_ide_cli module-paths <path> --format text
+python -m pccx_ide_cli module-edges <path> --format json
+python -m pccx_ide_cli module-edges <path> --format text
 python -m pccx_ide_cli module-fanout <path> --format json
 python -m pccx_ide_cli module-fanout <path> --format text
 python -m pccx_ide_cli module-fanin <path> --format json
@@ -452,6 +456,44 @@ The hierarchy path report is display data only. It does not write files,
 apply refactors, generate patches, run validation, execute shell commands,
 emit command argv, invoke `pccx-lab`, invoke the launcher, call providers,
 touch hardware, upload telemetry, or perform automatic repository actions.
+
+The module edge report lists scanner-detected direct instantiation edges and
+marks unresolved targets as blocked:
+
+```json
+{
+  "kind": "module-edge-report",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "report_state": "edges-detected",
+  "edge_count": 3,
+  "resolved_edge_count": 3,
+  "unresolved_edge_count": 0,
+  "edges": [
+    {
+      "edge_id": "edge-1",
+      "parent": "fanout_child_a",
+      "child": "fanout_leaf",
+      "instance": "u_leaf",
+      "resolution_state": "resolved"
+    }
+  ],
+  "safety": {
+    "read_only": true,
+    "edge_report_only": true,
+    "writes_files": false,
+    "emits_command_descriptors": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The module edge report is display data only. It does not write files, apply
+refactors, generate patches, run validation, execute shell commands, emit
+command argv, invoke `pccx-lab`, invoke the launcher, call providers, touch
+hardware, upload telemetry, or perform automatic repository actions.
 
 The fanin report ranks modules by scanner-detected resolved direct dependents:
 

@@ -199,6 +199,13 @@ jobs:
               fixtures/organization/fanout_hierarchy.sv \
               | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-path-report'; assert d['safety']['writes_files'] is False; assert d['safety']['emits_command_descriptors'] is False"
           echo "module paths smoke ok"
+      - name: cli smoke (module edges exits zero)
+        run: |
+          set -e
+          PYTHONPATH=src python -m pccx_ide_cli module-edges \
+              fixtures/organization/fanout_hierarchy.sv \
+              | python -c "import json,sys; d=json.load(sys.stdin); assert d['kind']=='module-edge-report'; assert d['safety']['writes_files'] is False; assert d['safety']['emits_command_descriptors'] is False"
+          echo "module edges smoke ok"
       - name: cli smoke (module summary exits zero)
         run: |
           set -e
