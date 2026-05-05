@@ -289,10 +289,10 @@ pre-stable and documented in
 `refactor-plan` emits proposal-only rename-module, extract-port, and
 move-module planning envelopes over scanner-detected module boundaries.
 It records requested inputs, a bounded preflight status including existing
-rename-target and target-port conflicts, and planned review steps, but it does
-not write files, apply patches, run validation, invoke `pccx-lab` or the
-launcher, call providers, touch hardware, or perform automatic repository
-actions.
+rename-target conflicts, target-port conflicts, and same-file move destinations,
+and planned review steps, but it does not write files, apply patches, run
+validation, invoke `pccx-lab` or the launcher, call providers, touch hardware,
+or perform automatic repository actions.
 `validation-plan`, `refactor-review`, `refactor-approval`,
 `refactor-application`, `refactor-result`, `refactor-handoff`,
 `refactor-checklist`, and `refactor-session` extend that reviewed flow with

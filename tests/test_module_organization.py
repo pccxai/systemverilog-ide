@@ -2004,6 +2004,26 @@ def test_build_refactor_proposal_blocks_missing_module():
     assert proposal["planned_steps"] == []
 
 
+def test_build_refactor_proposal_blocks_move_to_same_source_file():
+    relative_fixture = Path("fixtures") / "organization" / "hierarchy_top.sv"
+    proposal = build_refactor_proposal(
+        str(relative_fixture),
+        relative_fixture,
+        "move-module",
+        "leaf_mod",
+        destination=str(relative_fixture),
+    )
+
+    assert proposal["proposal_state"] == "proposal-only"
+    assert proposal["writes_files"] is False
+    assert proposal["preflight"]["status"] == "blocked"
+    assert proposal["preflight"]["reasons"] == [
+        "destination matches the current module source file"
+    ]
+    assert proposal["safety"]["moves_files"] is False
+    assert proposal["safety"]["runs_validation"] is False
+
+
 def test_build_refactor_proposal_extract_port_requires_direction():
     proposal = build_refactor_proposal(
         str(FIXTURE),
@@ -3853,6 +3873,30 @@ def test_cli_refactor_plan_blocks_existing_port_name():
         "port-name already exists in scanned module header: clk"
     ]
     assert payload["writes_files"] is False
+
+
+def test_cli_refactor_plan_blocks_move_to_same_source_file():
+    relative_fixture = Path("fixtures") / "organization" / "hierarchy_top.sv"
+    result = _run_cli(
+        "refactor-plan",
+        str(relative_fixture),
+        "--action",
+        "move-module",
+        "--module",
+        "leaf_mod",
+        "--destination",
+        str(relative_fixture),
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["preflight"]["status"] == "blocked"
+    assert payload["preflight"]["reasons"] == [
+        "destination matches the current module source file"
+    ]
+    assert payload["writes_files"] is False
+    assert payload["safety"]["moves_files"] is False
 
 
 def test_cli_refactor_plan_text():

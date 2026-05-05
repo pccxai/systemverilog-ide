@@ -5083,6 +5083,7 @@ def _preflight(
     requested: dict[str, Any],
     modules: list[dict[str, Any]] | None = None,
     existing_port_names: list[str] | None = None,
+    source_file: str | None = None,
 ) -> dict[str, Any]:
     reasons: list[str] = []
     required = _REFACTOR_REQUIRED_FIELDS[action]
@@ -5126,12 +5127,25 @@ def _preflight(
             reasons.append("destination must be a relative path inside the workspace")
         if not destination.endswith((".sv", ".v")):
             reasons.append("destination should end with .sv or .v")
+        if source_file and _same_path(destination, source_file):
+            reasons.append("destination matches the current module source file")
 
     return {
         "reasons": reasons,
         "requires_approval_before_write": True,
         "status": "blocked" if reasons else "ready-for-review",
     }
+
+
+def _same_path(left: str, right: str) -> bool:
+    left_path = Path(left)
+    right_path = Path(right)
+    if left_path.as_posix() == right_path.as_posix():
+        return True
+    try:
+        return left_path.resolve(strict=False) == right_path.resolve(strict=False)
+    except OSError:
+        return False
 
 
 def build_refactor_proposal(
@@ -5181,6 +5195,7 @@ def build_refactor_proposal(
         requested,
         organization["modules"],
         existing_port_names,
+        str(selected_module["file"]) if selected_module is not None else None,
     )
 
     return {
