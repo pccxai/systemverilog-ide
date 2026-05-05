@@ -1989,6 +1989,25 @@ def test_build_refactor_proposal_blocks_existing_new_name():
     assert proposal["safety"]["runs_validation"] is False
 
 
+def test_build_refactor_proposal_blocks_invalid_new_name():
+    proposal = build_refactor_proposal(
+        str(FIXTURE),
+        FIXTURE,
+        "rename-module",
+        "top_mod",
+        new_name="2bad",
+    )
+
+    assert proposal["proposal_state"] == "proposal-only"
+    assert proposal["writes_files"] is False
+    assert proposal["preflight"]["status"] == "blocked"
+    assert proposal["preflight"]["reasons"] == [
+        "new-name must be a SystemVerilog-style identifier"
+    ]
+    assert proposal["safety"]["applies_patch"] is False
+    assert proposal["safety"]["runs_validation"] is False
+
+
 def test_build_refactor_proposal_blocks_missing_module():
     proposal = build_refactor_proposal(
         str(FIXTURE),
@@ -2053,6 +2072,26 @@ def test_build_refactor_proposal_blocks_invalid_port_direction():
     assert proposal["preflight"]["status"] == "blocked"
     assert proposal["preflight"]["reasons"] == [
         "direction must be input, output, or inout"
+    ]
+    assert proposal["safety"]["applies_patch"] is False
+    assert proposal["safety"]["runs_validation"] is False
+
+
+def test_build_refactor_proposal_blocks_invalid_port_name():
+    proposal = build_refactor_proposal(
+        str(FIXTURE),
+        FIXTURE,
+        "extract-port",
+        "top_mod",
+        port_name="bad-port",
+        direction="input",
+    )
+
+    assert proposal["proposal_state"] == "proposal-only"
+    assert proposal["writes_files"] is False
+    assert proposal["preflight"]["status"] == "blocked"
+    assert proposal["preflight"]["reasons"] == [
+        "port-name must be a SystemVerilog-style identifier"
     ]
     assert proposal["safety"]["applies_patch"] is False
     assert proposal["safety"]["runs_validation"] is False
@@ -3951,6 +3990,28 @@ def test_cli_refactor_plan_blocks_existing_rename_target():
     assert payload["preflight"]["status"] == "blocked"
     assert payload["preflight"]["reasons"] == [
         "new-name already exists in scanned modules: leaf_mod"
+    ]
+    assert payload["writes_files"] is False
+
+
+def test_cli_refactor_plan_blocks_invalid_identifier():
+    result = _run_cli(
+        "refactor-plan",
+        str(FIXTURE),
+        "--action",
+        "rename-module",
+        "--module",
+        "top_mod",
+        "--new-name",
+        "2bad",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["preflight"]["status"] == "blocked"
+    assert payload["preflight"]["reasons"] == [
+        "new-name must be a SystemVerilog-style identifier"
     ]
     assert payload["writes_files"] is False
 
