@@ -128,6 +128,7 @@ python -m pccx_ide_cli dependencies fixtures/organization/hierarchy_top.sv --for
 python -m pccx_ide_cli dependencies fixtures/organization/hierarchy_top.sv --format text
 python -m pccx_ide_cli hierarchy-cycles fixtures/organization/cyclic_hierarchy.sv --format json
 python -m pccx_ide_cli unresolved-instances fixtures/organization/unresolved_instances.sv --format text
+python -m pccx_ide_cli module-roots fixtures/organization/hierarchy_top.sv --format json
 
 # Module header/port summary view (pre-stable, read-only)
 python -m pccx_ide_cli module-summary fixtures/organization/hierarchy_top.sv --format json
@@ -221,6 +222,8 @@ dependent, and impact summaries from the same scanner data.
 for editor warnings without running validation or emitting command argv.
 `unresolved-instances` reports scanner-detected instantiation candidates
 whose target module is not declared in the scanned input.
+`module-roots` reports scanner-detected root candidates for top-level
+module entry-point review.
 `module-summary` renders conservative module header and port summaries
 for editor sidebars and reviewed refactoring planning. `port-usage`
 renders target port declarations with scanner-detected dependent

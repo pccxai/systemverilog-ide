@@ -153,6 +153,16 @@ UNRESOLVED_INSTANCE_REPORT_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+MODULE_ROOT_REPORT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module root-candidate report only",
+    "uses resolved dependency edges from the organization scanner",
+    "single-line instantiation candidates only",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "does not apply refactors, write files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 MODULE_SUMMARY_LIMITATIONS: tuple[str, ...] = (
     "scanner-based module header and port summary data only",
     "ANSI-style port declarations are detected conservatively",
@@ -481,6 +491,28 @@ def _unresolved_instance_report_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "unresolved_instance_report_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _module_root_report_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "root_candidate_report_only": True,
         "emits_command_descriptors": False,
         "writes_files": False,
         "moves_files": False,
@@ -1730,6 +1762,103 @@ def build_module_unresolved_instance_report(
         "unresolved_instances": unresolved_instances,
         "unresolved_module_count": len(unresolved_modules),
         "unresolved_modules": unresolved_modules,
+        "writes_files": False,
+    }
+
+
+def _module_root_rows(
+    modules: list[dict[str, Any]],
+    hierarchy: dict[str, Any],
+) -> list[dict[str, Any]]:
+    modules_by_name: dict[str, dict[str, Any]] = {}
+    declaration_counts: dict[str, int] = {}
+    for module in modules:
+        modules_by_name.setdefault(module["name"], module)
+        declaration_counts[module["name"]] = declaration_counts.get(module["name"], 0) + 1
+
+    rows: list[dict[str, Any]] = []
+    for root_name in hierarchy["roots"]:
+        module = modules_by_name[root_name]
+        direct_dependencies = sorted({
+            edge["child"]
+            for edge in hierarchy["edges"]
+            if edge["parent"] == root_name and edge["resolved"]
+        })
+        unresolved_dependencies = sorted({
+            edge["child"]
+            for edge in hierarchy["edges"]
+            if edge["parent"] == root_name and not edge["resolved"]
+        })
+        blocked_reasons: list[str] = []
+        if not module["complete"]:
+            blocked_reasons.append(f"module boundary is incomplete: {root_name}")
+        if declaration_counts[root_name] > 1:
+            blocked_reasons.append(f"ambiguous module name: {root_name}")
+        rows.append({
+            "blocked_reasons": blocked_reasons,
+            "complete": module["complete"],
+            "declaration_count": declaration_counts[root_name],
+            "direct_dependencies": direct_dependencies,
+            "direct_dependency_count": len(direct_dependencies),
+            "file": module["file"],
+            "name": root_name,
+            "reason": "not instantiated by another resolved module",
+            "refactor_preflight_state": (
+                "blocked" if blocked_reasons else "ready-for-review"
+            ),
+            "root_state": "root-candidate",
+            "start_column": module["start_column"],
+            "start_line": module["start_line"],
+            "unresolved_dependencies": unresolved_dependencies,
+            "unresolved_dependency_count": len(unresolved_dependencies),
+        })
+    return rows
+
+
+def build_module_root_candidate_report(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    resolved_edge_count = len([
+        edge
+        for edge in hierarchy["edges"]
+        if edge["resolved"]
+    ])
+    roots = _module_root_rows(modules, hierarchy)
+    blocked_reasons = list(dict.fromkeys([
+        reason
+        for root in roots
+        for reason in root["blocked_reasons"]
+    ]))
+    if modules and not roots:
+        blocked_reasons.append("no root candidates detected")
+    if not modules:
+        blocked_reasons.append("no module declarations detected")
+
+    return {
+        "blocked_reasons": blocked_reasons,
+        "edge_count": len(hierarchy["edges"]),
+        "kind": "module-root-candidate-report",
+        "limitations": list(MODULE_ROOT_REPORT_LIMITATIONS),
+        "module_count": len(modules),
+        "next_required_action": (
+            "review scanner-detected root candidates for top-level organization"
+            if roots
+            else "resolve hierarchy blockers before root-candidate review"
+        ),
+        "report_state": "roots-detected" if roots else "no-roots-detected",
+        "resolved_edge_count": resolved_edge_count,
+        "root_count": len(roots),
+        "root_names": [
+            root["name"]
+            for root in roots
+        ],
+        "roots": roots,
+        "safety": _module_root_report_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "unresolved_edge_count": len(hierarchy["edges"]) - resolved_edge_count,
         "writes_files": False,
     }
 
@@ -4217,6 +4346,41 @@ def format_module_unresolved_instance_report_text(report: dict[str, Any]) -> str
     lines.append(f"next: {report['next_required_action']}")
     lines.append(
         "read-only unresolved report: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_root_candidate_report_text(report: dict[str, Any]) -> str:
+    lines = [
+        f"source: {report['source']}",
+        f"module roots: {report['report_state']}",
+        f"{report['module_count']} module"
+        f"{'s' if report['module_count'] != 1 else ''}",
+        f"{report['root_count']} root candidate"
+        f"{'s' if report['root_count'] != 1 else ''}",
+    ]
+    if not report["roots"]:
+        lines.append("roots: none")
+    for root in report["roots"]:
+        dependencies = ", ".join(root["direct_dependencies"]) or "none"
+        unresolved = ", ".join(root["unresolved_dependencies"]) or "none"
+        lines.append(
+            f"{root['file']}:{root['start_line']}: module {root['name']} "
+            f"({root['refactor_preflight_state']})"
+        )
+        lines.append(
+            f"  dependencies={dependencies}; unresolved={unresolved}; "
+            f"reason={root['reason']}"
+        )
+        for reason in root["blocked_reasons"]:
+            lines.append(f"  blocked: {reason}")
+    for reason in report["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next: {report['next_required_action']}")
+    lines.append(
+        "read-only root report: no command argv, validation, shell, "
         "refactor, patch, file write, lab, launcher, vendor tool, provider, "
         "or hardware execution"
     )
