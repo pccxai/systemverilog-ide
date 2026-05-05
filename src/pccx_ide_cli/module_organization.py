@@ -207,6 +207,17 @@ MODULE_FANOUT_REPORT_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+MODULE_FANIN_REPORT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module fanin report only",
+    "uses resolved direct dependent edges from the organization scanner",
+    "single-line instantiation candidates only",
+    "unresolved instantiation candidates block fanin review readiness",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "does not apply refactors, write files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 MODULE_GRAPH_HEALTH_LIMITATIONS: tuple[str, ...] = (
     "scanner-based module graph health summary only",
     "combines root, leaf, depth, cycle, unresolved-instance, and duplicate-name signals",
@@ -655,6 +666,28 @@ def _module_fanout_report_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "fanout_report_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _module_fanin_report_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "fanin_report_only": True,
         "emits_command_descriptors": False,
         "writes_files": False,
         "moves_files": False,
@@ -2594,6 +2627,154 @@ def build_module_fanout_report(source: str, path: Path) -> dict[str, Any]:
         "report_state": "fanout-detected" if fanout_rows else "no-fanout-detected",
         "resolved_edge_count": resolved_edge_count,
         "safety": _module_fanout_report_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "unresolved_edge_count": len(hierarchy["edges"]) - resolved_edge_count,
+        "writes_files": False,
+    }
+
+
+def _module_fanin_rows(
+    modules: list[dict[str, Any]],
+    hierarchy: dict[str, Any],
+) -> list[dict[str, Any]]:
+    modules_by_name: dict[str, dict[str, Any]] = {}
+    declaration_counts: dict[str, int] = {}
+    for module in modules:
+        modules_by_name.setdefault(module["name"], module)
+        declaration_counts[module["name"]] = (
+            declaration_counts.get(module["name"], 0) + 1
+        )
+
+    module_names = sorted(modules_by_name)
+    dependencies_by_module: dict[str, set[str]] = {
+        name: set()
+        for name in module_names
+    }
+    dependents_by_module: dict[str, set[str]] = {
+        name: set()
+        for name in module_names
+    }
+    unresolved_by_module: dict[str, set[str]] = {
+        name: set()
+        for name in module_names
+    }
+
+    for edge in hierarchy["edges"]:
+        parent = edge["parent"]
+        child = edge["child"]
+        if parent not in modules_by_name:
+            continue
+        if edge["resolved"]:
+            dependencies_by_module.setdefault(parent, set()).add(child)
+            if child in dependents_by_module:
+                dependents_by_module[child].add(parent)
+        else:
+            unresolved_by_module.setdefault(parent, set()).add(child)
+
+    rows: list[dict[str, Any]] = []
+    for module_name in module_names:
+        module = modules_by_name[module_name]
+        direct_dependencies = sorted(dependencies_by_module.get(module_name, set()))
+        direct_dependents = sorted(dependents_by_module.get(module_name, set()))
+        unresolved_dependencies = sorted(unresolved_by_module.get(module_name, set()))
+        blocked_reasons: list[str] = []
+        if not module["complete"]:
+            blocked_reasons.append(f"module boundary is incomplete: {module_name}")
+        if declaration_counts[module_name] > 1:
+            blocked_reasons.append(f"ambiguous module name: {module_name}")
+        if unresolved_dependencies:
+            blocked_reasons.append(
+                "unresolved dependencies for fanin report: "
+                f"{', '.join(unresolved_dependencies)}"
+            )
+        rows.append({
+            "blocked_reasons": blocked_reasons,
+            "complete": module["complete"],
+            "declaration_count": declaration_counts[module_name],
+            "direct_dependencies": direct_dependencies,
+            "direct_dependency_count": len(direct_dependencies),
+            "direct_dependents": direct_dependents,
+            "direct_dependent_count": len(direct_dependents),
+            "fanin_state": (
+                "has-resolved-fanin"
+                if direct_dependents
+                else "no-resolved-fanin"
+            ),
+            "file": module["file"],
+            "name": module_name,
+            "reason": "ranked by scanner-detected resolved direct dependents",
+            "refactor_preflight_state": (
+                "blocked" if blocked_reasons else "ready-for-review"
+            ),
+            "start_column": module["start_column"],
+            "start_line": module["start_line"],
+            "unresolved_dependencies": unresolved_dependencies,
+            "unresolved_dependency_count": len(unresolved_dependencies),
+        })
+
+    rows.sort(
+        key=lambda row: (
+            -row["direct_dependent_count"],
+            -row["unresolved_dependency_count"],
+            row["name"],
+        )
+    )
+    for index, row in enumerate(rows, 1):
+        row["rank"] = index
+    return rows
+
+
+def build_module_fanin_report(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    resolved_edge_count = len([
+        edge
+        for edge in hierarchy["edges"]
+        if edge["resolved"]
+    ])
+    rows = _module_fanin_rows(modules, hierarchy)
+    fanin_rows = [
+        row
+        for row in rows
+        if row["direct_dependent_count"] > 0
+    ]
+    blocked_reasons = list(dict.fromkeys([
+        reason
+        for row in rows
+        for reason in row["blocked_reasons"]
+    ]))
+    if modules and not fanin_rows:
+        blocked_reasons.append("no resolved fanin detected")
+    if not modules:
+        blocked_reasons.append("no module declarations detected")
+
+    return {
+        "blocked_reasons": blocked_reasons,
+        "edge_count": len(hierarchy["edges"]),
+        "fanin_count": len(fanin_rows),
+        "fanin_names": [
+            row["name"]
+            for row in fanin_rows
+        ],
+        "kind": "module-fanin-report",
+        "limitations": list(MODULE_FANIN_REPORT_LIMITATIONS),
+        "max_direct_dependent_count": max(
+            (row["direct_dependent_count"] for row in rows),
+            default=0,
+        ),
+        "module_count": len(modules),
+        "modules": rows,
+        "next_required_action": (
+            "review scanner-detected fanin before refactor planning"
+            if fanin_rows
+            else "continue module organization review"
+        ),
+        "report_state": "fanin-detected" if fanin_rows else "no-fanin-detected",
+        "resolved_edge_count": resolved_edge_count,
+        "safety": _module_fanin_report_safety_flags(),
         "scanner": "line-scanner",
         "source": source,
         "tool": "pccx-ide-cli",
@@ -5441,6 +5622,43 @@ def format_module_fanout_report_text(report: dict[str, Any]) -> str:
     lines.append(f"next: {report['next_required_action']}")
     lines.append(
         "read-only fanout report: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_fanin_report_text(report: dict[str, Any]) -> str:
+    lines = [
+        f"source: {report['source']}",
+        f"module fanin: {report['report_state']}",
+        f"{report['module_count']} module"
+        f"{'s' if report['module_count'] != 1 else ''}",
+        f"{report['fanin_count']} fanin module"
+        f"{'s' if report['fanin_count'] != 1 else ''}",
+        f"max direct dependents: {report['max_direct_dependent_count']}",
+    ]
+    if not report["modules"]:
+        lines.append("modules: none")
+    for module in report["modules"]:
+        dependencies = ", ".join(module["direct_dependencies"]) or "none"
+        dependents = ", ".join(module["direct_dependents"]) or "none"
+        unresolved = ", ".join(module["unresolved_dependencies"]) or "none"
+        lines.append(
+            f"rank {module['rank']}: {module['file']}:{module['start_line']}: "
+            f"module {module['name']} ({module['refactor_preflight_state']})"
+        )
+        lines.append(
+            f"  dependencies={dependencies}; dependents={dependents}; "
+            f"unresolved={unresolved}; reason={module['reason']}"
+        )
+        for reason in module["blocked_reasons"]:
+            lines.append(f"  blocked: {reason}")
+    for reason in report["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next: {report['next_required_action']}")
+    lines.append(
+        "read-only fanin report: no command argv, validation, shell, "
         "refactor, patch, file write, lab, launcher, vendor tool, provider, "
         "or hardware execution"
     )

@@ -133,6 +133,7 @@ python -m pccx_ide_cli module-leaves fixtures/organization/hierarchy_top.sv --fo
 python -m pccx_ide_cli module-orphans fixtures/organization/orphan_modules.sv --format json
 python -m pccx_ide_cli module-depths fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli module-fanout fixtures/organization/fanout_hierarchy.sv --format json
+python -m pccx_ide_cli module-fanin fixtures/organization/fanout_hierarchy.sv --format json
 python -m pccx_ide_cli module-health fixtures/organization/hierarchy_top.sv --format json
 
 # Module header/port summary view (pre-stable, read-only)
@@ -237,6 +238,8 @@ resolved dependencies or dependents.
 for module organization review.
 `module-fanout` ranks scanner-detected modules by resolved direct dependency
 count for fanout review.
+`module-fanin` ranks scanner-detected modules by resolved direct dependent
+count for fanin review.
 `module-health` combines scanner-detected root, leaf, depth, cycle,
 unresolved-instance, and duplicate-name signals into a read-only module graph
 health summary for editor status panes.

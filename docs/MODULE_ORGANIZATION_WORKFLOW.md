@@ -5,7 +5,8 @@
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 `hierarchy-cycles`, `unresolved-instances`, `module-roots`, `module-leaves`,
-`module-orphans`, `module-depths`, `module-fanout`, `module-health`,
+`module-orphans`, `module-depths`, `module-fanout`, `module-fanin`,
+`module-health`,
 `module-summary`,
 `boundary-audit`, `module-duplicates`, `refactor-candidates`, `port-usage`,
 `module-context`, `refactor-impact`,
@@ -17,7 +18,7 @@ scanner-based hierarchy data, direct dependency impact data, hierarchy cycle
 report metadata, unresolved instantiation report metadata, root-candidate
 report metadata, leaf-candidate report metadata, orphan-candidate report
 metadata, depth-level report metadata,
-`module-fanout-report` metadata,
+`module-fanout-report` metadata, `module-fanin-report` metadata,
 module graph health summary metadata,
 conservative module header/port summaries, duplicate-name report metadata,
 target port usage summaries, target module context bundles, target-specific
@@ -54,6 +55,8 @@ python -m pccx_ide_cli module-depths <path> --format json
 python -m pccx_ide_cli module-depths <path> --format text
 python -m pccx_ide_cli module-fanout <path> --format json
 python -m pccx_ide_cli module-fanout <path> --format text
+python -m pccx_ide_cli module-fanin <path> --format json
+python -m pccx_ide_cli module-fanin <path> --format text
 python -m pccx_ide_cli module-health <path> --format json
 python -m pccx_ide_cli module-health <path> --format text
 python -m pccx_ide_cli module-summary <path> --format json
@@ -404,6 +407,43 @@ root candidates:
 ```
 
 The depth report is display data only. It does not write files, apply
+refactors, generate patches, run validation, execute shell commands, emit
+command argv, invoke `pccx-lab`, invoke the launcher, call providers, touch
+hardware, upload telemetry, or perform automatic repository actions.
+
+The fanin report ranks modules by scanner-detected resolved direct dependents:
+
+```json
+{
+  "kind": "module-fanin-report",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "report_state": "fanin-detected",
+  "fanin_count": 3,
+  "max_direct_dependent_count": 1,
+  "fanin_names": ["fanout_child_a", "fanout_child_b", "fanout_leaf"],
+  "modules": [
+    {
+      "name": "fanout_child_a",
+      "rank": 1,
+      "direct_dependents": ["fanout_top"],
+      "direct_dependent_count": 1,
+      "fanin_state": "has-resolved-fanin"
+    }
+  ],
+  "safety": {
+    "read_only": true,
+    "fanin_report_only": true,
+    "writes_files": false,
+    "emits_command_descriptors": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The fanin report is display data only. It does not write files, apply
 refactors, generate patches, run validation, execute shell commands, emit
 command argv, invoke `pccx-lab`, invoke the launcher, call providers, touch
 hardware, upload telemetry, or perform automatic repository actions.
