@@ -30,6 +30,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_hierarchy_view,
     build_module_organization_export,
     build_module_port_usage_view,
+    build_module_root_candidate_report,
     build_module_summary_view,
     build_module_unresolved_instance_report,
     build_refactor_candidate_list,
@@ -58,6 +59,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_hierarchy_text,
     format_module_organization_text,
     format_module_port_usage_text,
+    format_module_root_candidate_report_text,
     format_module_summary_text,
     format_module_unresolved_instance_report_text,
     format_refactor_candidate_list_text,
@@ -533,6 +535,64 @@ def test_build_module_unresolved_instance_report_allows_resolved_hierarchy():
     assert report["unresolved_modules"] == []
     assert report["blocked_reasons"] == []
     assert report["next_required_action"] == "continue hierarchy and refactor review"
+
+
+def test_build_module_root_candidate_report_detects_top_modules():
+    report = build_module_root_candidate_report(str(FIXTURE), FIXTURE)
+
+    assert report["kind"] == "module-root-candidate-report"
+    assert report["report_state"] == "roots-detected"
+    assert report["module_count"] == 2
+    assert report["edge_count"] == 1
+    assert report["resolved_edge_count"] == 1
+    assert report["unresolved_edge_count"] == 0
+    assert report["root_count"] == 1
+    assert report["root_names"] == ["top_mod"]
+    assert report["blocked_reasons"] == []
+    assert report["next_required_action"] == (
+        "review scanner-detected root candidates for top-level organization"
+    )
+    root = report["roots"][0]
+    assert root["name"] == "top_mod"
+    assert root["file"] == str(FIXTURE)
+    assert root["start_line"] == 9
+    assert root["start_column"] == 1
+    assert root["complete"] is True
+    assert root["declaration_count"] == 1
+    assert root["direct_dependencies"] == ["leaf_mod"]
+    assert root["direct_dependency_count"] == 1
+    assert root["unresolved_dependencies"] == []
+    assert root["unresolved_dependency_count"] == 0
+    assert root["refactor_preflight_state"] == "ready-for-review"
+    assert root["reason"] == "not instantiated by another resolved module"
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["root_candidate_report_only"] is True
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["applies_refactor"] is False
+    assert report["safety"]["generates_patch"] is False
+    assert report["safety"]["runs_validation"] is False
+    assert report["safety"]["runs_shell"] is False
+    assert report["safety"]["invokes_pccx_lab"] is False
+    assert report["safety"]["invokes_launcher"] is False
+    assert report["safety"]["invokes_vendor_tools"] is False
+    assert report["safety"]["provider_calls"] is False
+    assert report["safety"]["hardware_access"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
+def test_build_module_root_candidate_report_blocks_when_no_roots_detected():
+    report = build_module_root_candidate_report(str(CYCLIC_FIXTURE), CYCLIC_FIXTURE)
+
+    assert report["report_state"] == "no-roots-detected"
+    assert report["root_count"] == 0
+    assert report["root_names"] == []
+    assert report["roots"] == []
+    assert report["blocked_reasons"] == ["no root candidates detected"]
+    assert report["next_required_action"] == (
+        "resolve hierarchy blockers before root-candidate review"
+    )
 
 
 def test_build_module_summary_view_reports_ports_and_safety():
@@ -1472,6 +1532,17 @@ def test_format_module_unresolved_instance_report_text_mentions_boundary():
     assert "read-only unresolved report: no command argv" in text
 
 
+def test_format_module_root_candidate_report_text_mentions_boundary():
+    report = build_module_root_candidate_report(str(FIXTURE), FIXTURE)
+    text = format_module_root_candidate_report_text(report)
+
+    assert "module roots: roots-detected" in text
+    assert "1 root candidate" in text
+    assert "module top_mod (ready-for-review)" in text
+    assert "dependencies=leaf_mod; unresolved=none" in text
+    assert "read-only root report: no command argv" in text
+
+
 def test_format_module_summary_text_mentions_ports_and_boundary():
     view = build_module_summary_view(str(FIXTURE), FIXTURE)
     text = format_module_summary_text(view)
@@ -1898,6 +1969,28 @@ def test_cli_unresolved_instances_text():
     assert "unresolved instances: unresolved-instances-detected" in result.stdout
     assert "unresolved-1: unresolved_top -> missing_child as u_missing" in result.stdout
     assert "read-only unresolved report: no command argv" in result.stdout
+
+
+def test_cli_module_roots_json():
+    result = _run_cli("module-roots", str(FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-root-candidate-report"
+    assert payload["report_state"] == "roots-detected"
+    assert payload["root_names"] == ["top_mod"]
+    assert payload["roots"][0]["direct_dependencies"] == ["leaf_mod"]
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_roots_text():
+    result = _run_cli("module-roots", str(FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module roots: roots-detected" in result.stdout
+    assert "module top_mod (ready-for-review)" in result.stdout
+    assert "read-only root report: no command argv" in result.stdout
 
 
 def test_cli_module_summary_json():
@@ -2506,6 +2599,12 @@ def test_cli_unresolved_instances_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_module_roots_missing_path_exits_nonzero():
+    result = _run_cli("module-roots", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_cli_module_summary_missing_path_exits_nonzero():
     result = _run_cli("module-summary", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -2676,6 +2775,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "dependencies <path>" in contract
     assert "hierarchy-cycles <path>" in contract
     assert "unresolved-instances <path>" in contract
+    assert "module-roots <path>" in contract
     assert "module-summary <path>" in contract
     assert "port-usage <path>" in contract
     assert "module-context <path>" in contract
@@ -2697,6 +2797,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-dependency-view" in workflow
     assert "module-hierarchy-cycle-report" in workflow
     assert "module-unresolved-instance-report" in workflow
+    assert "module-root-candidate-report" in workflow
     assert "module-summary-view" in workflow
     assert "module-port-usage-view" in workflow
     assert "module-context-bundle" in workflow
@@ -2722,5 +2823,6 @@ def test_docs_cover_organization_flow_and_limits():
     assert "readiness metadata" in workflow
     assert "hierarchy cycle report" in workflow
     assert "unresolved instantiation report" in workflow
+    assert "root-candidate report" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow

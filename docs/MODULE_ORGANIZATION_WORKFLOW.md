@@ -4,16 +4,17 @@
 
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
-`hierarchy-cycles`, `unresolved-instances`, `module-summary`,
+`hierarchy-cycles`, `unresolved-instances`, `module-roots`, `module-summary`,
 `boundary-audit`, `module-duplicates`, `refactor-candidates`, `port-usage`,
 `module-context`, `refactor-impact`, `validation-plan`, `refactor-review`,
 `refactor-approval`, `refactor-application`, `refactor-result`,
 `refactor-handoff`, `refactor-checklist`, and `refactor-session` CLI surfaces
 that report module boundary spans, scanner-based hierarchy data, direct
 dependency impact data, hierarchy cycle report metadata, unresolved
-instantiation report metadata, conservative module header/port summaries,
-duplicate-name report metadata, target port usage summaries, target module
-context bundles, target-specific refactor impact data, boundary audit data, refactor
+instantiation report metadata, root-candidate report metadata, conservative
+module header/port summaries, duplicate-name report metadata, target port
+usage summaries, target module context bundles, target-specific refactor
+impact data, boundary audit data, refactor
 candidate metadata for editor action menus, proposal-only validation command
 descriptors, a summary-only review packet, approval decision metadata,
 application request metadata, and application result metadata plus refactor
@@ -36,6 +37,8 @@ python -m pccx_ide_cli hierarchy-cycles <path> --format json
 python -m pccx_ide_cli hierarchy-cycles <path> --format text
 python -m pccx_ide_cli unresolved-instances <path> --format json
 python -m pccx_ide_cli unresolved-instances <path> --format text
+python -m pccx_ide_cli module-roots <path> --format json
+python -m pccx_ide_cli module-roots <path> --format text
 python -m pccx_ide_cli module-summary <path> --format json
 python -m pccx_ide_cli module-summary <path> --format text
 python -m pccx_ide_cli boundary-audit <path> --format json
@@ -240,6 +243,42 @@ files, apply refactors, generate patches, run validation, execute shell
 commands, emit command argv, invoke `pccx-lab`, invoke the launcher, call
 providers, touch hardware, upload telemetry, or perform automatic repository
 actions.
+
+The root-candidate report uses scanner hierarchy roots to identify modules
+that are not instantiated by another resolved module in the scanned input:
+
+```json
+{
+  "kind": "module-root-candidate-report",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "report_state": "roots-detected",
+  "root_count": 1,
+  "root_names": ["top_mod"],
+  "roots": [
+    {
+      "name": "top_mod",
+      "root_state": "root-candidate",
+      "direct_dependencies": ["leaf_mod"],
+      "unresolved_dependencies": [],
+      "reason": "not instantiated by another resolved module"
+    }
+  ],
+  "safety": {
+    "read_only": true,
+    "writes_files": false,
+    "emits_command_descriptors": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The root-candidate report is display data only. It does not write files,
+apply refactors, generate patches, run validation, execute shell commands,
+emit command argv, invoke `pccx-lab`, invoke the launcher, call providers,
+touch hardware, upload telemetry, or perform automatic repository actions.
 
 The module summary view reports conservative scanner-detected module
 header and port metadata:
