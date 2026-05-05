@@ -6,7 +6,7 @@ This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 `hierarchy-cycles`, `unresolved-instances`, `module-roots`, `module-leaves`,
 `module-orphans`, `module-depths`, `module-paths`, `module-edges`,
-`module-fanout`, `module-fanin`,
+`module-reachability`, `module-fanout`, `module-fanin`,
 `module-health`,
 `module-summary`,
 `boundary-audit`, `module-duplicates`, `refactor-candidates`, `port-usage`,
@@ -19,7 +19,8 @@ scanner-based hierarchy data, direct dependency impact data, hierarchy cycle
 report metadata, unresolved instantiation report metadata, root-candidate
 report metadata, leaf-candidate report metadata, orphan-candidate report
 metadata, depth-level report metadata, hierarchy path report metadata,
-`module-edge-report` metadata, `module-fanout-report` metadata,
+`module-edge-report` metadata, `module-reachability-report` metadata,
+`module-fanout-report` metadata,
 `module-fanin-report` metadata,
 module graph health summary metadata,
 conservative module header/port summaries, duplicate-name report metadata,
@@ -59,6 +60,8 @@ python -m pccx_ide_cli module-paths <path> --format json
 python -m pccx_ide_cli module-paths <path> --format text
 python -m pccx_ide_cli module-edges <path> --format json
 python -m pccx_ide_cli module-edges <path> --format text
+python -m pccx_ide_cli module-reachability <path> --format json
+python -m pccx_ide_cli module-reachability <path> --format text
 python -m pccx_ide_cli module-fanout <path> --format json
 python -m pccx_ide_cli module-fanout <path> --format text
 python -m pccx_ide_cli module-fanin <path> --format json
@@ -491,6 +494,46 @@ marks unresolved targets as blocked:
 ```
 
 The module edge report is display data only. It does not write files, apply
+refactors, generate patches, run validation, execute shell commands, emit
+command argv, invoke `pccx-lab`, invoke the launcher, call providers, touch
+hardware, upload telemetry, or perform automatic repository actions.
+
+The reachability report summarizes transitive dependencies and dependents from
+resolved scanner edges:
+
+```json
+{
+  "kind": "module-reachability-report",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "report_state": "reachability-detected",
+  "reachable_module_count": 4,
+  "max_transitive_dependency_count": 3,
+  "max_transitive_dependent_count": 2,
+  "modules": [
+    {
+      "name": "fanout_top",
+      "transitive_dependencies": [
+        "fanout_child_a",
+        "fanout_child_b",
+        "fanout_leaf"
+      ],
+      "transitive_dependents": []
+    }
+  ],
+  "safety": {
+    "read_only": true,
+    "reachability_report_only": true,
+    "writes_files": false,
+    "emits_command_descriptors": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The reachability report is display data only. It does not write files, apply
 refactors, generate patches, run validation, execute shell commands, emit
 command argv, invoke `pccx-lab`, invoke the launcher, call providers, touch
 hardware, upload telemetry, or perform automatic repository actions.
