@@ -5,15 +5,17 @@
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 `hierarchy-cycles`, `unresolved-instances`, `module-roots`, `module-leaves`,
-`module-depths`, `module-health`, `module-summary`, `boundary-audit`, `module-duplicates`,
-`refactor-candidates`, `port-usage`, `module-context`, `refactor-impact`,
+`module-orphans`, `module-depths`, `module-health`, `module-summary`,
+`boundary-audit`, `module-duplicates`, `refactor-candidates`, `port-usage`,
+`module-context`, `refactor-impact`,
 `validation-plan`, `refactor-review`, `refactor-approval`,
 `refactor-application`, `refactor-result`, `refactor-handoff`,
 `refactor-checklist`, and
 `refactor-session` CLI surfaces that report module boundary spans,
 scanner-based hierarchy data, direct dependency impact data, hierarchy cycle
 report metadata, unresolved instantiation report metadata, root-candidate
-report metadata, leaf-candidate report metadata, depth-level report metadata,
+report metadata, leaf-candidate report metadata, orphan-candidate report
+metadata, depth-level report metadata,
 module graph health summary metadata,
 conservative module header/port summaries, duplicate-name report metadata,
 target port usage summaries, target module context bundles, target-specific
@@ -44,6 +46,8 @@ python -m pccx_ide_cli module-roots <path> --format json
 python -m pccx_ide_cli module-roots <path> --format text
 python -m pccx_ide_cli module-leaves <path> --format json
 python -m pccx_ide_cli module-leaves <path> --format text
+python -m pccx_ide_cli module-orphans <path> --format json
+python -m pccx_ide_cli module-orphans <path> --format text
 python -m pccx_ide_cli module-depths <path> --format json
 python -m pccx_ide_cli module-depths <path> --format text
 python -m pccx_ide_cli module-health <path> --format json
@@ -321,6 +325,43 @@ that do not instantiate another resolved module in the scanned input:
 ```
 
 The leaf-candidate report is display data only. It does not write files,
+apply refactors, generate patches, run validation, execute shell commands,
+emit command argv, invoke `pccx-lab`, invoke the launcher, call providers,
+touch hardware, upload telemetry, or perform automatic repository actions.
+
+The orphan-candidate report uses scanner hierarchy edges to identify modules
+with no resolved dependencies and no resolved dependents in the scanned input:
+
+```json
+{
+  "kind": "module-orphan-candidate-report",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "report_state": "orphans-detected",
+  "orphan_count": 1,
+  "orphan_names": ["orphan_mod"],
+  "orphans": [
+    {
+      "name": "orphan_mod",
+      "orphan_state": "orphan-candidate",
+      "direct_dependencies": [],
+      "direct_dependents": [],
+      "unresolved_dependencies": [],
+      "reason": "no resolved dependencies or dependents detected by scanner"
+    }
+  ],
+  "safety": {
+    "read_only": true,
+    "writes_files": false,
+    "emits_command_descriptors": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The orphan-candidate report is display data only. It does not write files,
 apply refactors, generate patches, run validation, execute shell commands,
 emit command argv, invoke `pccx-lab`, invoke the launcher, call providers,
 touch hardware, upload telemetry, or perform automatic repository actions.

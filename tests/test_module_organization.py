@@ -15,6 +15,7 @@ FIXTURE = REPO_ROOT / "fixtures" / "organization" / "hierarchy_top.sv"
 CYCLIC_FIXTURE = REPO_ROOT / "fixtures" / "organization" / "cyclic_hierarchy.sv"
 DUPLICATE_FIXTURE = REPO_ROOT / "fixtures" / "organization" / "duplicate_modules.sv"
 UNRESOLVED_FIXTURE = REPO_ROOT / "fixtures" / "organization" / "unresolved_instances.sv"
+ORPHAN_FIXTURE = REPO_ROOT / "fixtures" / "organization" / "orphan_modules.sv"
 INCOMPLETE_FIXTURE = REPO_ROOT / "fixtures" / "missing_endmodule.sv"
 CONTRACT_DOC = REPO_ROOT / "docs" / "EDITOR_BRIDGE_CONTRACT.md"
 WORKFLOW_DOC = REPO_ROOT / "docs" / "MODULE_ORGANIZATION_WORKFLOW.md"
@@ -31,6 +32,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_hierarchy_cycle_report,
     build_module_hierarchy_view,
     build_module_leaf_candidate_report,
+    build_module_orphan_candidate_report,
     build_module_organization_export,
     build_module_port_usage_view,
     build_module_root_candidate_report,
@@ -63,6 +65,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_hierarchy_cycle_text,
     format_module_hierarchy_text,
     format_module_leaf_candidate_report_text,
+    format_module_orphan_candidate_report_text,
     format_module_organization_text,
     format_module_port_usage_text,
     format_module_root_candidate_report_text,
@@ -680,6 +683,83 @@ def test_build_module_leaf_candidate_report_blocks_when_no_leaves_detected():
     assert report["next_required_action"] == (
         "resolve hierarchy blockers before leaf-candidate review"
     )
+
+
+def test_build_module_orphan_candidate_report_detects_isolated_modules():
+    report = build_module_orphan_candidate_report(str(ORPHAN_FIXTURE), ORPHAN_FIXTURE)
+
+    assert report["kind"] == "module-orphan-candidate-report"
+    assert report["report_state"] == "orphans-detected"
+    assert report["module_count"] == 3
+    assert report["edge_count"] == 1
+    assert report["resolved_edge_count"] == 1
+    assert report["unresolved_edge_count"] == 0
+    assert report["orphan_count"] == 1
+    assert report["orphan_names"] == ["orphan_mod"]
+    assert report["blocked_reasons"] == []
+    assert report["next_required_action"] == (
+        "review scanner-detected orphan candidates for isolation or cleanup"
+    )
+    orphan = report["orphans"][0]
+    assert orphan["name"] == "orphan_mod"
+    assert orphan["file"] == str(ORPHAN_FIXTURE)
+    assert orphan["start_line"] == 17
+    assert orphan["start_column"] == 1
+    assert orphan["complete"] is True
+    assert orphan["declaration_count"] == 1
+    assert orphan["direct_dependencies"] == []
+    assert orphan["direct_dependency_count"] == 0
+    assert orphan["direct_dependents"] == []
+    assert orphan["direct_dependent_count"] == 0
+    assert orphan["unresolved_dependencies"] == []
+    assert orphan["unresolved_dependency_count"] == 0
+    assert orphan["refactor_preflight_state"] == "ready-for-review"
+    assert orphan["reason"] == "no resolved dependencies or dependents detected by scanner"
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["orphan_candidate_report_only"] is True
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["applies_refactor"] is False
+    assert report["safety"]["generates_patch"] is False
+    assert report["safety"]["runs_validation"] is False
+    assert report["safety"]["runs_shell"] is False
+    assert report["safety"]["invokes_pccx_lab"] is False
+    assert report["safety"]["invokes_launcher"] is False
+    assert report["safety"]["invokes_vendor_tools"] is False
+    assert report["safety"]["provider_calls"] is False
+    assert report["safety"]["hardware_access"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
+def test_build_module_orphan_candidate_report_blocks_when_no_orphans_detected():
+    report = build_module_orphan_candidate_report(str(FIXTURE), FIXTURE)
+
+    assert report["report_state"] == "no-orphans-detected"
+    assert report["orphan_count"] == 0
+    assert report["orphan_names"] == []
+    assert report["orphans"] == []
+    assert report["blocked_reasons"] == ["no orphan candidates detected"]
+    assert report["next_required_action"] == "continue module organization review"
+
+
+def test_build_module_orphan_candidate_report_blocks_unresolved_dependencies():
+    report = build_module_orphan_candidate_report(
+        str(UNRESOLVED_FIXTURE),
+        UNRESOLVED_FIXTURE,
+    )
+
+    assert report["report_state"] == "orphans-detected"
+    assert report["orphan_names"] == ["unresolved_top"]
+    assert report["blocked_reasons"] == [
+        "unresolved dependencies for orphan candidate: missing_child"
+    ]
+    orphan = report["orphans"][0]
+    assert orphan["refactor_preflight_state"] == "blocked"
+    assert orphan["unresolved_dependencies"] == ["missing_child"]
+    assert orphan["blocked_reasons"] == [
+        "unresolved dependencies for orphan candidate: missing_child"
+    ]
 
 
 def test_build_module_depth_report_groups_hierarchy_levels():
@@ -1836,6 +1916,17 @@ def test_format_module_leaf_candidate_report_text_mentions_boundary():
     assert "read-only leaf report: no command argv" in text
 
 
+def test_format_module_orphan_candidate_report_text_mentions_boundary():
+    report = build_module_orphan_candidate_report(str(ORPHAN_FIXTURE), ORPHAN_FIXTURE)
+    text = format_module_orphan_candidate_report_text(report)
+
+    assert "module orphans: orphans-detected" in text
+    assert "1 orphan candidate" in text
+    assert "module orphan_mod (ready-for-review)" in text
+    assert "dependencies=none; dependents=none; unresolved=none" in text
+    assert "read-only orphan report: no command argv" in text
+
+
 def test_format_module_depth_report_text_mentions_boundary():
     report = build_module_depth_report(str(FIXTURE), FIXTURE)
     text = format_module_depth_report_text(report)
@@ -2333,6 +2424,29 @@ def test_cli_module_leaves_text():
     assert "module leaves: leaves-detected" in result.stdout
     assert "module leaf_mod (ready-for-review)" in result.stdout
     assert "read-only leaf report: no command argv" in result.stdout
+
+
+def test_cli_module_orphans_json():
+    result = _run_cli("module-orphans", str(ORPHAN_FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-orphan-candidate-report"
+    assert payload["report_state"] == "orphans-detected"
+    assert payload["orphan_names"] == ["orphan_mod"]
+    assert payload["orphans"][0]["direct_dependencies"] == []
+    assert payload["orphans"][0]["direct_dependents"] == []
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_orphans_text():
+    result = _run_cli("module-orphans", str(ORPHAN_FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module orphans: orphans-detected" in result.stdout
+    assert "module orphan_mod (ready-for-review)" in result.stdout
+    assert "read-only orphan report: no command argv" in result.stdout
 
 
 def test_cli_module_depths_json():
@@ -2995,6 +3109,12 @@ def test_cli_module_roots_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_module_orphans_missing_path_exits_nonzero():
+    result = _run_cli("module-orphans", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_cli_module_summary_missing_path_exits_nonzero():
     result = _run_cli("module-summary", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -3167,6 +3287,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "unresolved-instances <path>" in contract
     assert "module-roots <path>" in contract
     assert "module-leaves <path>" in contract
+    assert "module-orphans <path>" in contract
     assert "module-depths <path>" in contract
     assert "module-health <path>" in contract
     assert "module-summary <path>" in contract
@@ -3192,6 +3313,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-unresolved-instance-report" in workflow
     assert "module-root-candidate-report" in workflow
     assert "module-leaf-candidate-report" in workflow
+    assert "module-orphan-candidate-report" in workflow
     assert "module-depth-report" in workflow
     assert "module-graph-health-summary" in workflow
     assert "module-summary-view" in workflow
