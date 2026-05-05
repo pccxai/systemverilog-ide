@@ -130,6 +130,7 @@ python -m pccx_ide_cli hierarchy-cycles fixtures/organization/cyclic_hierarchy.s
 python -m pccx_ide_cli unresolved-instances fixtures/organization/unresolved_instances.sv --format text
 python -m pccx_ide_cli module-roots fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli module-leaves fixtures/organization/hierarchy_top.sv --format json
+python -m pccx_ide_cli module-depths fixtures/organization/hierarchy_top.sv --format json
 
 # Module header/port summary view (pre-stable, read-only)
 python -m pccx_ide_cli module-summary fixtures/organization/hierarchy_top.sv --format json
@@ -227,6 +228,8 @@ whose target module is not declared in the scanned input.
 module entry-point review.
 `module-leaves` reports scanner-detected leaf candidates for dependency-end
 organization review.
+`module-depths` groups scanner-detected hierarchy levels from root candidates
+for module organization review.
 `module-summary` renders conservative module header and port summaries
 for editor sidebars and reviewed refactoring planning. `port-usage`
 renders target port declarations with scanner-detected dependent
