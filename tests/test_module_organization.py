@@ -38,6 +38,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_leaf_candidate_report,
     build_module_orphan_candidate_report,
     build_module_organization_export,
+    build_module_order_report,
     build_module_path_report,
     build_module_port_usage_view,
     build_module_reachability_report,
@@ -76,6 +77,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_leaf_candidate_report_text,
     format_module_orphan_candidate_report_text,
     format_module_organization_text,
+    format_module_order_report_text,
     format_module_path_report_text,
     format_module_port_usage_text,
     format_module_reachability_report_text,
@@ -1146,6 +1148,117 @@ def test_build_module_reachability_report_blocks_when_no_modules_detected():
 
     assert report["report_state"] == "no-reachability-detected"
     assert report["reachable_module_count"] == 0
+    assert report["modules"] == []
+    assert report["blocked_reasons"] == ["no module declarations detected"]
+    assert report["next_required_action"] == "continue module organization review"
+
+
+def test_build_module_order_report_lists_dependency_first_order():
+    report = build_module_order_report(str(FANOUT_FIXTURE), FANOUT_FIXTURE)
+
+    assert report["kind"] == "module-order-report"
+    assert report["report_state"] == "order-detected"
+    assert report["module_count"] == 4
+    assert report["edge_count"] == 3
+    assert report["resolved_edge_count"] == 3
+    assert report["unresolved_edge_count"] == 0
+    assert report["ordered_module_count"] == 4
+    assert report["ready_module_count"] == 4
+    assert report["blocked_module_count"] == 0
+    assert report["cycle_module_count"] == 0
+    assert report["max_dependency_level"] == 2
+    assert report["order_direction"] == "dependency-first"
+    assert report["ordered_module_names"] == [
+        "fanout_child_b",
+        "fanout_leaf",
+        "fanout_child_a",
+        "fanout_top",
+    ]
+    assert report["blocked_reasons"] == []
+    assert report["next_required_action"] == (
+        "review scanner-detected dependency order before refactor planning"
+    )
+    modules = {module["name"]: module for module in report["modules"]}
+    assert modules["fanout_child_b"]["order_index"] == 1
+    assert modules["fanout_child_b"]["dependency_level"] == 0
+    assert modules["fanout_leaf"]["order_index"] == 2
+    assert modules["fanout_leaf"]["dependency_level"] == 0
+    assert modules["fanout_child_a"]["order_index"] == 3
+    assert modules["fanout_child_a"]["dependency_level"] == 1
+    top = modules["fanout_top"]
+    assert top["order_index"] == 4
+    assert top["dependency_level"] == 2
+    assert top["direct_dependencies"] == ["fanout_child_a", "fanout_child_b"]
+    assert top["direct_dependents"] == []
+    assert top["order_state"] == "ordered"
+    assert top["refactor_preflight_state"] == "ready-for-review"
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["order_report_only"] is True
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["applies_refactor"] is False
+    assert report["safety"]["generates_patch"] is False
+    assert report["safety"]["runs_validation"] is False
+    assert report["safety"]["runs_shell"] is False
+    assert report["safety"]["runs_build"] is False
+    assert report["safety"]["runs_compile"] is False
+    assert report["safety"]["invokes_pccx_lab"] is False
+    assert report["safety"]["invokes_launcher"] is False
+    assert report["safety"]["invokes_vendor_tools"] is False
+    assert report["safety"]["provider_calls"] is False
+    assert report["safety"]["hardware_access"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
+def test_build_module_order_report_marks_unresolved_edges_blocked():
+    report = build_module_order_report(str(UNRESOLVED_FIXTURE), UNRESOLVED_FIXTURE)
+
+    assert report["report_state"] == "blocked"
+    assert report["ordered_module_count"] == 1
+    assert report["ready_module_count"] == 0
+    assert report["blocked_module_count"] == 1
+    assert report["blocked_reasons"] == [
+        "unresolved dependencies for order report: missing_child"
+    ]
+    module = report["modules"][0]
+    assert module["name"] == "unresolved_top"
+    assert module["order_index"] == 1
+    assert module["order_state"] == "ordered-with-blockers"
+    assert module["unresolved_dependencies"] == ["missing_child"]
+    assert module["refactor_preflight_state"] == "blocked"
+    assert module["blocked_reasons"] == report["blocked_reasons"]
+    assert report["next_required_action"] == (
+        "resolve dependency order blockers before refactor planning"
+    )
+
+
+def test_build_module_order_report_blocks_cycles():
+    report = build_module_order_report(str(CYCLIC_FIXTURE), CYCLIC_FIXTURE)
+
+    assert report["report_state"] == "blocked"
+    assert report["ordered_module_count"] == 0
+    assert report["ready_module_count"] == 0
+    assert report["blocked_module_count"] == 2
+    assert report["cycle_module_names"] == ["alpha_mod", "beta_mod"]
+    assert report["cycle_module_count"] == 2
+    modules = {module["name"]: module for module in report["modules"]}
+    assert modules["alpha_mod"]["order_index"] is None
+    assert modules["alpha_mod"]["order_state"] == "blocked-cycle"
+    assert modules["alpha_mod"]["blocked_reasons"] == [
+        "cycle blocks dependency order: alpha_mod"
+    ]
+    assert modules["beta_mod"]["blocked_reasons"] == [
+        "cycle blocks dependency order: beta_mod"
+    ]
+
+
+def test_build_module_order_report_blocks_when_no_modules_detected():
+    empty_fixture = REPO_ROOT / "fixtures" / "empty.sv"
+    report = build_module_order_report(str(empty_fixture), empty_fixture)
+
+    assert report["report_state"] == "no-order-detected"
+    assert report["ordered_module_count"] == 0
     assert report["modules"] == []
     assert report["blocked_reasons"] == ["no module declarations detected"]
     assert report["next_required_action"] == "continue module organization review"
@@ -2453,6 +2566,20 @@ def test_format_module_reachability_report_text_mentions_boundary():
     assert "read-only reachability report: no command argv" in text
 
 
+def test_format_module_order_report_text_mentions_boundary():
+    report = build_module_order_report(str(FANOUT_FIXTURE), FANOUT_FIXTURE)
+    text = format_module_order_report_text(report)
+
+    assert "module order: order-detected" in text
+    assert "order direction: dependency-first" in text
+    assert "4 ordered modules" in text
+    assert "max dependency level: 2" in text
+    assert "order 4:" in text
+    assert "module fanout_top (ready-for-review)" in text
+    assert "dependencies=fanout_child_a, fanout_child_b" in text
+    assert "read-only order report: no command argv" in text
+
+
 def test_format_module_fanin_report_text_mentions_boundary():
     report = build_module_fanin_report(str(FANOUT_FIXTURE), FANOUT_FIXTURE)
     text = format_module_fanin_report_text(report)
@@ -3078,6 +3205,35 @@ def test_cli_module_reachability_text():
     assert "module reachability: reachability-detected" in result.stdout
     assert "module fanout_top (ready-for-review)" in result.stdout
     assert "read-only reachability report: no command argv" in result.stdout
+
+
+def test_cli_module_order_json():
+    result = _run_cli("module-order", str(FANOUT_FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-order-report"
+    assert payload["report_state"] == "order-detected"
+    assert payload["ordered_module_names"] == [
+        "fanout_child_b",
+        "fanout_leaf",
+        "fanout_child_a",
+        "fanout_top",
+    ]
+    assert payload["max_dependency_level"] == 2
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert payload["safety"]["runs_build"] is False
+    assert payload["safety"]["runs_compile"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_order_text():
+    result = _run_cli("module-order", str(FANOUT_FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module order: order-detected" in result.stdout
+    assert "module fanout_top (ready-for-review)" in result.stdout
+    assert "read-only order report: no command argv" in result.stdout
 
 
 def test_cli_module_fanout_json():
@@ -3798,6 +3954,12 @@ def test_cli_module_reachability_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_module_order_missing_path_exits_nonzero():
+    result = _run_cli("module-order", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_cli_module_fanout_missing_path_exits_nonzero():
     result = _run_cli("module-fanout", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
@@ -3987,6 +4149,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-paths <path>" in contract
     assert "module-edges <path>" in contract
     assert "module-reachability <path>" in contract
+    assert "module-order <path>" in contract
     assert "module-fanout <path>" in contract
     assert "module-fanin <path>" in contract
     assert "module-health <path>" in contract
@@ -4018,6 +4181,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-path-report" in workflow
     assert "module-edge-report" in workflow
     assert "module-reachability-report" in workflow
+    assert "module-order-report" in workflow
     assert "module-fanout-report" in workflow
     assert "module-fanin-report" in workflow
     assert "module-graph-health-summary" in workflow

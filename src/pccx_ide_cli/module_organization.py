@@ -231,6 +231,19 @@ MODULE_REACHABILITY_REPORT_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+MODULE_ORDER_REPORT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module dependency order report only",
+    "uses resolved direct instantiation edges from the organization scanner",
+    "reports dependency-first module review order only",
+    "single-line instantiation candidates only",
+    "unresolved instantiation candidates block order review readiness",
+    "cycles block complete dependency-first ordering",
+    "no build, compile, semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "does not apply refactors, write files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 MODULE_FANOUT_REPORT_LIMITATIONS: tuple[str, ...] = (
     "scanner-based module fanout report only",
     "uses resolved direct dependency edges from the organization scanner",
@@ -753,6 +766,30 @@ def _module_reachability_report_safety_flags() -> dict[str, bool]:
         "generates_patch": False,
         "runs_validation": False,
         "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _module_order_report_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "order_report_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "runs_build": False,
+        "runs_compile": False,
         "invokes_pccx_lab": False,
         "invokes_launcher": False,
         "invokes_vendor_tools": False,
@@ -3153,6 +3190,227 @@ def build_module_reachability_report(source: str, path: Path) -> dict[str, Any]:
         "report_state": report_state,
         "resolved_edge_count": resolved_edge_count,
         "safety": _module_reachability_report_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "unresolved_edge_count": len(hierarchy["edges"]) - resolved_edge_count,
+        "writes_files": False,
+    }
+
+
+def _module_order_rows(
+    modules: list[dict[str, Any]],
+    hierarchy: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    modules_by_name: dict[str, dict[str, Any]] = {}
+    declaration_counts: dict[str, int] = {}
+    for module in modules:
+        modules_by_name.setdefault(module["name"], module)
+        declaration_counts[module["name"]] = (
+            declaration_counts.get(module["name"], 0) + 1
+        )
+
+    module_names = sorted(modules_by_name)
+    dependencies_by_module: dict[str, set[str]] = {
+        name: set()
+        for name in module_names
+    }
+    dependents_by_module: dict[str, set[str]] = {
+        name: set()
+        for name in module_names
+    }
+    unresolved_by_module: dict[str, set[str]] = {
+        name: set()
+        for name in module_names
+    }
+
+    for edge in hierarchy["edges"]:
+        parent = edge["parent"]
+        child = edge["child"]
+        if parent not in modules_by_name:
+            continue
+        if edge["resolved"] and child in modules_by_name:
+            dependencies_by_module.setdefault(parent, set()).add(child)
+            dependents_by_module.setdefault(child, set()).add(parent)
+        elif not edge["resolved"]:
+            unresolved_by_module.setdefault(parent, set()).add(child)
+
+    remaining_dependency_count = {
+        name: len(dependencies_by_module.get(name, set()))
+        for name in module_names
+    }
+    dependency_levels = {
+        name: 0
+        for name in module_names
+    }
+    ready = sorted(
+        name
+        for name, count in remaining_dependency_count.items()
+        if count == 0
+    )
+    ordered_names: list[str] = []
+    while ready:
+        current = ready.pop(0)
+        ordered_names.append(current)
+        for dependent in sorted(dependents_by_module.get(current, set())):
+            remaining_dependency_count[dependent] -= 1
+            dependency_levels[dependent] = max(
+                dependency_levels[dependent],
+                dependency_levels[current] + 1,
+            )
+            if remaining_dependency_count[dependent] == 0:
+                ready.append(dependent)
+                ready.sort()
+
+    order_index_by_name = {
+        name: index
+        for index, name in enumerate(ordered_names, start=1)
+    }
+    cycle_names = sorted(
+        name
+        for name, count in remaining_dependency_count.items()
+        if count > 0
+    )
+
+    rows: list[dict[str, Any]] = []
+    for module_name in module_names:
+        module = modules_by_name[module_name]
+        direct_dependencies = sorted(dependencies_by_module.get(module_name, set()))
+        direct_dependents = sorted(dependents_by_module.get(module_name, set()))
+        unresolved_dependencies = sorted(unresolved_by_module.get(module_name, set()))
+        blocked_reasons: list[str] = []
+        if not module["complete"]:
+            blocked_reasons.append(f"module boundary is incomplete: {module_name}")
+        if declaration_counts[module_name] > 1:
+            blocked_reasons.append(f"ambiguous module name: {module_name}")
+        if unresolved_dependencies:
+            blocked_reasons.append(
+                "unresolved dependencies for order report: "
+                f"{', '.join(unresolved_dependencies)}"
+            )
+        if module_name in cycle_names:
+            blocked_reasons.append(
+                f"cycle blocks dependency order: {module_name}"
+            )
+        order_index = order_index_by_name.get(module_name)
+        if order_index is None:
+            order_state = "blocked-cycle"
+        elif blocked_reasons:
+            order_state = "ordered-with-blockers"
+        else:
+            order_state = "ordered"
+        rows.append({
+            "blocked_reasons": blocked_reasons,
+            "complete": module["complete"],
+            "declaration_count": declaration_counts[module_name],
+            "dependency_level": (
+                dependency_levels[module_name]
+                if order_index is not None
+                else None
+            ),
+            "direct_dependencies": direct_dependencies,
+            "direct_dependency_count": len(direct_dependencies),
+            "direct_dependents": direct_dependents,
+            "direct_dependent_count": len(direct_dependents),
+            "file": module["file"],
+            "name": module_name,
+            "order_index": order_index,
+            "order_state": order_state,
+            "reason": "scanner-detected dependency-first module order",
+            "refactor_preflight_state": (
+                "blocked" if blocked_reasons else "ready-for-review"
+            ),
+            "start_column": module["start_column"],
+            "start_line": module["start_line"],
+            "unresolved_dependencies": unresolved_dependencies,
+            "unresolved_dependency_count": len(unresolved_dependencies),
+        })
+
+    rows.sort(key=lambda row: (
+        row["order_index"] is None,
+        row["order_index"] or 0,
+        row["name"],
+    ))
+    return rows, cycle_names
+
+
+def build_module_order_report(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    resolved_edge_count = len([
+        edge
+        for edge in hierarchy["edges"]
+        if edge["resolved"]
+    ])
+    rows, cycle_names = _module_order_rows(modules, hierarchy)
+    ordered_rows = [
+        row
+        for row in rows
+        if row["order_index"] is not None
+    ]
+    ready_rows = [
+        row
+        for row in ordered_rows
+        if not row["blocked_reasons"]
+    ]
+    blocked_rows = [
+        row
+        for row in rows
+        if row["blocked_reasons"]
+    ]
+    blocked_reasons = list(dict.fromkeys([
+        reason
+        for row in blocked_rows
+        for reason in row["blocked_reasons"]
+    ]))
+    if not modules:
+        blocked_reasons.append("no module declarations detected")
+
+    if blocked_rows and ready_rows:
+        report_state = "order-detected-with-blockers"
+    elif blocked_rows:
+        report_state = "blocked"
+    elif ordered_rows:
+        report_state = "order-detected"
+    else:
+        report_state = "no-order-detected"
+
+    return {
+        "blocked_module_count": len(blocked_rows),
+        "blocked_reasons": blocked_reasons,
+        "cycle_module_count": len(cycle_names),
+        "cycle_module_names": cycle_names,
+        "edge_count": len(hierarchy["edges"]),
+        "kind": "module-order-report",
+        "limitations": list(MODULE_ORDER_REPORT_LIMITATIONS),
+        "max_dependency_level": max(
+            (
+                row["dependency_level"]
+                for row in ordered_rows
+                if row["dependency_level"] is not None
+            ),
+            default=0,
+        ),
+        "module_count": len(modules),
+        "modules": rows,
+        "next_required_action": (
+            "resolve dependency order blockers before refactor planning"
+            if blocked_rows
+            else "review scanner-detected dependency order before refactor planning"
+            if ordered_rows
+            else "continue module organization review"
+        ),
+        "order_direction": "dependency-first",
+        "ordered_module_count": len(ordered_rows),
+        "ordered_module_names": [
+            row["name"]
+            for row in ordered_rows
+        ],
+        "ready_module_count": len(ready_rows),
+        "report_state": report_state,
+        "resolved_edge_count": resolved_edge_count,
+        "safety": _module_order_report_safety_flags(),
         "scanner": "line-scanner",
         "source": source,
         "tool": "pccx-ide-cli",
@@ -6397,6 +6655,58 @@ def format_module_reachability_report_text(report: dict[str, Any]) -> str:
         "read-only reachability report: no command argv, validation, shell, "
         "refactor, patch, file write, lab, launcher, vendor tool, provider, "
         "or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_order_report_text(report: dict[str, Any]) -> str:
+    lines = [
+        f"source: {report['source']}",
+        f"module order: {report['report_state']}",
+        f"order direction: {report['order_direction']}",
+        f"{report['module_count']} module"
+        f"{'s' if report['module_count'] != 1 else ''}",
+        f"{report['ordered_module_count']} ordered module"
+        f"{'s' if report['ordered_module_count'] != 1 else ''}",
+        f"max dependency level: {report['max_dependency_level']}",
+    ]
+    if not report["modules"]:
+        lines.append("modules: none")
+    for module in report["modules"]:
+        dependencies = ", ".join(module["direct_dependencies"]) or "none"
+        dependents = ", ".join(module["direct_dependents"]) or "none"
+        unresolved = ", ".join(module["unresolved_dependencies"]) or "none"
+        order_index = (
+            str(module["order_index"])
+            if module["order_index"] is not None
+            else "blocked"
+        )
+        dependency_level = (
+            str(module["dependency_level"])
+            if module["dependency_level"] is not None
+            else "blocked"
+        )
+        lines.append(
+            f"order {order_index}: {module['file']}:{module['start_line']}: "
+            f"module {module['name']} ({module['refactor_preflight_state']})"
+        )
+        lines.append(
+            f"  dependency_level={dependency_level}; "
+            f"state={module['order_state']}; reason={module['reason']}"
+        )
+        lines.append(
+            f"  dependencies={dependencies}; dependents={dependents}; "
+            f"unresolved={unresolved}"
+        )
+        for reason in module["blocked_reasons"]:
+            lines.append(f"  blocked: {reason}")
+    for reason in report["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next: {report['next_required_action']}")
+    lines.append(
+        "read-only order report: no command argv, validation, shell, build, "
+        "compile, refactor, patch, file write, lab, launcher, vendor tool, "
+        "provider, or hardware execution"
     )
     return "\n".join(lines) + "\n"
 
