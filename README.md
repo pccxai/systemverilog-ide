@@ -131,6 +131,7 @@ python -m pccx_ide_cli unresolved-instances fixtures/organization/unresolved_ins
 python -m pccx_ide_cli module-roots fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli module-leaves fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli module-depths fixtures/organization/hierarchy_top.sv --format json
+python -m pccx_ide_cli module-health fixtures/organization/hierarchy_top.sv --format json
 
 # Module header/port summary view (pre-stable, read-only)
 python -m pccx_ide_cli module-summary fixtures/organization/hierarchy_top.sv --format json
@@ -230,6 +231,9 @@ module entry-point review.
 organization review.
 `module-depths` groups scanner-detected hierarchy levels from root candidates
 for module organization review.
+`module-health` combines scanner-detected root, leaf, depth, cycle,
+unresolved-instance, and duplicate-name signals into a read-only module graph
+health summary for editor status panes.
 `module-summary` renders conservative module header and port summaries
 for editor sidebars and reviewed refactoring planning. `port-usage`
 renders target port declarations with scanner-detected dependent

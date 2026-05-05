@@ -185,6 +185,16 @@ MODULE_DEPTH_REPORT_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+MODULE_GRAPH_HEALTH_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module graph health summary only",
+    "combines root, leaf, depth, cycle, unresolved-instance, and duplicate-name signals",
+    "single-line instantiation candidates only",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "does not apply refactors, write files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 MODULE_SUMMARY_LIMITATIONS: tuple[str, ...] = (
     "scanner-based module header and port summary data only",
     "ANSI-style port declarations are detected conservatively",
@@ -579,6 +589,34 @@ def _module_depth_report_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "depth_report_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _module_graph_health_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "graph_health_summary_only": True,
+        "combines_root_candidate_report": True,
+        "combines_leaf_candidate_report": True,
+        "combines_depth_report": True,
+        "combines_cycle_report": True,
+        "combines_unresolved_instance_report": True,
+        "combines_duplicate_report": True,
         "emits_command_descriptors": False,
         "writes_files": False,
         "moves_files": False,
@@ -2214,6 +2252,177 @@ def build_module_depth_report(source: str, path: Path) -> dict[str, Any]:
         "unplaced_module_count": len(unplaced_names),
         "unplaced_module_names": unplaced_names,
         "unresolved_edge_count": len(hierarchy["edges"]) - resolved_edge_count,
+        "writes_files": False,
+    }
+
+
+def _module_graph_health_cards(
+    *,
+    complete_module_count: int,
+    incomplete_module_count: int,
+    roots: list[dict[str, Any]],
+    leaves: list[dict[str, Any]],
+    levels: list[dict[str, Any]],
+    cycles: list[dict[str, Any]],
+    unresolved_instances: list[dict[str, Any]],
+    duplicates: list[dict[str, Any]],
+    unplaced_names: list[str],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "card_id": "boundary-completeness",
+            "complete_module_count": complete_module_count,
+            "incomplete_module_count": incomplete_module_count,
+            "required": True,
+            "status": (
+                "complete" if incomplete_module_count == 0 else "blocked"
+            ),
+        },
+        {
+            "card_id": "root-candidates",
+            "root_count": len(roots),
+            "required": True,
+            "status": "roots-detected" if roots else "no-roots-detected",
+        },
+        {
+            "card_id": "leaf-candidates",
+            "leaf_count": len(leaves),
+            "required": True,
+            "status": "leaves-detected" if leaves else "no-leaves-detected",
+        },
+        {
+            "card_id": "depth-levels",
+            "depth_count": len(levels),
+            "required": True,
+            "status": "depths-detected" if levels else "no-depths-detected",
+            "unplaced_module_count": len(unplaced_names),
+        },
+        {
+            "card_id": "hierarchy-cycles",
+            "cycle_count": len(cycles),
+            "required": True,
+            "status": "cycles-detected" if cycles else "no-cycles-detected",
+        },
+        {
+            "card_id": "unresolved-instances",
+            "required": True,
+            "status": (
+                "unresolved-instances-detected"
+                if unresolved_instances
+                else "no-unresolved-instances-detected"
+            ),
+            "unresolved_instance_count": len(unresolved_instances),
+        },
+        {
+            "card_id": "duplicate-modules",
+            "duplicate_name_count": len(duplicates),
+            "required": True,
+            "status": (
+                "duplicates-detected"
+                if duplicates
+                else "no-duplicates-detected"
+            ),
+        },
+    ]
+
+
+def _module_graph_health_next_action(
+    modules: list[dict[str, Any]],
+    blocked_reasons: list[str],
+) -> str:
+    if not modules:
+        return "add module declarations before module graph health review"
+    if blocked_reasons:
+        return "resolve scanner-detected module graph blockers before refactor planning"
+    return "continue module organization and refactor readiness review"
+
+
+def build_module_graph_health_summary(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    resolved_edge_count = len([
+        edge
+        for edge in hierarchy["edges"]
+        if edge["resolved"]
+    ])
+    roots = _module_root_rows(modules, hierarchy)
+    leaves = _module_leaf_rows(modules, hierarchy)
+    levels, depth_modules, unplaced_names = _module_depth_rows(modules, hierarchy)
+    cycles = _hierarchy_cycle_rows(hierarchy)
+    unresolved_instances = _unresolved_instance_rows(hierarchy)
+    duplicates = _module_duplicate_rows(modules)
+    incomplete_modules = [
+        module
+        for module in modules
+        if not module["complete"]
+    ]
+
+    blocked_reasons: list[str] = []
+    if not modules:
+        blocked_reasons.append("no module declarations detected")
+    for module in incomplete_modules:
+        blocked_reasons.append(f"module boundary is incomplete: {module['name']}")
+    for duplicate in duplicates:
+        blocked_reasons.append(duplicate["reason"])
+    for cycle in cycles:
+        blocked_reasons.append(f"scanner-detected hierarchy cycle: {cycle['summary']}")
+    for instance in unresolved_instances:
+        blocked_reasons.append(instance["reason"])
+    if modules and not roots:
+        blocked_reasons.append("no root candidates detected")
+    if modules and not leaves:
+        blocked_reasons.append("no leaf candidates detected")
+    if unplaced_names:
+        blocked_reasons.append(f"unplaced modules: {', '.join(unplaced_names)}")
+    for module in depth_modules:
+        blocked_reasons.extend(module["blocked_reasons"])
+    blocked_reasons = list(dict.fromkeys(blocked_reasons))
+
+    ready = bool(modules) and not blocked_reasons
+    complete_module_count = len(modules) - len(incomplete_modules)
+
+    return {
+        "blocked_reasons": blocked_reasons,
+        "complete_module_count": complete_module_count,
+        "duplicate_name_count": len(duplicates),
+        "duplicate_names": [duplicate["name"] for duplicate in duplicates],
+        "edge_count": len(hierarchy["edges"]),
+        "health_cards": _module_graph_health_cards(
+            complete_module_count=complete_module_count,
+            incomplete_module_count=len(incomplete_modules),
+            roots=roots,
+            leaves=leaves,
+            levels=levels,
+            cycles=cycles,
+            unresolved_instances=unresolved_instances,
+            duplicates=duplicates,
+            unplaced_names=unplaced_names,
+        ),
+        "health_state": "ready-for-review" if ready else "blocked",
+        "incomplete_module_count": len(incomplete_modules),
+        "kind": "module-graph-health-summary",
+        "leaf_count": len(leaves),
+        "leaf_names": [leaf["name"] for leaf in leaves],
+        "limitations": list(MODULE_GRAPH_HEALTH_LIMITATIONS),
+        "max_depth": max((level["depth"] for level in levels), default=None),
+        "module_count": len(modules),
+        "next_required_action": _module_graph_health_next_action(
+            modules,
+            blocked_reasons,
+        ),
+        "ready_for_review": ready,
+        "resolved_edge_count": resolved_edge_count,
+        "root_count": len(roots),
+        "root_names": [root["name"] for root in roots],
+        "safety": _module_graph_health_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "unplaced_module_count": len(unplaced_names),
+        "unplaced_module_names": unplaced_names,
+        "unresolved_edge_count": len(hierarchy["edges"]) - resolved_edge_count,
+        "unresolved_instance_count": len(unresolved_instances),
         "writes_files": False,
     }
 
@@ -4815,6 +5024,54 @@ def format_module_depth_report_text(report: dict[str, Any]) -> str:
     lines.append(f"next: {report['next_required_action']}")
     lines.append(
         "read-only depth report: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_graph_health_summary_text(report: dict[str, Any]) -> str:
+    max_depth = report["max_depth"] if report["max_depth"] is not None else "none"
+    ready = "yes" if report["ready_for_review"] else "no"
+    root_label = "root" if report["root_count"] == 1 else "roots"
+    leaf_label = "leaf" if report["leaf_count"] == 1 else "leaves"
+    lines = [
+        f"source: {report['source']}",
+        f"module graph health: {report['health_state']}",
+        f"ready for review: {ready}",
+        f"{report['module_count']} module"
+        f"{'s' if report['module_count'] != 1 else ''}",
+        (
+            f"{report['root_count']} {root_label}; "
+            f"{report['leaf_count']} {leaf_label}; "
+            f"max depth: {max_depth}"
+        ),
+        (
+            f"{report['resolved_edge_count']} resolved edge"
+            f"{'s' if report['resolved_edge_count'] != 1 else ''}; "
+            f"{report['unresolved_edge_count']} unresolved"
+        ),
+        (
+            f"{report['duplicate_name_count']} duplicate name"
+            f"{'s' if report['duplicate_name_count'] != 1 else ''}; "
+            f"{report['unresolved_instance_count']} unresolved instance"
+            f"{'s' if report['unresolved_instance_count'] != 1 else ''}; "
+            f"{report['unplaced_module_count']} unplaced"
+        ),
+    ]
+    for card in report["health_cards"]:
+        lines.append(f"status: {card['card_id']} ({card['status']})")
+    if report["root_names"]:
+        lines.append(f"roots: {', '.join(report['root_names'])}")
+    if report["leaf_names"]:
+        lines.append(f"leaves: {', '.join(report['leaf_names'])}")
+    if report["unplaced_module_names"]:
+        lines.append(f"unplaced modules: {', '.join(report['unplaced_module_names'])}")
+    for reason in report["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next: {report['next_required_action']}")
+    lines.append(
+        "read-only graph health summary: no command argv, validation, shell, "
         "refactor, patch, file write, lab, launcher, vendor tool, provider, "
         "or hardware execution"
     )

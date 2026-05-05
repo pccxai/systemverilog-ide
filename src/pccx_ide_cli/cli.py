@@ -338,6 +338,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    module_health_cmd = sub.add_parser(
+        "module-health",
+        help=(
+            "Render a scanner-based read-only module graph health summary."
+        ),
+    )
+    module_health_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    module_health_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     module_summary_cmd = sub.add_parser(
         "module-summary",
         help=(
@@ -1349,6 +1367,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_module_depth_report_text(report))
+        return 0
+
+    if args.command == "module-health":
+        from .module_organization import (
+            build_module_graph_health_summary,
+            format_module_graph_health_summary_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        summary = build_module_graph_health_summary(str(args.path), args.path)
+        if args.format == "json":
+            json.dump(summary, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_module_graph_health_summary_text(summary))
         return 0
 
     if args.command == "module-summary":

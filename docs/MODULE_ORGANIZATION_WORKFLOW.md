@@ -5,7 +5,7 @@
 This is a pre-stable, scanner-based workflow for organizing modular RTL
 projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 `hierarchy-cycles`, `unresolved-instances`, `module-roots`, `module-leaves`,
-`module-depths`, `module-summary`, `boundary-audit`, `module-duplicates`,
+`module-depths`, `module-health`, `module-summary`, `boundary-audit`, `module-duplicates`,
 `refactor-candidates`, `port-usage`, `module-context`, `refactor-impact`,
 `validation-plan`, `refactor-review`, `refactor-approval`,
 `refactor-application`, `refactor-result`, `refactor-handoff`,
@@ -14,6 +14,7 @@ projects. It adds read-only `organization`, `hierarchy`, `dependencies`,
 scanner-based hierarchy data, direct dependency impact data, hierarchy cycle
 report metadata, unresolved instantiation report metadata, root-candidate
 report metadata, leaf-candidate report metadata, depth-level report metadata,
+module graph health summary metadata,
 conservative module header/port summaries, duplicate-name report metadata,
 target port usage summaries, target module context bundles, target-specific
 refactor impact data, boundary audit data, refactor
@@ -45,6 +46,8 @@ python -m pccx_ide_cli module-leaves <path> --format json
 python -m pccx_ide_cli module-leaves <path> --format text
 python -m pccx_ide_cli module-depths <path> --format json
 python -m pccx_ide_cli module-depths <path> --format text
+python -m pccx_ide_cli module-health <path> --format json
+python -m pccx_ide_cli module-health <path> --format text
 python -m pccx_ide_cli module-summary <path> --format json
 python -m pccx_ide_cli module-summary <path> --format text
 python -m pccx_ide_cli boundary-audit <path> --format json
@@ -358,6 +361,47 @@ root candidates:
 The depth report is display data only. It does not write files, apply
 refactors, generate patches, run validation, execute shell commands, emit
 command argv, invoke `pccx-lab`, invoke the launcher, call providers, touch
+hardware, upload telemetry, or perform automatic repository actions.
+
+The module graph health summary combines scanner-detected root, leaf, depth,
+cycle, unresolved-instantiation, and duplicate-name signals for editor status
+panes:
+
+```json
+{
+  "kind": "module-graph-health-summary",
+  "tool": "pccx-ide-cli",
+  "scanner": "line-scanner",
+  "source": "<path passed on CLI>",
+  "health_state": "ready-for-review",
+  "ready_for_review": true,
+  "root_names": ["top_mod"],
+  "leaf_names": ["leaf_mod"],
+  "max_depth": 1,
+  "health_cards": [
+    {
+      "card_id": "root-candidates",
+      "status": "roots-detected"
+    },
+    {
+      "card_id": "hierarchy-cycles",
+      "status": "no-cycles-detected"
+    }
+  ],
+  "safety": {
+    "read_only": true,
+    "graph_health_summary_only": true,
+    "writes_files": false,
+    "emits_command_descriptors": false,
+    "runs_validation": false
+  },
+  "limitations": []
+}
+```
+
+The module graph health summary is display data only. It does not write files,
+apply refactors, generate patches, run validation, execute shell commands,
+emit command argv, invoke `pccx-lab`, invoke the launcher, call providers, touch
 hardware, upload telemetry, or perform automatic repository actions.
 
 The module summary view reports conservative scanner-detected module
