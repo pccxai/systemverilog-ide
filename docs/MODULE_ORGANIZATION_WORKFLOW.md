@@ -36,6 +36,8 @@ python -m pccx_ide_cli boundary-audit <path> --format json
 python -m pccx_ide_cli boundary-audit <path> --format text
 python -m pccx_ide_cli refactor-candidates <path> --format json
 python -m pccx_ide_cli refactor-candidates <path> --format text
+python -m pccx_ide_cli refactor-readiness <path> --format json
+python -m pccx_ide_cli refactor-readiness <path> --format text
 python -m pccx_ide_cli port-usage <path> --module <name> --format json
 python -m pccx_ide_cli port-usage <path> --module <name> --format text
 python -m pccx_ide_cli module-context <path> --module <name> --format json
@@ -473,8 +475,34 @@ The `module-context` command bundles target summary, dependency,
 port-usage, and refactor-impact review data for editor context panes.
 The `refactor-candidates` command lists scanner-detected modules and
 proposal-only helper action metadata for editor action menus.
+The `refactor-readiness` command emits summary-only readiness metadata over
+the boundary audit and candidate list so editor status panes can show whether
+proposal-only refactor requests are ready to review.
 These commands do not run elaboration, expand macros, interpret generate
 blocks, or replace vendor tooling.
+
+The readiness envelope uses:
+
+```json
+{
+  "kind": "module-refactor-readiness-summary",
+  "readiness_state": "ready-for-request",
+  "ready_for_request": true,
+  "writes_files": false,
+  "safety": {
+    "read_only": true,
+    "readiness_summary_only": true,
+    "emits_command_descriptors": false,
+    "writes_files": false,
+    "runs_validation": false
+  }
+}
+```
+
+It is not a proposal, approval, validation runner, or write path. It does not
+capture requested inputs, select an action, emit command argv, run shell
+commands, invoke `pccx-lab`, invoke the launcher, call providers, touch
+hardware, upload telemetry, or perform automatic repository actions.
 
 ## Module Header And Port Summary
 

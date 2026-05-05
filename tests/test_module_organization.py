@@ -34,6 +34,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_refactor_handoff_summary,
     build_refactor_impact_view,
     build_refactor_proposal,
+    build_refactor_readiness_summary,
     build_refactor_review_packet,
     build_refactor_session_status,
     build_refactor_validation_plan,
@@ -53,6 +54,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_refactor_candidate_list_text,
     format_refactor_impact_text,
     format_refactor_proposal_text,
+    format_refactor_readiness_summary_text,
     format_refactor_review_packet_text,
     format_refactor_validation_plan_text,
 )
@@ -234,6 +236,65 @@ def test_build_refactor_candidate_list_blocks_incomplete_boundaries():
         for action in candidate["actions"]
     )
     assert candidates["writes_files"] is False
+
+
+def test_build_refactor_readiness_summary_reports_request_readiness():
+    summary = build_refactor_readiness_summary(str(FIXTURE), FIXTURE)
+
+    assert summary["kind"] == "module-refactor-readiness-summary"
+    assert summary["readiness_state"] == "ready-for-request"
+    assert summary["ready_for_request"] is True
+    assert summary["module_count"] == 2
+    assert summary["complete_module_count"] == 2
+    assert summary["incomplete_module_count"] == 0
+    assert summary["ready_module_count"] == 2
+    assert summary["blocked_module_count"] == 0
+    assert summary["blocked_reasons"] == []
+    assert summary["next_required_action"] == (
+        "choose a proposal-only refactor action and create a reviewed refactor-plan"
+    )
+    assert [card["card_id"] for card in summary["status_cards"]] == [
+        "boundary-audit",
+        "candidate-list",
+    ]
+    assert summary["safety"]["read_only"] is True
+    assert summary["safety"]["readiness_summary_only"] is True
+    assert summary["safety"]["combines_boundary_audit"] is True
+    assert summary["safety"]["combines_candidate_list"] is True
+    assert summary["safety"]["selects_refactor_action"] is False
+    assert summary["safety"]["captures_requested_inputs"] is False
+    assert summary["safety"]["emits_command_descriptors"] is False
+    assert summary["safety"]["writes_files"] is False
+    assert summary["safety"]["applies_refactor"] is False
+    assert summary["safety"]["runs_validation"] is False
+    assert summary["safety"]["runs_shell"] is False
+    assert summary["safety"]["invokes_pccx_lab"] is False
+    assert summary["safety"]["invokes_launcher"] is False
+    assert summary["safety"]["hardware_access"] is False
+    assert '"argv"' not in json.dumps(summary)
+
+
+def test_build_refactor_readiness_summary_blocks_incomplete_boundaries():
+    summary = build_refactor_readiness_summary(
+        str(INCOMPLETE_FIXTURE),
+        INCOMPLETE_FIXTURE,
+    )
+
+    assert summary["readiness_state"] == "blocked"
+    assert summary["ready_for_request"] is False
+    assert summary["module_count"] == 1
+    assert summary["complete_module_count"] == 0
+    assert summary["incomplete_module_count"] == 1
+    assert summary["ready_module_count"] == 0
+    assert summary["blocked_module_count"] == 1
+    assert summary["blocked_reasons"] == [
+        "missing endmodule for module: bad_module",
+        "module boundary is incomplete: bad_module",
+    ]
+    assert summary["next_required_action"] == (
+        "resolve scanner boundary blockers before requesting refactor plans"
+    )
+    assert summary["writes_files"] is False
 
 
 def test_build_module_hierarchy_view_tree_is_read_only():
@@ -1486,6 +1547,34 @@ def test_cli_refactor_candidates_text():
     assert "read-only candidate metadata: no command argv" in result.stdout
 
 
+def test_cli_refactor_readiness_json():
+    result = _run_cli("refactor-readiness", str(FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-refactor-readiness-summary"
+    assert payload["readiness_state"] == "ready-for-request"
+    assert payload["ready_for_request"] is True
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_refactor_readiness_text():
+    result = _run_cli(
+        "refactor-readiness",
+        str(INCOMPLETE_FIXTURE),
+        "--format",
+        "text",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "refactor readiness: blocked" in result.stdout
+    assert "ready for request: no" in result.stdout
+    assert "blocked: missing endmodule for module: bad_module" in result.stdout
+    assert "blocked: module boundary is incomplete: bad_module" in result.stdout
+    assert "summary-only readiness: no command argv" in result.stdout
+
+
 def test_cli_hierarchy_json():
     result = _run_cli("hierarchy", str(FIXTURE), "--format", "json")
     assert result.returncode == 0, result.stderr
@@ -2271,6 +2360,7 @@ def test_docs_cover_organization_flow_and_limits():
     workflow = WORKFLOW_DOC.read_text(encoding="utf-8")
     assert "organization <path>" in contract
     assert "boundary-audit <path>" in contract
+    assert "refactor-readiness <path>" in contract
     assert "hierarchy <path>" in contract
     assert "dependencies <path>" in contract
     assert "module-summary <path>" in contract
@@ -2288,6 +2378,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "MODULE_ORGANIZATION_WORKFLOW.md" in contract
     assert "proposal-only" in workflow
     assert "module-boundary-audit" in workflow
+    assert "module-refactor-readiness-summary" in workflow
     assert "module-hierarchy-view" in workflow
     assert "module-dependency-view" in workflow
     assert "module-summary-view" in workflow
@@ -2311,5 +2402,6 @@ def test_docs_cover_organization_flow_and_limits():
     assert "refactor checklist metadata" in workflow
     assert "refactor session status metadata" in workflow
     assert "boundary audit data" in workflow
+    assert "readiness metadata" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow

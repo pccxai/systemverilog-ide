@@ -96,6 +96,15 @@ REFACTOR_CANDIDATE_LIST_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+REFACTOR_READINESS_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based refactor readiness summary only",
+    "combines module boundary audit and refactor candidate counts for editor status panes",
+    "does not include command argv or select a refactor action",
+    "does not apply refactors, write files, move files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 HIERARCHY_VIEW_LIMITATIONS: tuple[str, ...] = (
     "scanner-based hierarchy visualization data only",
     "single-line instantiation candidates only",
@@ -315,6 +324,36 @@ def _refactor_candidate_safety_flags() -> dict[str, bool]:
         "read_only": True,
         "candidate_metadata_only": True,
         "action_enablement_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _refactor_readiness_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "readiness_summary_only": True,
+        "combines_boundary_audit": True,
+        "combines_candidate_list": True,
+        "selects_refactor_action": False,
+        "captures_requested_inputs": False,
+        "proposal_created": False,
+        "approval_granted": False,
+        "request_accepted": False,
+        "write_attempted": False,
         "emits_command_descriptors": False,
         "writes_files": False,
         "moves_files": False,
@@ -1028,6 +1067,78 @@ def build_refactor_candidate_list(source: str, path: Path) -> dict[str, Any]:
         "scanner": "line-scanner",
         "source": source,
         "tool": "pccx-ide-cli",
+        "writes_files": False,
+    }
+
+
+def _readiness_status_cards(
+    audit: dict[str, Any],
+    candidates: dict[str, Any],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "card_id": "boundary-audit",
+            "kind": audit["kind"],
+            "status": audit["refactor_readiness"],
+            "complete_module_count": audit["complete_module_count"],
+            "incomplete_module_count": audit["incomplete_module_count"],
+            "required": True,
+        },
+        {
+            "card_id": "candidate-list",
+            "kind": candidates["kind"],
+            "status": candidates["candidate_state"],
+            "ready_module_count": candidates["ready_module_count"],
+            "blocked_module_count": candidates["blocked_module_count"],
+            "required": True,
+        },
+    ]
+
+
+def _refactor_readiness_next_action(
+    audit: dict[str, Any],
+    candidates: dict[str, Any],
+) -> str:
+    if candidates["candidate_count"] == 0:
+        return "add module declarations before refactor readiness review"
+    if audit["incomplete_module_count"] > 0 or candidates["blocked_module_count"] > 0:
+        return "resolve scanner boundary blockers before requesting refactor plans"
+    return "choose a proposal-only refactor action and create a reviewed refactor-plan"
+
+
+def build_refactor_readiness_summary(source: str, path: Path) -> dict[str, Any]:
+    audit = build_module_boundary_audit(source, path)
+    candidates = build_refactor_candidate_list(source, path)
+    blocked_reasons = list(dict.fromkeys([
+        *audit["blocked_reasons"],
+        *candidates["blocked_reasons"],
+    ]))
+    ready = (
+        candidates["candidate_count"] > 0
+        and audit["incomplete_module_count"] == 0
+        and candidates["blocked_module_count"] == 0
+    )
+
+    return {
+        "blocked_reasons": blocked_reasons,
+        "candidate_count": candidates["candidate_count"],
+        "complete_module_count": audit["complete_module_count"],
+        "hierarchy_edge_count": audit["hierarchy_edge_count"],
+        "incomplete_module_count": audit["incomplete_module_count"],
+        "kind": "module-refactor-readiness-summary",
+        "limitations": list(REFACTOR_READINESS_LIMITATIONS),
+        "module_count": audit["module_count"],
+        "next_required_action": _refactor_readiness_next_action(audit, candidates),
+        "ready_for_request": ready,
+        "ready_module_count": candidates["ready_module_count"],
+        "blocked_module_count": candidates["blocked_module_count"],
+        "readiness_state": "ready-for-request" if ready else "blocked",
+        "safety": _refactor_readiness_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "status_cards": _readiness_status_cards(audit, candidates),
+        "tool": "pccx-ide-cli",
+        "unresolved_dependency_count": audit["unresolved_dependency_count"],
         "writes_files": False,
     }
 
@@ -3533,6 +3644,43 @@ def format_refactor_candidate_list_text(candidates: dict[str, Any]) -> str:
         "read-only candidate metadata: no command argv, file writes, "
         "refactors, validation, shell, lab, launcher, vendor tool, provider, "
         "or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_refactor_readiness_summary_text(summary: dict[str, Any]) -> str:
+    ready = "yes" if summary["ready_for_request"] else "no"
+    lines = [
+        f"source: {summary['source']}",
+        f"refactor readiness: {summary['readiness_state']}",
+        f"ready for request: {ready}",
+        "writes files: no",
+        (
+            f"{summary['module_count']} module"
+            f"{'s' if summary['module_count'] != 1 else ''}; "
+            f"{summary['complete_module_count']} complete; "
+            f"{summary['incomplete_module_count']} incomplete"
+        ),
+        (
+            f"{summary['ready_module_count']} ready candidate"
+            f"{'s' if summary['ready_module_count'] != 1 else ''}; "
+            f"{summary['blocked_module_count']} blocked"
+        ),
+        (
+            f"{summary['hierarchy_edge_count']} hierarchy edge"
+            f"{'s' if summary['hierarchy_edge_count'] != 1 else ''}; "
+            f"{summary['unresolved_dependency_count']} unresolved"
+        ),
+    ]
+    for card in summary["status_cards"]:
+        lines.append(f"status: {card['card_id']} ({card['status']})")
+    for reason in summary["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next step: {summary['next_required_action']}")
+    lines.append(
+        "summary-only readiness: no command argv, requested input capture, "
+        "proposal creation, approval, validation, shell, refactor, patch, "
+        "file write, lab, launcher, vendor tool, provider, or hardware execution"
     )
     return "\n".join(lines) + "\n"
 
