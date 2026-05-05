@@ -374,6 +374,25 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    module_edges_cmd = sub.add_parser(
+        "module-edges",
+        help=(
+            "Render scanner-based read-only direct module dependency edge "
+            "report data."
+        ),
+    )
+    module_edges_cmd.add_argument(
+        "path",
+        type=Path,
+        help="Path to a .sv/.v file or a directory to scan recursively.",
+    )
+    module_edges_cmd.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format (default: json).",
+    )
+
     module_fanout_cmd = sub.add_parser(
         "module-fanout",
         help=(
@@ -1475,6 +1494,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write("\n")
         else:
             sys.stdout.write(format_module_path_report_text(report))
+        return 0
+
+    if args.command == "module-edges":
+        from .module_organization import (
+            build_module_edge_report,
+            format_module_edge_report_text,
+        )
+
+        if not args.path.exists():
+            sys.stderr.write(f"error: path does not exist: {args.path}\n")
+            return 2
+
+        report = build_module_edge_report(str(args.path), args.path)
+        if args.format == "json":
+            json.dump(report, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_module_edge_report_text(report))
         return 0
 
     if args.command == "module-fanout":

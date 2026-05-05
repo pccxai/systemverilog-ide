@@ -208,6 +208,17 @@ MODULE_PATH_REPORT_LIMITATIONS: tuple[str, ...] = (
     "pre-stable JSON shape",
 )
 
+MODULE_EDGE_REPORT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based module dependency edge report only",
+    "uses resolved and unresolved direct instantiation edges from the organization scanner",
+    "single-line instantiation candidates only",
+    "unresolved instantiation candidates are listed but not resolved",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "does not apply refactors, write files, generate patches, or run validation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
 MODULE_FANOUT_REPORT_LIMITATIONS: tuple[str, ...] = (
     "scanner-based module fanout report only",
     "uses resolved direct dependency edges from the organization scanner",
@@ -678,6 +689,28 @@ def _module_path_report_safety_flags() -> dict[str, bool]:
     return {
         "read_only": True,
         "path_report_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _module_edge_report_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "edge_report_only": True,
         "emits_command_descriptors": False,
         "writes_files": False,
         "moves_files": False,
@@ -2774,6 +2807,124 @@ def build_module_path_report(source: str, path: Path) -> dict[str, Any]:
         "source": source,
         "tool": "pccx-ide-cli",
         "unresolved_edge_count": len(hierarchy["edges"]) - resolved_edge_count,
+        "writes_files": False,
+    }
+
+
+def _module_edge_report_rows(hierarchy: dict[str, Any]) -> list[dict[str, Any]]:
+    edges = sorted(
+        hierarchy["edges"],
+        key=lambda edge: (
+            edge["file"],
+            edge["line"],
+            edge["column"],
+            edge["parent"],
+            edge["child"],
+            edge["instance"],
+        ),
+    )
+    rows: list[dict[str, Any]] = []
+    for index, edge in enumerate(edges, 1):
+        if edge["resolved"]:
+            blocked_reasons: list[str] = []
+            reason = "scanner-detected resolved direct instantiation edge"
+            refactor_preflight_state = "ready-for-review"
+            resolution_state = "resolved"
+            edge_state = "resolved-dependency"
+        else:
+            blocked_reasons = [
+                "unresolved module instantiation edge: "
+                f"{edge['parent']} -> {edge['child']} as {edge['instance']}"
+            ]
+            reason = "scanner-detected unresolved direct instantiation edge"
+            refactor_preflight_state = "blocked"
+            resolution_state = "unresolved"
+            edge_state = "unresolved-dependency"
+        rows.append({
+            "blocked_reasons": blocked_reasons,
+            "child": edge["child"],
+            "column": edge["column"],
+            "edge_id": f"edge-{index}",
+            "edge_state": edge_state,
+            "file": edge["file"],
+            "instance": edge["instance"],
+            "line": edge["line"],
+            "parent": edge["parent"],
+            "reason": reason,
+            "refactor_preflight_state": refactor_preflight_state,
+            "resolved": edge["resolved"],
+            "resolution_state": resolution_state,
+        })
+    return rows
+
+
+def build_module_edge_report(source: str, path: Path) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    edges = _module_edge_report_rows(hierarchy)
+    resolved_edges = [
+        edge
+        for edge in edges
+        if edge["resolved"]
+    ]
+    unresolved_edges = [
+        edge
+        for edge in edges
+        if not edge["resolved"]
+    ]
+    blocked_reasons = list(dict.fromkeys([
+        reason
+        for edge in unresolved_edges
+        for reason in edge["blocked_reasons"]
+    ]))
+    if modules and not edges:
+        blocked_reasons.append("no instantiation edges detected")
+    if not modules:
+        blocked_reasons.append("no module declarations detected")
+
+    if resolved_edges and unresolved_edges:
+        report_state = "edges-detected-with-blockers"
+    elif resolved_edges:
+        report_state = "edges-detected"
+    elif unresolved_edges:
+        report_state = "blocked"
+    else:
+        report_state = "no-edges-detected"
+
+    return {
+        "blocked_reasons": blocked_reasons,
+        "edge_count": len(edges),
+        "edges": edges,
+        "kind": "module-edge-report",
+        "limitations": list(MODULE_EDGE_REPORT_LIMITATIONS),
+        "module_count": len(modules),
+        "next_required_action": (
+            "resolve scanner-detected unresolved edges before edge review"
+            if unresolved_edges
+            else "review scanner-detected direct module edges before refactor planning"
+            if edges
+            else "continue module organization review"
+        ),
+        "parent_names": sorted({
+            edge["parent"]
+            for edge in edges
+        }),
+        "report_state": report_state,
+        "resolved_child_names": sorted({
+            edge["child"]
+            for edge in resolved_edges
+        }),
+        "resolved_edge_count": len(resolved_edges),
+        "safety": _module_edge_report_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "tool": "pccx-ide-cli",
+        "unresolved_edge_count": len(unresolved_edges),
+        "unresolved_target_names": sorted({
+            edge["child"]
+            for edge in unresolved_edges
+        }),
         "writes_files": False,
     }
 
@@ -5926,6 +6077,43 @@ def format_module_path_report_text(report: dict[str, Any]) -> str:
     lines.append(f"next: {report['next_required_action']}")
     lines.append(
         "read-only path report: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def format_module_edge_report_text(report: dict[str, Any]) -> str:
+    lines = [
+        f"source: {report['source']}",
+        f"module edges: {report['report_state']}",
+        f"{report['module_count']} module"
+        f"{'s' if report['module_count'] != 1 else ''}",
+        f"{report['edge_count']} dependency edge"
+        f"{'s' if report['edge_count'] != 1 else ''}",
+        (
+            f"resolved edges: {report['resolved_edge_count']}; "
+            f"unresolved edges: {report['unresolved_edge_count']}"
+        ),
+    ]
+    if not report["edges"]:
+        lines.append("edges: none")
+    for edge in report["edges"]:
+        lines.append(
+            f"{edge['edge_id']}: {edge['parent']} -> {edge['child']} "
+            f"as {edge['instance']} ({edge['refactor_preflight_state']})"
+        )
+        lines.append(
+            f"  {edge['file']}:{edge['line']}:{edge['column']}; "
+            f"state={edge['edge_state']}; reason={edge['reason']}"
+        )
+        for reason in edge["blocked_reasons"]:
+            lines.append(f"  blocked: {reason}")
+    for reason in report["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    lines.append(f"next: {report['next_required_action']}")
+    lines.append(
+        "read-only edge report: no command argv, validation, shell, "
         "refactor, patch, file write, lab, launcher, vendor tool, provider, "
         "or hardware execution"
     )
