@@ -24,6 +24,11 @@ run_json() {
     | "$PY" -c "import json,sys; d=json.load(sys.stdin); assert d.get('kind') == '$expected_kind', d"
 }
 
+run_blocked_module_health() {
+  "$PY" -m pccx_ide_cli module-health fixtures/missing_endmodule.sv --format json \
+    | "$PY" -c "import json,sys; d=json.load(sys.stdin); assert d.get('kind') == 'module-graph-health-summary', d; assert d.get('health_state') == 'blocked', d; assert d.get('incomplete_module_count') == 1, d; assert d.get('safety', {}).get('writes_files') is False, d"
+}
+
 run_json editor-problems problems from-check fixtures/ok_module.sv --format json
 run_json editor-problems problems from-check fixtures/missing_endmodule.sv --format json
 run_json editor-problems problems from-xsim-log fixtures/xsim/mixed.log --format json
@@ -40,6 +45,8 @@ run_json module-path-report module-paths fixtures/organization/fanout_hierarchy.
 run_json module-fanout-report module-fanout fixtures/organization/fanout_hierarchy.sv --format json
 run_json module-fanin-report module-fanin fixtures/organization/fanout_hierarchy.sv --format json
 run_json module-duplicate-report module-duplicates fixtures/organization/duplicate_modules.sv --format json
+run_json module-graph-health-summary module-health fixtures/organization/hierarchy_top.sv --format json
+run_blocked_module_health
 run_json module-summary-view module-summary fixtures/organization/hierarchy_top.sv --format json
 run_json module-refactor-candidate-list refactor-candidates fixtures/organization/hierarchy_top.sv --format json
 run_json module-refactor-readiness-summary refactor-readiness fixtures/organization/hierarchy_top.sv --format json
