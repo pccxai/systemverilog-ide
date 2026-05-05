@@ -5081,6 +5081,7 @@ def _preflight(
     module_name: str,
     matches: list[dict[str, Any]],
     requested: dict[str, Any],
+    modules: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     reasons: list[str] = []
     required = _REFACTOR_REQUIRED_FIELDS[action]
@@ -5100,6 +5101,14 @@ def _preflight(
             reasons.append("new-name must be a SystemVerilog-style identifier")
         if requested["new_name"] == module_name:
             reasons.append("new-name matches the current module name")
+        elif any(
+            module["name"] == requested["new_name"]
+            for module in modules or []
+        ):
+            reasons.append(
+                "new-name already exists in scanned modules: "
+                f"{requested['new_name']}"
+            )
 
     if action == "extract-port" and requested["port_name"]:
         if not _safe_identifier(requested["port_name"]):
@@ -5145,7 +5154,13 @@ def build_refactor_proposal(
         width=width,
         destination=destination,
     )
-    preflight = _preflight(action, module_name, matches, requested)
+    preflight = _preflight(
+        action,
+        module_name,
+        matches,
+        requested,
+        organization["modules"],
+    )
     selected_module = matches[0] if len(matches) == 1 else None
 
     return {

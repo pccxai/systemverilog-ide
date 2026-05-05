@@ -1970,6 +1970,25 @@ def test_build_refactor_proposal_rename_is_review_only():
     assert proposal["safety"]["invokes_launcher"] is False
 
 
+def test_build_refactor_proposal_blocks_existing_new_name():
+    proposal = build_refactor_proposal(
+        str(FIXTURE),
+        FIXTURE,
+        "rename-module",
+        "top_mod",
+        new_name="leaf_mod",
+    )
+
+    assert proposal["proposal_state"] == "proposal-only"
+    assert proposal["writes_files"] is False
+    assert proposal["preflight"]["status"] == "blocked"
+    assert proposal["preflight"]["reasons"] == [
+        "new-name already exists in scanned modules: leaf_mod"
+    ]
+    assert proposal["safety"]["applies_patch"] is False
+    assert proposal["safety"]["runs_validation"] is False
+
+
 def test_build_refactor_proposal_blocks_missing_module():
     proposal = build_refactor_proposal(
         str(FIXTURE),
@@ -3767,6 +3786,28 @@ def test_cli_refactor_plan_json():
     assert payload["kind"] == "module-refactor-proposal"
     assert payload["action"] == "rename-module"
     assert payload["preflight"]["status"] == "ready-for-review"
+    assert payload["writes_files"] is False
+
+
+def test_cli_refactor_plan_blocks_existing_rename_target():
+    result = _run_cli(
+        "refactor-plan",
+        str(FIXTURE),
+        "--action",
+        "rename-module",
+        "--module",
+        "top_mod",
+        "--new-name",
+        "leaf_mod",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["preflight"]["status"] == "blocked"
+    assert payload["preflight"]["reasons"] == [
+        "new-name already exists in scanned modules: leaf_mod"
+    ]
     assert payload["writes_files"] is False
 
 
