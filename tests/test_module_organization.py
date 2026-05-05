@@ -27,6 +27,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_context_bundle,
     build_module_depth_report,
     build_module_duplicate_report,
+    build_module_graph_health_summary,
     build_module_hierarchy_cycle_report,
     build_module_hierarchy_view,
     build_module_leaf_candidate_report,
@@ -58,6 +59,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_context_text,
     format_module_depth_report_text,
     format_module_duplicate_report_text,
+    format_module_graph_health_summary_text,
     format_module_hierarchy_cycle_text,
     format_module_hierarchy_text,
     format_module_leaf_candidate_report_text,
@@ -781,6 +783,98 @@ def test_build_module_depth_report_blocks_unresolved_dependencies():
     assert module["blocked_reasons"] == [
         "unresolved dependencies for depth report: missing_child"
     ]
+
+
+def test_build_module_graph_health_summary_combines_graph_signals():
+    report = build_module_graph_health_summary(str(FIXTURE), FIXTURE)
+
+    assert report["kind"] == "module-graph-health-summary"
+    assert report["health_state"] == "ready-for-review"
+    assert report["ready_for_review"] is True
+    assert report["module_count"] == 2
+    assert report["complete_module_count"] == 2
+    assert report["incomplete_module_count"] == 0
+    assert report["root_count"] == 1
+    assert report["root_names"] == ["top_mod"]
+    assert report["leaf_count"] == 1
+    assert report["leaf_names"] == ["leaf_mod"]
+    assert report["max_depth"] == 1
+    assert report["resolved_edge_count"] == 1
+    assert report["unresolved_edge_count"] == 0
+    assert report["unresolved_instance_count"] == 0
+    assert report["duplicate_name_count"] == 0
+    assert report["unplaced_module_count"] == 0
+    assert report["blocked_reasons"] == []
+    assert report["next_required_action"] == (
+        "continue module organization and refactor readiness review"
+    )
+    cards = {card["card_id"]: card for card in report["health_cards"]}
+    assert cards["root-candidates"]["status"] == "roots-detected"
+    assert cards["leaf-candidates"]["status"] == "leaves-detected"
+    assert cards["depth-levels"]["status"] == "depths-detected"
+    assert cards["hierarchy-cycles"]["status"] == "no-cycles-detected"
+    assert cards["unresolved-instances"]["status"] == (
+        "no-unresolved-instances-detected"
+    )
+    assert cards["duplicate-modules"]["status"] == "no-duplicates-detected"
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["graph_health_summary_only"] is True
+    assert report["safety"]["combines_root_candidate_report"] is True
+    assert report["safety"]["combines_leaf_candidate_report"] is True
+    assert report["safety"]["combines_depth_report"] is True
+    assert report["safety"]["combines_cycle_report"] is True
+    assert report["safety"]["combines_unresolved_instance_report"] is True
+    assert report["safety"]["combines_duplicate_report"] is True
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["safety"]["runs_validation"] is False
+    assert report["safety"]["runs_shell"] is False
+    assert report["safety"]["invokes_pccx_lab"] is False
+    assert report["safety"]["invokes_launcher"] is False
+    assert report["safety"]["hardware_access"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
+def test_build_module_graph_health_summary_blocks_graph_issues():
+    report = build_module_graph_health_summary(str(CYCLIC_FIXTURE), CYCLIC_FIXTURE)
+
+    assert report["health_state"] == "blocked"
+    assert report["ready_for_review"] is False
+    assert report["root_count"] == 0
+    assert report["leaf_count"] == 0
+    assert report["unplaced_module_count"] == 2
+    assert report["blocked_reasons"] == [
+        "scanner-detected hierarchy cycle: alpha_mod -> beta_mod -> alpha_mod",
+        "no root candidates detected",
+        "no leaf candidates detected",
+        "unplaced modules: alpha_mod, beta_mod",
+    ]
+    assert report["next_required_action"] == (
+        "resolve scanner-detected module graph blockers before refactor planning"
+    )
+
+
+def test_build_module_graph_health_summary_blocks_unresolved_and_duplicates():
+    unresolved = build_module_graph_health_summary(
+        str(UNRESOLVED_FIXTURE),
+        UNRESOLVED_FIXTURE,
+    )
+    duplicates = build_module_graph_health_summary(
+        str(DUPLICATE_FIXTURE),
+        DUPLICATE_FIXTURE,
+    )
+
+    assert unresolved["health_state"] == "blocked"
+    assert unresolved["unresolved_instance_count"] == 1
+    assert unresolved["blocked_reasons"] == [
+        "unresolved module instantiation: missing_child as u_missing in unresolved_top",
+        "unresolved dependencies for depth report: missing_child",
+    ]
+    assert duplicates["health_state"] == "blocked"
+    assert duplicates["duplicate_name_count"] == 1
+    assert duplicates["duplicate_names"] == ["dup_mod"]
+    assert "ambiguous module name: dup_mod" in duplicates["blocked_reasons"]
 
 
 def test_build_module_summary_view_reports_ports_and_safety():
@@ -1756,6 +1850,19 @@ def test_format_module_depth_report_text_mentions_boundary():
     assert "read-only depth report: no command argv" in text
 
 
+def test_format_module_graph_health_summary_text_mentions_boundary():
+    report = build_module_graph_health_summary(str(FIXTURE), FIXTURE)
+    text = format_module_graph_health_summary_text(report)
+
+    assert "module graph health: ready-for-review" in text
+    assert "ready for review: yes" in text
+    assert "1 root; 1 leaf; max depth: 1" in text
+    assert "status: hierarchy-cycles (no-cycles-detected)" in text
+    assert "roots: top_mod" in text
+    assert "leaves: leaf_mod" in text
+    assert "read-only graph health summary: no command argv" in text
+
+
 def test_format_module_summary_text_mentions_ports_and_boundary():
     view = build_module_summary_view(str(FIXTURE), FIXTURE)
     text = format_module_summary_text(view)
@@ -2251,6 +2358,29 @@ def test_cli_module_depths_text():
     assert "depth 0: top_mod" in result.stdout
     assert "depth 1: leaf_mod" in result.stdout
     assert "read-only depth report: no command argv" in result.stdout
+
+
+def test_cli_module_health_json():
+    result = _run_cli("module-health", str(FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-graph-health-summary"
+    assert payload["health_state"] == "ready-for-review"
+    assert payload["ready_for_review"] is True
+    assert payload["root_names"] == ["top_mod"]
+    assert payload["leaf_names"] == ["leaf_mod"]
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_health_text():
+    result = _run_cli("module-health", str(FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module graph health: ready-for-review" in result.stdout
+    assert "status: duplicate-modules (no-duplicates-detected)" in result.stdout
+    assert "read-only graph health summary: no command argv" in result.stdout
 
 
 def test_cli_module_summary_json():
@@ -3038,6 +3168,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-roots <path>" in contract
     assert "module-leaves <path>" in contract
     assert "module-depths <path>" in contract
+    assert "module-health <path>" in contract
     assert "module-summary <path>" in contract
     assert "port-usage <path>" in contract
     assert "module-context <path>" in contract
@@ -3062,6 +3193,7 @@ def test_docs_cover_organization_flow_and_limits():
     assert "module-root-candidate-report" in workflow
     assert "module-leaf-candidate-report" in workflow
     assert "module-depth-report" in workflow
+    assert "module-graph-health-summary" in workflow
     assert "module-summary-view" in workflow
     assert "module-port-usage-view" in workflow
     assert "module-context-bundle" in workflow
@@ -3088,5 +3220,6 @@ def test_docs_cover_organization_flow_and_limits():
     assert "hierarchy cycle report" in workflow
     assert "unresolved instantiation report" in workflow
     assert "root-candidate report" in workflow
+    assert "module graph health summary" in workflow
     assert "does not write files" in workflow
     assert "not a full SystemVerilog parser" in workflow
