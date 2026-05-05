@@ -147,6 +147,7 @@ python -m pccx_ide_cli module-summary fixtures/organization/hierarchy_top.sv --f
 # Module boundary audit and refactor candidate list (pre-stable, read-only)
 python -m pccx_ide_cli boundary-audit fixtures/organization/hierarchy_top.sv --format json
 python -m pccx_ide_cli module-duplicates fixtures/organization/duplicate_modules.sv --format text
+python -m pccx_ide_cli module-files fixtures/organization/hierarchy_top.sv --format text
 python -m pccx_ide_cli refactor-candidates fixtures/organization/hierarchy_top.sv --format text
 python -m pccx_ide_cli refactor-readiness fixtures/organization/hierarchy_top.sv --format json
 
@@ -272,6 +273,8 @@ menus. `refactor-readiness` summarizes boundary-audit and candidate
 counts for editor status panes without selecting an action or emitting
 command argv. `module-duplicates` reports scanner-detected duplicate
 module names that would block unambiguous refactor planning.
+`module-files` groups scanner-detected module declarations by source file
+for move-module and file-layout review without moving or rewriting files.
 `refactor-impact` renders target-specific declaration,
 dependent, and dependency review data for a named module.
 These commands do not edit files, apply

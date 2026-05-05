@@ -35,6 +35,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_edge_report,
     build_module_fanin_report,
     build_module_fanout_report,
+    build_module_file_report,
     build_module_graph_health_summary,
     build_module_hierarchy_cycle_report,
     build_module_hierarchy_view,
@@ -75,6 +76,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_edge_report_text,
     format_module_fanin_report_text,
     format_module_fanout_report_text,
+    format_module_file_report_text,
     format_module_graph_health_summary_text,
     format_module_hierarchy_cycle_text,
     format_module_hierarchy_text,
@@ -250,6 +252,64 @@ def test_build_module_duplicate_report_allows_unique_names():
     assert report["duplicates"] == []
     assert report["blocked_reasons"] == []
     assert report["next_required_action"] == "continue module organization and refactor review"
+
+
+def test_build_module_file_report_groups_modules_by_file():
+    report = build_module_file_report(str(FIXTURE), FIXTURE)
+
+    assert report["kind"] == "module-file-report"
+    assert report["report_state"] == "multi-module-review"
+    assert report["file_count"] == 1
+    assert report["module_count"] == 2
+    assert report["single_module_file_count"] == 0
+    assert report["multi_module_file_count"] == 1
+    assert report["incomplete_module_count"] == 0
+    assert report["duplicate_name_count"] == 0
+    assert report["blocked_reasons"] == []
+    assert report["next_required_action"] == (
+        "review multi-module files before move-module planning"
+    )
+    file_row = report["files"][0]
+    assert file_row["file"] == str(FIXTURE)
+    assert file_row["layout_state"] == "multi-module-file"
+    assert file_row["refactor_preflight_state"] == "ready-for-review"
+    assert file_row["module_names"] == ["leaf_mod", "top_mod"]
+    assert [module["name"] for module in file_row["modules"]] == [
+        "leaf_mod",
+        "top_mod",
+    ]
+    assert report["safety"]["read_only"] is True
+    assert report["safety"]["file_layout_report_only"] is True
+    assert report["safety"]["emits_command_descriptors"] is False
+    assert report["safety"]["writes_files"] is False
+    assert report["safety"]["moves_files"] is False
+    assert report["safety"]["applies_refactor"] is False
+    assert report["safety"]["generates_patch"] is False
+    assert report["safety"]["runs_validation"] is False
+    assert report["safety"]["invokes_pccx_lab"] is False
+    assert report["safety"]["invokes_launcher"] is False
+    assert report["safety"]["hardware_access"] is False
+    assert report["writes_files"] is False
+    assert '"argv"' not in json.dumps(report)
+
+
+def test_build_module_file_report_blocks_incomplete_boundaries():
+    report = build_module_file_report(str(INCOMPLETE_FIXTURE), INCOMPLETE_FIXTURE)
+
+    assert report["report_state"] == "blocked"
+    assert report["file_count"] == 1
+    assert report["module_count"] == 1
+    assert report["incomplete_module_count"] == 1
+    assert report["files"][0]["layout_state"] == "blocked"
+    assert report["files"][0]["reasons"] == [
+        "incomplete module boundary: bad_module"
+    ]
+    assert report["blocked_reasons"] == [
+        f"{INCOMPLETE_FIXTURE}: incomplete module boundary: bad_module"
+    ]
+    assert report["next_required_action"] == (
+        "resolve module file layout blockers before refactor planning"
+    )
 
 
 def test_build_refactor_candidate_list_reports_action_enablement():
@@ -2481,6 +2541,20 @@ def test_format_module_duplicate_report_text_mentions_duplicates_and_boundary():
     assert "read-only duplicate report: no command argv" in text
 
 
+def test_format_module_file_report_text_mentions_layout_and_no_execution():
+    report = build_module_file_report(str(FIXTURE), FIXTURE)
+    text = format_module_file_report_text(report)
+
+    assert "module files: multi-module-review" in text
+    assert "1 source file" in text
+    assert "2 module declarations" in text
+    assert "multi-module files: 1" in text
+    assert "modules: leaf_mod, top_mod" in text
+    assert "leaf_mod lines 4-7 (complete; span=4)" in text
+    assert "next: review multi-module files before move-module planning" in text
+    assert "read-only file report: no command argv" in text
+
+
 def test_format_refactor_candidate_list_text_mentions_actions_and_no_execution():
     candidates = build_refactor_candidate_list(str(FIXTURE), FIXTURE)
     text = format_refactor_candidate_list_text(candidates)
@@ -2978,6 +3052,29 @@ def test_cli_module_duplicates_text():
     assert "module duplicates: duplicates-detected" in result.stdout
     assert "dup_mod: 2 declarations" in result.stdout
     assert "read-only duplicate report: no command argv" in result.stdout
+
+
+def test_cli_module_files_json():
+    result = _run_cli("module-files", str(FIXTURE), "--format", "json")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-file-report"
+    assert payload["report_state"] == "multi-module-review"
+    assert payload["file_count"] == 1
+    assert payload["multi_module_file_count"] == 1
+    assert payload["files"][0]["module_names"] == ["leaf_mod", "top_mod"]
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_module_files_text():
+    result = _run_cli("module-files", str(FIXTURE), "--format", "text")
+    assert result.returncode == 0, result.stderr
+    assert "module files: multi-module-review" in result.stdout
+    assert "modules: leaf_mod, top_mod" in result.stdout
+    assert "read-only file report: no command argv" in result.stdout
 
 
 def test_cli_refactor_candidates_json():
@@ -4022,6 +4119,12 @@ def test_cli_boundary_audit_missing_path_exits_nonzero():
 
 def test_cli_module_duplicates_missing_path_exits_nonzero():
     result = _run_cli("module-duplicates", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
+def test_cli_module_files_missing_path_exits_nonzero():
+    result = _run_cli("module-files", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
     assert "does not exist" in result.stderr
 
