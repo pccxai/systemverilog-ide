@@ -17,6 +17,7 @@ _IDENT_RE = re.compile(r"\b[A-Za-z_]\w*\b")
 _PORT_DIRECTION_RE = re.compile(r"\b(input|output|inout)\b")
 _PORT_WIDTH_RE = re.compile(r"(\[[^\]]+\])")
 _PORT_NAMED_CONNECTION_RE = re.compile(r"\.\s*([A-Za-z_]\w*)\s*\(")
+_PORT_WILDCARD_CONNECTION_RE = re.compile(r"\.\s*\*")
 _PORT_CONNECTION_SCAN_LINE_LIMIT = 40
 
 _NON_INSTANCE_WORDS: frozenset[str] = frozenset({
@@ -292,6 +293,17 @@ PORT_USAGE_LIMITATIONS: tuple[str, ...] = (
     "instantiation candidates come from the existing line scanner",
     "connection summaries are bounded to the scanner-detected instantiation statement",
     "named and ordered port connections are not semantically resolved",
+    "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
+    "no refactor application, file write, validation run, or patch generation",
+    "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
+    "pre-stable JSON shape",
+)
+
+PORT_CONNECTION_AUDIT_LIMITATIONS: tuple[str, ...] = (
+    "scanner-based target module port connection audit data only",
+    "ANSI-style target port declarations are detected conservatively",
+    "named instantiation connections are compared by scanner-detected names only",
+    "ordered and wildcard connections require manual review",
     "no semantic elaboration, preprocessor expansion, generate-block expansion, or LSP",
     "no refactor application, file write, validation run, or patch generation",
     "no pccx-lab, launcher, vendor tool, provider, or hardware invocation",
@@ -917,6 +929,28 @@ def _port_usage_safety_flags() -> dict[str, bool]:
         "runs_shell": False,
         "invokes_pccx_lab": False,
         "invokes_launcher": False,
+        "provider_calls": False,
+        "hardware_access": False,
+        "telemetry": False,
+        "automatic_repository_action": False,
+    }
+
+
+def _port_connection_audit_safety_flags() -> dict[str, bool]:
+    return {
+        "read_only": True,
+        "port_connection_audit_only": True,
+        "emits_command_descriptors": False,
+        "writes_files": False,
+        "moves_files": False,
+        "applies_refactor": False,
+        "applies_patch": False,
+        "generates_patch": False,
+        "runs_validation": False,
+        "runs_shell": False,
+        "invokes_pccx_lab": False,
+        "invokes_launcher": False,
+        "invokes_vendor_tools": False,
         "provider_calls": False,
         "hardware_access": False,
         "telemetry": False,
@@ -4244,6 +4278,240 @@ def build_module_port_usage_view(
     }
 
 
+def _instance_connection_audit_site(
+    edge: dict[str, Any],
+    visible_lines: list[tuple[int, str]],
+    declared_port_names: list[str],
+) -> dict[str, Any]:
+    statement = _instantiation_statement(edge, visible_lines)
+    argument_text = _instantiation_argument_text(edge, statement["text"])
+    named_connections = list(dict.fromkeys(
+        _PORT_NAMED_CONNECTION_RE.findall(argument_text)
+    ))
+    wildcard_connection = _PORT_WILDCARD_CONNECTION_RE.search(argument_text) is not None
+
+    if named_connections:
+        connection_style = "named"
+        connection_count = len(named_connections)
+    elif wildcard_connection:
+        connection_style = "wildcard"
+        connection_count = 1
+    elif argument_text:
+        connection_style = "ordered"
+        connection_count = _ordered_connection_count(argument_text)
+    else:
+        connection_style = "empty"
+        connection_count = 0
+
+    declared_set = set(declared_port_names)
+    named_set = set(named_connections)
+    missing_named_ports = [
+        name for name in declared_port_names
+        if connection_style == "named" and name not in named_set
+    ]
+    unknown_named_ports = [
+        name for name in named_connections
+        if name not in declared_set
+    ]
+
+    reasons: list[str] = []
+    blocked = False
+    if not edge["resolved"]:
+        blocked = True
+        reasons.append("unresolved module instantiation")
+    if not statement["complete"]:
+        blocked = True
+        reasons.append("instantiation statement scan incomplete")
+    if statement["truncated"]:
+        blocked = True
+        reasons.append("instantiation statement scan truncated")
+    if missing_named_ports:
+        missing = ", ".join(missing_named_ports)
+        reasons.append(f"missing named connections: {missing}")
+    if unknown_named_ports:
+        unknown = ", ".join(unknown_named_ports)
+        reasons.append(f"unknown named connections: {unknown}")
+    if connection_style == "ordered":
+        reasons.append("ordered connections require manual review")
+    if connection_style == "wildcard":
+        reasons.append("wildcard connections require manual review")
+    if connection_style == "empty" and declared_port_names:
+        reasons.append("no named connections detected for declared ports")
+
+    if blocked:
+        audit_state = "blocked"
+    elif reasons:
+        audit_state = "review-required"
+    else:
+        audit_state = "ready-for-review"
+
+    return {
+        "audit_state": audit_state,
+        "child": edge["child"],
+        "column": edge["column"],
+        "connection_count": connection_count,
+        "connection_style": connection_style,
+        "declared_port_count": len(declared_port_names),
+        "file": edge["file"],
+        "instance": edge["instance"],
+        "line": edge["line"],
+        "missing_named_port_count": len(missing_named_ports),
+        "missing_named_ports": missing_named_ports,
+        "named_connection_count": len(named_connections),
+        "named_connections": named_connections,
+        "parent": edge["parent"],
+        "reasons": reasons,
+        "resolved": edge["resolved"],
+        "scan_complete": statement["complete"],
+        "scan_line_count": statement["line_count"],
+        "scan_truncated": statement["truncated"],
+        "semantically_resolved": False,
+        "unknown_named_port_count": len(unknown_named_ports),
+        "unknown_named_ports": unknown_named_ports,
+        "wildcard_connection": wildcard_connection,
+    }
+
+
+def _port_connection_audit_state(
+    preflight: dict[str, Any],
+    sites: list[dict[str, Any]],
+) -> str:
+    if preflight["status"] == "blocked":
+        return "blocked"
+    if any(site["audit_state"] == "blocked" for site in sites):
+        return "blocked"
+    if any(site["audit_state"] == "review-required" for site in sites):
+        return "review-required"
+    return "ready-for-review"
+
+
+def _site_reasons(
+    sites: list[dict[str, Any]],
+    state: str,
+) -> list[str]:
+    reasons: list[str] = []
+    for site in sites:
+        if site["audit_state"] != state:
+            continue
+        for reason in site["reasons"]:
+            reasons.append(
+                f"{site['parent']}.{site['instance']}: {reason}"
+            )
+    return reasons
+
+
+def build_module_port_connection_audit(
+    source: str,
+    path: Path,
+    module_name: str,
+) -> dict[str, Any]:
+    organization = build_module_organization_export(source, path)
+    modules = organization["modules"]
+    hierarchy = organization["hierarchy"]
+    files = sorted({module["file"] for module in modules})
+    visible_lines_by_file = {
+        file_name: _visible_lines(Path(file_name))
+        for file_name in files
+    }
+
+    matches = _module_lookup(modules, module_name)
+    selected_module = matches[0] if len(matches) == 1 else None
+    header = None
+    ports: list[dict[str, Any]] = []
+    if selected_module is not None:
+        header = _module_header(
+            selected_module,
+            visible_lines_by_file[selected_module["file"]],
+        )
+        ports = _scan_header_ports(selected_module, header["lines"])
+
+    declared_port_names = [port["name"] for port in ports]
+    dependent_edges = [
+        edge
+        for edge in hierarchy["edges"]
+        if edge["child"] == module_name
+    ]
+    usage_sites = [
+        _instance_connection_audit_site(
+            edge,
+            visible_lines_by_file.get(edge["file"], []),
+            declared_port_names,
+        )
+        for edge in dependent_edges
+    ]
+    preflight = _refactor_impact_preflight(module_name, matches)
+    audit_state = _port_connection_audit_state(preflight, usage_sites)
+    direct_dependents = sorted({
+        edge["parent"]
+        for edge in dependent_edges
+    })
+
+    blocked_reasons = list(preflight["reasons"]) + _site_reasons(
+        usage_sites,
+        "blocked",
+    )
+    review_reasons = _site_reasons(usage_sites, "review-required")
+
+    return {
+        "audit_state": audit_state,
+        "blocked_site_count": sum(
+            1 for site in usage_sites
+            if site["audit_state"] == "blocked"
+        ),
+        "blocked_reasons": blocked_reasons,
+        "declared_port_names": declared_port_names,
+        "direct_dependent_count": len(direct_dependents),
+        "direct_dependents": direct_dependents,
+        "header": (
+            {
+                "complete": header["complete"],
+                "end_line": header["end_line"],
+                "line_count": header["line_count"],
+                "start_line": header["start_line"],
+            }
+            if header is not None
+            else None
+        ),
+        "kind": "module-port-connection-audit",
+        "limitations": list(PORT_CONNECTION_AUDIT_LIMITATIONS),
+        "missing_named_port_count": sum(
+            site["missing_named_port_count"] for site in usage_sites
+        ),
+        "module": selected_module,
+        "ordered_site_count": sum(
+            1 for site in usage_sites if site["connection_style"] == "ordered"
+        ),
+        "port_count": len(ports),
+        "ports": ports,
+        "preflight": preflight,
+        "ready_for_review": audit_state == "ready-for-review",
+        "ready_site_count": sum(
+            1 for site in usage_sites
+            if site["audit_state"] == "ready-for-review"
+        ),
+        "review_reason_count": len(review_reasons),
+        "review_reasons": review_reasons,
+        "review_site_count": sum(
+            1 for site in usage_sites
+            if site["audit_state"] == "review-required"
+        ),
+        "safety": _port_connection_audit_safety_flags(),
+        "scanner": "line-scanner",
+        "source": source,
+        "target": module_name,
+        "tool": "pccx-ide-cli",
+        "unknown_named_port_count": sum(
+            site["unknown_named_port_count"] for site in usage_sites
+        ),
+        "usage_site_count": len(usage_sites),
+        "usage_sites": usage_sites,
+        "wildcard_site_count": sum(
+            1 for site in usage_sites if site["wildcard_connection"]
+        ),
+        "writes_files": False,
+    }
+
+
 def _refactor_impact_preflight(
     module_name: str,
     matches: list[dict[str, Any]],
@@ -6924,6 +7192,86 @@ def format_module_port_usage_text(view: dict[str, Any]) -> str:
     lines.append(
         "read-only: no file writes, refactors, validation, lab, launcher, "
         "provider, or hardware execution"
+    )
+    return "\n".join(lines) + "\n"
+
+
+def _port_connection_audit_label(site: dict[str, Any]) -> str:
+    if site["connection_style"] == "named":
+        names = ", ".join(site["named_connections"]) or "none"
+        missing = ", ".join(site["missing_named_ports"]) or "none"
+        unknown = ", ".join(site["unknown_named_ports"]) or "none"
+        return (
+            f"named={names}; missing={missing}; unknown={unknown}; "
+            "not semantically resolved"
+        )
+    if site["connection_style"] == "ordered":
+        return (
+            f"ordered={site['connection_count']}; manual review; "
+            "not semantically resolved"
+        )
+    if site["connection_style"] == "wildcard":
+        return "wildcard connection; manual review; not semantically resolved"
+    return "connections empty or unknown; not semantically resolved"
+
+
+def format_module_port_connection_audit_text(report: dict[str, Any]) -> str:
+    lines = [
+        f"source: {report['source']}",
+        f"target: {report['target']}",
+        f"port connection audit: {report['audit_state']}",
+        f"preflight: {report['preflight']['status']}",
+        "writes files: no",
+    ]
+
+    module = report["module"]
+    if module is not None:
+        lines.append(
+            f"declaration: {module['file']}:{module['start_line']}:"
+            f"{module['start_column']}"
+        )
+
+    ports = ", ".join(report["declared_port_names"]) or "none"
+    dependents = ", ".join(report["direct_dependents"]) or "none"
+    lines.append(
+        f"{report['port_count']} target port"
+        f"{'s' if report['port_count'] != 1 else ''}: {ports}"
+    )
+    lines.append(f"dependents: {dependents}")
+    lines.append(
+        f"usage sites: {report['usage_site_count']} "
+        f"(ready={report['ready_site_count']}; "
+        f"review={report['review_site_count']}; "
+        f"blocked={report['blocked_site_count']})"
+    )
+    lines.append(
+        f"missing named ports: {report['missing_named_port_count']}; "
+        f"unknown named ports: {report['unknown_named_port_count']}; "
+        f"ordered sites: {report['ordered_site_count']}; "
+        f"wildcard sites: {report['wildcard_site_count']}"
+    )
+
+    if not report["usage_sites"]:
+        lines.append("usage sites: none")
+    for site in report["usage_sites"]:
+        connection_label = _port_connection_audit_label(site)
+        lines.append(
+            f"  {site['parent']} instantiates {site['child']} "
+            f"as {site['instance']} at {site['file']}:"
+            f"{site['line']}:{site['column']} "
+            f"({site['audit_state']}; {connection_label})"
+        )
+        for reason in site["reasons"]:
+            lines.append(f"    review: {reason}")
+
+    for reason in report["blocked_reasons"]:
+        lines.append(f"blocked: {reason}")
+    for reason in report["review_reasons"]:
+        lines.append(f"review: {reason}")
+    lines.append(
+        "read-only port connection audit: no command argv, validation, shell, "
+        "refactor, patch, file write, lab, launcher, vendor tool, provider, "
+        "or hardware execution"
     )
     return "\n".join(lines) + "\n"
 

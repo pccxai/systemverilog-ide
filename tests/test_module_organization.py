@@ -17,6 +17,9 @@ DUPLICATE_FIXTURE = REPO_ROOT / "fixtures" / "organization" / "duplicate_modules
 UNRESOLVED_FIXTURE = REPO_ROOT / "fixtures" / "organization" / "unresolved_instances.sv"
 ORPHAN_FIXTURE = REPO_ROOT / "fixtures" / "organization" / "orphan_modules.sv"
 FANOUT_FIXTURE = REPO_ROOT / "fixtures" / "organization" / "fanout_hierarchy.sv"
+PORT_CONNECTION_FIXTURE = (
+    REPO_ROOT / "fixtures" / "organization" / "port_connection_audit.sv"
+)
 INCOMPLETE_FIXTURE = REPO_ROOT / "fixtures" / "missing_endmodule.sv"
 CONTRACT_DOC = REPO_ROOT / "docs" / "EDITOR_BRIDGE_CONTRACT.md"
 WORKFLOW_DOC = REPO_ROOT / "docs" / "MODULE_ORGANIZATION_WORKFLOW.md"
@@ -40,6 +43,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     build_module_organization_export,
     build_module_order_report,
     build_module_path_report,
+    build_module_port_connection_audit,
     build_module_port_usage_view,
     build_module_reachability_report,
     build_module_root_candidate_report,
@@ -79,6 +83,7 @@ from pccx_ide_cli.module_organization import (  # noqa: E402
     format_module_organization_text,
     format_module_order_report_text,
     format_module_path_report_text,
+    format_module_port_connection_audit_text,
     format_module_port_usage_text,
     format_module_reachability_report_text,
     format_module_root_candidate_report_text,
@@ -1663,6 +1668,67 @@ def test_build_module_port_usage_view_blocks_missing_module():
     assert view["writes_files"] is False
 
 
+def test_build_module_port_connection_audit_reports_named_port_gaps():
+    audit = build_module_port_connection_audit(
+        str(PORT_CONNECTION_FIXTURE),
+        PORT_CONNECTION_FIXTURE,
+        "child_mod",
+    )
+
+    assert audit["kind"] == "module-port-connection-audit"
+    assert audit["audit_state"] == "review-required"
+    assert audit["ready_for_review"] is False
+    assert audit["preflight"]["status"] == "ready-for-review"
+    assert audit["target"] == "child_mod"
+    assert audit["declared_port_names"] == ["clk", "rst_n", "done_o"]
+    assert audit["usage_site_count"] == 4
+    assert audit["ready_site_count"] == 1
+    assert audit["review_site_count"] == 3
+    assert audit["blocked_site_count"] == 0
+    assert audit["missing_named_port_count"] == 2
+    assert audit["unknown_named_port_count"] == 1
+    assert audit["ordered_site_count"] == 1
+    assert audit["wildcard_site_count"] == 1
+    sites = {site["instance"]: site for site in audit["usage_sites"]}
+    assert sites["u_good"]["audit_state"] == "ready-for-review"
+    assert sites["u_good"]["named_connections"] == ["clk", "rst_n", "done_o"]
+    assert sites["u_missing"]["audit_state"] == "review-required"
+    assert sites["u_missing"]["missing_named_ports"] == ["rst_n", "done_o"]
+    assert sites["u_missing"]["unknown_named_ports"] == ["extra_i"]
+    assert sites["u_ordered"]["connection_style"] == "ordered"
+    assert "ordered connections require manual review" in sites["u_ordered"]["reasons"]
+    assert sites["u_wildcard"]["connection_style"] == "wildcard"
+    assert sites["u_wildcard"]["wildcard_connection"] is True
+    assert "wildcard connections require manual review" in sites["u_wildcard"]["reasons"]
+    assert audit["safety"]["read_only"] is True
+    assert audit["safety"]["writes_files"] is False
+    assert audit["safety"]["applies_refactor"] is False
+    assert audit["safety"]["generates_patch"] is False
+    assert audit["safety"]["emits_command_descriptors"] is False
+    assert audit["safety"]["runs_validation"] is False
+    assert audit["safety"]["invokes_pccx_lab"] is False
+    assert audit["safety"]["invokes_launcher"] is False
+    assert audit["safety"]["provider_calls"] is False
+    assert audit["safety"]["hardware_access"] is False
+
+
+def test_build_module_port_connection_audit_blocks_missing_module():
+    audit = build_module_port_connection_audit(
+        str(PORT_CONNECTION_FIXTURE),
+        PORT_CONNECTION_FIXTURE,
+        "missing_mod",
+    )
+
+    assert audit["audit_state"] == "blocked"
+    assert audit["ready_for_review"] is False
+    assert audit["preflight"]["status"] == "blocked"
+    assert audit["blocked_reasons"] == ["module not found: missing_mod"]
+    assert audit["module"] is None
+    assert audit["ports"] == []
+    assert audit["usage_sites"] == []
+    assert audit["writes_files"] is False
+
+
 def test_build_module_context_bundle_summarizes_target_views():
     bundle = build_module_context_bundle(str(FIXTURE), FIXTURE, "leaf_mod")
 
@@ -2630,6 +2696,27 @@ def test_format_module_port_usage_text_mentions_usage_and_no_execution():
     assert "read-only: no file writes" in text
 
 
+def test_format_module_port_connection_audit_text_mentions_review_boundary():
+    audit = build_module_port_connection_audit(
+        str(PORT_CONNECTION_FIXTURE),
+        PORT_CONNECTION_FIXTURE,
+        "child_mod",
+    )
+    text = format_module_port_connection_audit_text(audit)
+
+    assert "port connection audit: review-required" in text
+    assert "preflight: ready-for-review" in text
+    assert "3 target ports: clk, rst_n, done_o" in text
+    assert "usage sites: 4 (ready=1; review=3; blocked=0)" in text
+    assert "missing named ports: 2; unknown named ports: 1" in text
+    assert "top_mod instantiates child_mod as u_missing" in text
+    assert "missing=rst_n, done_o; unknown=extra_i" in text
+    assert "ordered=3; manual review" in text
+    assert "wildcard connection; manual review" in text
+    assert "writes files: no" in text
+    assert "read-only port connection audit: no command argv" in text
+
+
 def test_format_module_context_text_mentions_context_and_no_execution():
     bundle = build_module_context_bundle(str(FIXTURE), FIXTURE, "leaf_mod")
     text = format_module_context_text(bundle)
@@ -3365,6 +3452,45 @@ def test_cli_port_usage_text():
     assert result.returncode == 0, result.stderr
     assert "port usage: available_as_data" in result.stdout
     assert "top_mod instantiates leaf_mod as u_leaf" in result.stdout
+
+
+def test_cli_port_connections_json():
+    result = _run_cli(
+        "port-connections",
+        str(PORT_CONNECTION_FIXTURE),
+        "--module",
+        "child_mod",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["kind"] == "module-port-connection-audit"
+    assert payload["audit_state"] == "review-required"
+    assert payload["target"] == "child_mod"
+    assert payload["missing_named_port_count"] == 2
+    assert payload["unknown_named_port_count"] == 1
+    assert payload["ordered_site_count"] == 1
+    assert payload["wildcard_site_count"] == 1
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert payload["safety"]["runs_validation"] is False
+    assert '"argv"' not in result.stdout
+
+
+def test_cli_port_connections_text():
+    result = _run_cli(
+        "port-connections",
+        str(PORT_CONNECTION_FIXTURE),
+        "--module",
+        "child_mod",
+        "--format",
+        "text",
+    )
+    assert result.returncode == 0, result.stderr
+    assert "port connection audit: review-required" in result.stdout
+    assert "top_mod instantiates child_mod as u_missing" in result.stdout
+    assert "read-only port connection audit: no command argv" in result.stdout
 
 
 def test_cli_module_context_json():
