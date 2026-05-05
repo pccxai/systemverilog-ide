@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 from .module_index import _strip_block_comments, scan_path
@@ -486,6 +486,19 @@ def _safe_port_width(value: str | None) -> bool:
 
 def _safe_port_direction(value: str | None) -> bool:
     return value in _REFACTOR_PORT_DIRECTIONS
+
+
+def _safe_workspace_relative_path(value: str) -> bool:
+    path = Path(value)
+    windows_path = PureWindowsPath(value)
+    return (
+        not path.is_absolute()
+        and not windows_path.is_absolute()
+        and not windows_path.drive
+        and not windows_path.root
+        and ".." not in path.parts
+        and ".." not in windows_path.parts
+    )
 
 
 def _field_label(field: str) -> str:
@@ -5160,7 +5173,7 @@ def _preflight(
 
     if action == "move-module" and requested["destination"]:
         destination = str(requested["destination"])
-        if destination.startswith("/") or ".." in Path(destination).parts:
+        if not _safe_workspace_relative_path(destination):
             reasons.append("destination must be a relative path inside the workspace")
         if not destination.endswith((".sv", ".v")):
             reasons.append("destination should end with .sv or .v")
