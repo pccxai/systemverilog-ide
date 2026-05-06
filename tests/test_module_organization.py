@@ -4157,6 +4157,33 @@ def test_cli_port_connections_json():
     assert '"argv"' not in result.stdout
 
 
+def test_cli_port_connections_missing_module_json():
+    result = _run_cli(
+        "port-connections",
+        str(PORT_CONNECTION_FIXTURE),
+        "--module",
+        "missing_mod",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+
+    assert payload["kind"] == "module-port-connection-audit"
+    assert payload["target"] == "missing_mod"
+    assert payload["audit_state"] == "blocked"
+    assert payload["ready_for_review"] is False
+    assert payload["blocked_reasons"] == ["module not found: missing_mod"]
+    assert payload["preflight"]["status"] == "blocked"
+    assert payload["module"] is None
+    assert payload["ports"] == []
+    assert payload["usage_sites"] == []
+    assert payload["writes_files"] is False
+    assert payload["safety"]["writes_files"] is False
+    assert payload["safety"]["emits_command_descriptors"] is False
+    assert '"argv"' not in result.stdout
+
+
 def test_cli_port_connections_text():
     result = _run_cli(
         "port-connections",
@@ -4169,6 +4196,26 @@ def test_cli_port_connections_text():
     assert result.returncode == 0, result.stderr
     assert "port connection audit: review-required" in result.stdout
     assert "top_mod instantiates child_mod as u_missing" in result.stdout
+    assert "read-only port connection audit: no command argv" in result.stdout
+
+
+def test_cli_port_connections_missing_module_text():
+    result = _run_cli(
+        "port-connections",
+        str(PORT_CONNECTION_FIXTURE),
+        "--module",
+        "missing_mod",
+        "--format",
+        "text",
+    )
+    assert result.returncode == 0, result.stderr
+
+    assert "port connection audit: blocked" in result.stdout
+    assert "preflight: blocked" in result.stdout
+    assert "writes files: no" in result.stdout
+    assert "0 target ports: none" in result.stdout
+    assert "usage sites: none" in result.stdout
+    assert "blocked: module not found: missing_mod" in result.stdout
     assert "read-only port connection audit: no command argv" in result.stdout
 
 
