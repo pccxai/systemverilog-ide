@@ -15,6 +15,7 @@ import {
   createKv260StatusPanel,
   formatKv260StatusPanel,
   kv260StatusPanelJson,
+  renderKv260StatusPanelHtml,
 } from "../src/kv260-status-panel.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -104,6 +105,78 @@ async function testPreflightNotRunIsGracefulDefault() {
   assert.match(text, /serial\.xrtPresent: preflight not run/);
 }
 
+async function testRendererUsesAperturePillsEvidenceAndEmptyState() {
+  const pendingPanel = createKv260StatusPanel({
+    launcherStatus: await readJson(LAUNCHER_FIXTURE),
+    traceManifest: await readJson(TRACE_FIXTURE),
+  });
+  const pendingHtml = renderKv260StatusPanelHtml(pendingPanel);
+
+  assert.match(pendingHtml, /class="aperture-mark"/);
+  assert.match(pendingHtml, /#0b5fff/);
+  assert.match(pendingHtml, /status-pill status-pending">PENDING/);
+  assert.match(pendingHtml, /<details class="evidence-path">/);
+  assert.match(pendingHtml, /launcher serial preflight snapshot/);
+  assert.match(pendingHtml, /launcher\.serial_probe\.tty_port/);
+  assert.match(pendingHtml, /Launcher status input is not configured/);
+  assert.doesNotMatch(pendingHtml, /\bAI\b|artificial intelligence/i);
+
+  const blockedStatus = await readJson(LAUNCHER_FIXTURE);
+  blockedStatus.serial_probe = {
+    schema_version: LAUNCHER_SERIAL_PREFLIGHT_STATUS_VERSION,
+    status: "blocked",
+    tty_port: null,
+    login_ok: false,
+    kernel_uname: null,
+    xrt_present: false,
+    last_preflight_at: "2026-05-06T09:00:00Z",
+  };
+  const blockedHtml = renderKv260StatusPanelHtml(createKv260StatusPanel({
+    launcherStatus: blockedStatus,
+    traceManifest: await readJson(TRACE_FIXTURE),
+  }));
+
+  assert.match(blockedHtml, /status-pill status-fail">FAIL/);
+  assert.match(blockedHtml, /board is not reachable/);
+
+  const availableStatus = await readJson(LAUNCHER_FIXTURE);
+  availableStatus.serial_probe = {
+    schema_version: LAUNCHER_SERIAL_PREFLIGHT_STATUS_VERSION,
+    status: "available",
+    tty_port: "/dev/ttyUSB0",
+    login_ok: true,
+    kernel_uname: "Linux kv260",
+    xrt_present: true,
+    last_preflight_at: "2026-05-06T09:00:00Z",
+  };
+  const availableHtml = renderKv260StatusPanelHtml(createKv260StatusPanel({
+    launcherStatus: availableStatus,
+    traceManifest: await readJson(TRACE_FIXTURE),
+  }));
+
+  assert.match(availableHtml, /status-pill status-pass">PASS/);
+}
+
+async function testRendererEscapesArtifactEvidence() {
+  const launcherStatus = await readJson(LAUNCHER_FIXTURE);
+  launcherStatus.serial_probe = {
+    schema_version: LAUNCHER_SERIAL_PREFLIGHT_STATUS_VERSION,
+    status: "available",
+    tty_port: "<script>alert(1)</script>",
+    login_ok: true,
+    kernel_uname: "Linux kv260",
+    xrt_present: true,
+    last_preflight_at: "2026-05-06T09:00:00Z",
+  };
+  const html = renderKv260StatusPanelHtml(createKv260StatusPanel({
+    launcherStatus,
+    traceManifest: await readJson(TRACE_FIXTURE),
+  }));
+
+  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  assert.doesNotMatch(html, /<script>alert/);
+}
+
 async function testLiveSerialProbeTypeOnlySkipWithoutData() {
   const raw = process.env.PCCX_KV260_SERIAL_PREFLIGHT_JSON;
   if (!raw) {
@@ -159,6 +232,8 @@ async function testModuleSourceHasNoExecutionTerms() {
 await testReadersParseFixtures();
 await testPanelRendersPreflightAndSafety();
 await testPreflightNotRunIsGracefulDefault();
+await testRendererUsesAperturePillsEvidenceAndEmptyState();
+await testRendererEscapesArtifactEvidence();
 await testLiveSerialProbeTypeOnlySkipWithoutData();
 await testRejectsInvalidOrUnsafeInputs();
 await testModuleSourceHasNoExecutionTerms();
