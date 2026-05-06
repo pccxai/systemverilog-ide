@@ -4975,6 +4975,18 @@ def test_cli_module_spans_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_refactor_candidates_missing_path_exits_nonzero():
+    result = _run_cli("refactor-candidates", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
+def test_cli_refactor_readiness_missing_path_exits_nonzero():
+    result = _run_cli("refactor-readiness", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_cli_hierarchy_missing_path_exits_nonzero():
     result = _run_cli("hierarchy", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
