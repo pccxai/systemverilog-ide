@@ -1127,6 +1127,29 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json).",
     )
 
+    kv260_status = sub.add_parser(
+        "kv260-status",
+        help="Render a read-only KV260 launcher/lab status surface.",
+    )
+    kv260_status.add_argument(
+        "--launcher-status",
+        type=Path,
+        default=None,
+        help="Path to launcher NPUStatus JSON; defaults to the bundled fixture.",
+    )
+    kv260_status.add_argument(
+        "--trace-manifest",
+        type=Path,
+        default=None,
+        help="Path to lab TraceManifest JSON; defaults to the bundled fixture.",
+    )
+    kv260_status.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="Output format (default: text).",
+    )
+
     xsim_log = sub.add_parser(
         "xsim-log",
         help="Parse an existing xsim-style log file into diagnostics-like output.",
@@ -1201,6 +1224,35 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not schema_path.exists():
             schema_path = Path(__file__).resolve().parent / "_schema_fallback.json"
         sys.stdout.write(schema_path.read_text(encoding="utf-8"))
+        return 0
+
+    if args.command == "kv260-status":
+        from .kv260_status import (
+            LabTraceReader,
+            LauncherStatusReader,
+            create_kv260_status_panel,
+            default_launcher_status_path,
+            default_trace_manifest_path,
+            format_kv260_status_panel,
+            panel_to_dict,
+        )
+
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        launcher_path = args.launcher_status or default_launcher_status_path(repo_root)
+        trace_path = args.trace_manifest or default_trace_manifest_path(repo_root)
+        try:
+            launcher_status = LauncherStatusReader.from_json_file(launcher_path)
+            trace_manifest = LabTraceReader.from_json_file(trace_path)
+            panel = create_kv260_status_panel(launcher_status, trace_manifest)
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            sys.stderr.write(f"error: cannot render kv260 status: {error}\n")
+            return 2
+
+        if args.format == "json":
+            json.dump(panel_to_dict(panel), sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(format_kv260_status_panel(panel))
         return 0
 
     if args.command == "check":

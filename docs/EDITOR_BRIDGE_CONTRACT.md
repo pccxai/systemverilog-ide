@@ -332,3 +332,10 @@ xsim path, and text surface sketches is documented in
 - No MCP server implementation in this repo today.
 - No pccx-llm-launcher runtime call yet; future integration requires an
   explicit reviewed contract.
+- The KV260 status surface is a read-only local display over launcher NPU
+  status data and pccx-lab trace manifest JSON. The VS Code prototype command
+  `pccxSystemVerilog.showKv260StatusPanel` and CLI command `sv-ide
+  kv260-status` render fixture or explicitly supplied local JSON data only;
+  they do not invoke the launcher, invoke pccx-lab, run shell commands, open
+  SSH, control KV260 hardware, or write back status. The surface is documented
+  in [`KV260_READ_ONLY_STATUS_SURFACE.md`](./KV260_READ_ONLY_STATUS_SURFACE.md).

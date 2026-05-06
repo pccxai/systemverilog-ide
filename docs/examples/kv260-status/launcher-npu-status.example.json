@@ -1,0 +1,7 @@
+{
+  "bitstream_loaded": false,
+  "bitstream_uuid": null,
+  "axi_base_addr": null,
+  "axi_stat_register_value": null,
+  "last_error": "fixture only; lower-layer evidence not supplied"
+}

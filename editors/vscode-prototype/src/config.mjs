@@ -56,11 +56,16 @@ export const DIAGNOSTICS_HANDOFF_COMMAND_IDS = Object.freeze([
   "pccxSystemVerilog.showDiagnosticsHandoffSummary",
 ]);
 
+export const KV260_STATUS_COMMAND_IDS = Object.freeze([
+  "pccxSystemVerilog.showKv260StatusPanel",
+]);
+
 export const COMMAND_IDS = Object.freeze([
   ...FACADE_COMMAND_IDS,
   ...WORKFLOW_COMMAND_IDS,
   ...PCCX_LAB_COMMAND_IDS,
   ...DIAGNOSTICS_HANDOFF_COMMAND_IDS,
+  ...KV260_STATUS_COMMAND_IDS,
 ]);
 
 export const MODES = Object.freeze(["checkedExample", "liveWorkspace"]);
