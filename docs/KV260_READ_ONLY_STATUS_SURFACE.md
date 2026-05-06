@@ -11,6 +11,12 @@ write back status.
 - `LauncherStatusReader` consumes the launcher `NPUStatus` shape from
   `pccxai/pccx-llm-launcher#70`: `bitstream_loaded`, `bitstream_uuid`,
   `axi_base_addr`, `axi_stat_register_value`, and `last_error`.
+- The same reader accepts the launcher serial preflight snapshot from
+  `pccxai/pccx-llm-launcher#72`: selected tty port, login result, truncated
+  kernel uname display, XRT presence, and last preflight timestamp. When the
+  snapshot is absent, blocked, or has no tty/login data, the panel reports
+  `preflight not run` instead of reading environment variables or opening a
+  port.
 - `LabTraceReader` parses the lab `TraceManifest` JSON shape from
   `pccxai/pccx-lab#160` for file-replay trace manifests.
 
@@ -22,12 +28,15 @@ the launcher contract package.
 `Kv260StatusPanel` renders launcher status, lab manifest metadata, and a
 `PreflightProposal` checklist:
 
-- bitstream loaded
-- AXI reachable
-- manifest available
+- serial tty port
+- serial login
+- XRT present
+- serial preflight timestamp
 
 The checklist is display-only. A blocked item is evidence that the IDE should
 keep any future KV260 run path gated until lower layers provide reviewed data.
+The IDE surface does not run the launcher serial backend, SSH, shell commands,
+or board commands; it only renders JSON already produced by the launcher side.
 
 ## CLI
 

@@ -3,8 +3,20 @@
 
 export const LAUNCHER_NPU_STATUS_MIRROR_VERSION =
   "pccx.ide.launcher-npu-status.local-mirror.v0";
+export const LAUNCHER_SERIAL_PREFLIGHT_STATUS_VERSION =
+  "pccx.launcher.kv260-serial-preflight.v0";
 export const TRACE_MANIFEST_SCHEMA_VERSION = "pccx.lab.kv260.trace-manifest.v0";
 export const KV260_STATUS_PANEL_VERSION = "pccx.ide.kv260-status-panel.v0";
+
+export const DEFAULT_SERIAL_PREFLIGHT_STATUS = Object.freeze({
+  schema_version: LAUNCHER_SERIAL_PREFLIGHT_STATUS_VERSION,
+  status: "not_run",
+  tty_port: null,
+  login_ok: null,
+  kernel_uname: null,
+  xrt_present: null,
+  last_preflight_at: null,
+});
 
 export const DEFAULT_LAUNCHER_NPU_STATUS = Object.freeze({
   bitstream_loaded: false,
@@ -12,6 +24,7 @@ export const DEFAULT_LAUNCHER_NPU_STATUS = Object.freeze({
   axi_base_addr: null,
   axi_stat_register_value: null,
   last_error: "fixture only; lower-layer evidence not supplied",
+  serial_probe: DEFAULT_SERIAL_PREFLIGHT_STATUS,
 });
 
 export const DEFAULT_TRACE_MANIFEST = Object.freeze({
@@ -122,6 +135,13 @@ function boolField(value, path, errors) {
   return value;
 }
 
+function optionalBoolField(value, path, errors) {
+  if (value == null) {
+    return null;
+  }
+  return boolField(value, path, errors);
+}
+
 function optionalIntegerField(value, path, errors) {
   if (value == null) {
     return null;
@@ -141,12 +161,60 @@ function integerField(value, path, errors) {
   return value;
 }
 
+function firstPresent(value, keys) {
+  for (const key of keys) {
+    if (Object.hasOwn(value, key)) {
+      return value[key];
+    }
+  }
+  return undefined;
+}
+
 function arrayField(value, path, errors) {
   if (!Array.isArray(value)) {
     addError(errors, path, "must be an array");
     return [];
   }
   return value;
+}
+
+function normalizeSerialPreflightStatus(value, errors) {
+  const probe = value ?? DEFAULT_SERIAL_PREFLIGHT_STATUS;
+  if (!isObject(probe)) {
+    addError(errors, "serial_probe", "must be an object");
+    return { ...DEFAULT_SERIAL_PREFLIGHT_STATUS };
+  }
+  const schemaVersion = probe.schema_version ?? LAUNCHER_SERIAL_PREFLIGHT_STATUS_VERSION;
+  if (schemaVersion !== LAUNCHER_SERIAL_PREFLIGHT_STATUS_VERSION) {
+    addError(
+      errors,
+      "serial_probe.schema_version",
+      `must be ${LAUNCHER_SERIAL_PREFLIGHT_STATUS_VERSION}`,
+    );
+  }
+  const status = probe.status ?? "not_run";
+  if (!["available", "blocked", "not_run"].includes(status)) {
+    addError(errors, "serial_probe.status", "must be available, blocked, or not_run");
+  }
+  return {
+    schema_version: schemaVersion,
+    status,
+    tty_port: optionalStringField(probe.tty_port, "serial_probe.tty_port", errors, 240),
+    login_ok: optionalBoolField(probe.login_ok, "serial_probe.login_ok", errors),
+    kernel_uname: optionalStringField(
+      probe.kernel_uname,
+      "serial_probe.kernel_uname",
+      errors,
+      500,
+    ),
+    xrt_present: optionalBoolField(probe.xrt_present, "serial_probe.xrt_present", errors),
+    last_preflight_at: optionalStringField(
+      firstPresent(probe, ["last_preflight_at", "checked_at"]),
+      "serial_probe.last_preflight_at",
+      errors,
+      120,
+    ),
+  };
 }
 
 function normalizeTraceFrame(value, index, errors) {
@@ -196,6 +264,7 @@ export class LauncherStatusReader {
         errors,
       ),
       last_error: optionalStringField(status.last_error, "last_error", errors, 500),
+      serial_probe: normalizeSerialPreflightStatus(status.serial_probe, errors),
     };
     if (errors.length > 0) {
       throw new Error(errors.join("; "));
@@ -251,29 +320,57 @@ function yesNo(value) {
   return value ? "yes" : "no";
 }
 
-export function createPreflightProposal(launcherStatus, traceManifest) {
-  const axiPresent =
-    launcherStatus.axi_base_addr != null && launcherStatus.axi_stat_register_value != null;
+function probeEvidence(probe, value, unavailable = "preflight not run") {
+  if (probe.status === "not_run") {
+    return unavailable;
+  }
+  if (value == null || value === "") {
+    return "unavailable";
+  }
+  return value;
+}
+
+function boolProbeItem(itemId, label, probe, value, trueText, falseText) {
+  const notRun = probe.status === "not_run";
+  return Object.freeze({
+    itemId,
+    label,
+    state: notRun ? "not_run" : value ? "pass" : "blocked",
+    satisfied: value === true,
+    evidence: notRun ? "preflight not run" : value ? trueText : falseText,
+  });
+}
+
+function truncateText(value, maxCharacters = 96) {
+  if (!value) {
+    return "preflight not run";
+  }
+  if (value.length <= maxCharacters) {
+    return value;
+  }
+  return `${value.slice(0, maxCharacters - 3)}...`;
+}
+
+export function createPreflightProposal(launcherStatus, _traceManifest) {
+  const probe = launcherStatus.serial_probe;
   return Object.freeze({
     kind: "kv260-preflight-proposal",
     items: Object.freeze([
       Object.freeze({
-        itemId: "bitstream_loaded",
-        label: "bitstream loaded",
-        satisfied: launcherStatus.bitstream_loaded,
-        evidence: launcherStatus.bitstream_uuid || "launcher status reports no bitstream UUID",
+        itemId: "serial_tty_port",
+        label: "serial tty port",
+        state: probe.status === "not_run" ? "not_run" : probe.tty_port ? "pass" : "blocked",
+        satisfied: Boolean(probe.tty_port),
+        evidence: probeEvidence(probe, probe.tty_port),
       }),
+      boolProbeItem("serial_login", "serial login", probe, probe.login_ok, "login OK", "login not OK"),
+      boolProbeItem("serial_xrt", "XRT present", probe, probe.xrt_present, "xrt_present true", "xrt_present false"),
       Object.freeze({
-        itemId: "axi_reachable",
-        label: "AXI reachable",
-        satisfied: axiPresent,
-        evidence: hexOrUnavailable(launcherStatus.axi_stat_register_value),
-      }),
-      Object.freeze({
-        itemId: "manifest_available",
-        label: "manifest available",
-        satisfied: traceManifest.frame_count >= 0,
-        evidence: `${traceManifest.schema_version}; ${traceManifest.frame_count} frame(s)`,
+        itemId: "serial_probe_timestamp",
+        label: "serial preflight timestamp",
+        state: probe.status === "not_run" ? "not_run" : probe.last_preflight_at ? "pass" : "blocked",
+        satisfied: Boolean(probe.last_preflight_at),
+        evidence: probeEvidence(probe, probe.last_preflight_at),
       }),
     ]),
   });
@@ -294,6 +391,16 @@ export function createKv260StatusPanel(inputs = {}) {
       rawManifestParsedByUi: false,
     }),
     launcher: Object.freeze(launcherStatus),
+    serialProbe: Object.freeze({
+      schemaVersion: launcherStatus.serial_probe.schema_version,
+      status: launcherStatus.serial_probe.status,
+      ttyPort: launcherStatus.serial_probe.tty_port,
+      loginOk: launcherStatus.serial_probe.login_ok,
+      kernelUname: launcherStatus.serial_probe.kernel_uname,
+      kernelUnameDisplay: truncateText(launcherStatus.serial_probe.kernel_uname),
+      xrtPresent: launcherStatus.serial_probe.xrt_present,
+      lastPreflightAt: launcherStatus.serial_probe.last_preflight_at,
+    }),
     lab: Object.freeze({
       schemaVersion: traceManifest.schema_version,
       bitstreamUuid: traceManifest.bitstream_uuid,
@@ -336,6 +443,12 @@ export function formatKv260StatusPanel(panel = createKv260StatusPanel()) {
     `launcher.axiBaseAddr: ${hexOrUnavailable(panel.launcher.axi_base_addr)}`,
     `launcher.axiStatus: ${hexOrUnavailable(panel.launcher.axi_stat_register_value)}`,
     `launcher.lastError: ${panel.launcher.last_error || "none"}`,
+    `serial.ttyPort: ${panel.serialProbe.ttyPort || "preflight not run"}`,
+    `serial.kernelUname: ${panel.serialProbe.kernelUnameDisplay}`,
+    `serial.xrtPresent: ${
+      panel.serialProbe.xrtPresent == null ? "preflight not run" : yesNo(panel.serialProbe.xrtPresent)
+    }`,
+    `serial.lastPreflightAt: ${panel.serialProbe.lastPreflightAt || "preflight not run"}`,
     `lab.schema: ${panel.lab.schemaVersion}`,
     `lab.sourceKind: ${panel.lab.sourceKind}`,
     `lab.frames: ${panel.lab.frameCount}`,
@@ -344,7 +457,7 @@ export function formatKv260StatusPanel(panel = createKv260StatusPanel()) {
     "preflight:",
   ];
   for (const item of panel.preflight.items) {
-    const state = item.satisfied ? "pass" : "blocked";
+    const state = item.state ?? (item.satisfied ? "pass" : "blocked");
     lines.push(`- ${item.label}: ${state} (${item.evidence})`);
   }
   lines.push("execution: no launcher, no pccx-lab, no shell, no SSH, no KV260 control");

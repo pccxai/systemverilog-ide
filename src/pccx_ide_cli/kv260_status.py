@@ -10,8 +10,20 @@ from typing import Any, Mapping
 
 
 LAUNCHER_NPU_STATUS_MIRROR_VERSION = "pccx.ide.launcher-npu-status.local-mirror.v0"
+LAUNCHER_SERIAL_PREFLIGHT_STATUS_VERSION = "pccx.launcher.kv260-serial-preflight.v0"
 TRACE_MANIFEST_SCHEMA_VERSION = "pccx.lab.kv260.trace-manifest.v0"
 KV260_STATUS_PANEL_VERSION = "pccx.ide.kv260-status-panel.v0"
+
+
+@dataclass(frozen=True)
+class SerialPreflightStatus:
+    schema_version: str
+    status: str
+    tty_port: str | None
+    login_ok: bool | None
+    kernel_uname: str | None
+    xrt_present: bool | None
+    last_preflight_at: str | None
 
 
 @dataclass(frozen=True)
@@ -21,6 +33,7 @@ class NPUStatus:
     axi_base_addr: int | None
     axi_stat_register_value: int | None
     last_error: str | None
+    serial_probe: SerialPreflightStatus
 
 
 @dataclass(frozen=True)
@@ -50,6 +63,7 @@ class TraceManifest:
 class PreflightItem:
     item_id: str
     label: str
+    state: str
     satisfied: bool
     evidence: str
 
@@ -69,7 +83,7 @@ class Kv260StatusPanel:
 
 
 class LauncherStatusReader:
-    """Read-only local mirror of launcher#70 `NPUStatus` type shape."""
+    """Read-only local mirror of launcher NPU and serial preflight status."""
 
     @classmethod
     def from_json_text(cls, text: str) -> NPUStatus:
@@ -88,12 +102,14 @@ class LauncherStatusReader:
         axi_base_addr = _optional_int_field(value, "axi_base_addr")
         axi_stat_register_value = _optional_int_field(value, "axi_stat_register_value")
         last_error = _optional_string_field(value, "last_error")
+        serial_probe = _serial_preflight_status(value.get("serial_probe"))
         return NPUStatus(
             bitstream_loaded=bitstream_loaded,
             bitstream_uuid=bitstream_uuid,
             axi_base_addr=axi_base_addr,
             axi_stat_register_value=axi_stat_register_value,
             last_error=last_error,
+            serial_probe=serial_probe,
         )
 
 
@@ -136,27 +152,40 @@ class LabTraceReader:
 
 
 def create_preflight_proposal(status: NPUStatus, manifest: TraceManifest) -> PreflightProposal:
-    axi_present = status.axi_base_addr is not None and status.axi_stat_register_value is not None
+    del manifest
+    probe = status.serial_probe
     return PreflightProposal(
         kind="kv260-preflight-proposal",
         items=(
             PreflightItem(
-                item_id="bitstream_loaded",
-                label="bitstream loaded",
-                satisfied=status.bitstream_loaded,
-                evidence=status.bitstream_uuid or "launcher status reports no bitstream UUID",
+                item_id="serial_tty_port",
+                label="serial tty port",
+                state=_probe_value_state(probe, probe.tty_port is not None),
+                satisfied=probe.tty_port is not None,
+                evidence=_probe_evidence(probe, probe.tty_port),
+            ),
+            _bool_probe_item(
+                "serial_login",
+                "serial login",
+                probe,
+                probe.login_ok,
+                "login OK",
+                "login not OK",
+            ),
+            _bool_probe_item(
+                "serial_xrt",
+                "XRT present",
+                probe,
+                probe.xrt_present,
+                "xrt_present true",
+                "xrt_present false",
             ),
             PreflightItem(
-                item_id="axi_reachable",
-                label="AXI reachable",
-                satisfied=axi_present,
-                evidence=_hex_or_unavailable(status.axi_stat_register_value),
-            ),
-            PreflightItem(
-                item_id="manifest_available",
-                label="manifest available",
-                satisfied=manifest.frame_count >= 0,
-                evidence=f"{manifest.schema_version}; {manifest.frame_count} frame(s)",
+                item_id="serial_probe_timestamp",
+                label="serial preflight timestamp",
+                state=_probe_value_state(probe, probe.last_preflight_at is not None),
+                satisfied=probe.last_preflight_at is not None,
+                evidence=_probe_evidence(probe, probe.last_preflight_at),
             ),
         ),
     )
@@ -182,6 +211,25 @@ def panel_to_dict(panel: Kv260StatusPanel) -> dict[str, Any]:
             "axi_base_addr": panel.launcher_status.axi_base_addr,
             "axi_stat_register_value": panel.launcher_status.axi_stat_register_value,
             "last_error": panel.launcher_status.last_error,
+            "serial_probe": {
+                "schema_version": panel.launcher_status.serial_probe.schema_version,
+                "status": panel.launcher_status.serial_probe.status,
+                "tty_port": panel.launcher_status.serial_probe.tty_port,
+                "login_ok": panel.launcher_status.serial_probe.login_ok,
+                "kernel_uname": panel.launcher_status.serial_probe.kernel_uname,
+                "xrt_present": panel.launcher_status.serial_probe.xrt_present,
+                "last_preflight_at": panel.launcher_status.serial_probe.last_preflight_at,
+            },
+        },
+        "serial_probe": {
+            "schema_version": panel.launcher_status.serial_probe.schema_version,
+            "status": panel.launcher_status.serial_probe.status,
+            "tty_port": panel.launcher_status.serial_probe.tty_port,
+            "login_ok": panel.launcher_status.serial_probe.login_ok,
+            "kernel_uname": panel.launcher_status.serial_probe.kernel_uname,
+            "kernel_uname_display": _truncate_uname(panel.launcher_status.serial_probe.kernel_uname),
+            "xrt_present": panel.launcher_status.serial_probe.xrt_present,
+            "last_preflight_at": panel.launcher_status.serial_probe.last_preflight_at,
         },
         "lab": {
             "schema_version": panel.trace_manifest.schema_version,
@@ -198,6 +246,7 @@ def panel_to_dict(panel: Kv260StatusPanel) -> dict[str, Any]:
                 {
                     "item_id": item.item_id,
                     "label": item.label,
+                    "state": item.state,
                     "satisfied": item.satisfied,
                     "evidence": item.evidence,
                 }
@@ -218,6 +267,7 @@ def panel_to_dict(panel: Kv260StatusPanel) -> dict[str, Any]:
 
 def format_kv260_status_panel(panel: Kv260StatusPanel) -> str:
     status = panel.launcher_status
+    probe = status.serial_probe
     manifest = panel.trace_manifest
     lines = [
         "KV260 Status Surface",
@@ -228,6 +278,10 @@ def format_kv260_status_panel(panel: Kv260StatusPanel) -> str:
         f"launcher.axiBaseAddr: {_hex_or_unavailable(status.axi_base_addr)}",
         f"launcher.axiStatus: {_hex_or_unavailable(status.axi_stat_register_value)}",
         f"launcher.lastError: {status.last_error or 'none'}",
+        f"serial.ttyPort: {probe.tty_port or 'preflight not run'}",
+        f"serial.kernelUname: {_truncate_uname(probe.kernel_uname)}",
+        f"serial.xrtPresent: {_optional_yes_no(probe.xrt_present)}",
+        f"serial.lastPreflightAt: {probe.last_preflight_at or 'preflight not run'}",
         f"lab.schema: {manifest.schema_version}",
         f"lab.sourceKind: {manifest.source_kind}",
         f"lab.frames: {manifest.frame_count}",
@@ -236,8 +290,7 @@ def format_kv260_status_panel(panel: Kv260StatusPanel) -> str:
         "preflight:",
     ]
     for item in panel.preflight.items:
-        state = "pass" if item.satisfied else "blocked"
-        lines.append(f"- {item.label}: {state} ({item.evidence})")
+        lines.append(f"- {item.label}: {item.state} ({item.evidence})")
     lines.extend([
         "execution: no launcher, no pccx-lab, no shell, no SSH, no KV260 control",
         "writeBack: no",
@@ -257,6 +310,15 @@ def _bool_field(value: Mapping[str, Any], key: str) -> bool:
     field = value.get(key)
     if not isinstance(field, bool):
         raise ValueError(f"{key} must be a boolean")
+    return field
+
+
+def _optional_bool_field(value: Mapping[str, Any], key: str) -> bool | None:
+    field = value.get(key)
+    if field is None:
+        return None
+    if not isinstance(field, bool):
+        raise ValueError(f"{key} must be null or a boolean")
     return field
 
 
@@ -290,6 +352,42 @@ def _optional_string_field(value: Mapping[str, Any], key: str) -> str | None:
     if not isinstance(field, str) or "\n" in field or "\r" in field:
         raise ValueError(f"{key} must be null or a single-line string")
     return field
+
+
+def _serial_preflight_status(value: Any) -> SerialPreflightStatus:
+    if value is None:
+        value = {
+            "schema_version": LAUNCHER_SERIAL_PREFLIGHT_STATUS_VERSION,
+            "status": "not_run",
+            "tty_port": None,
+            "login_ok": None,
+            "kernel_uname": None,
+            "xrt_present": None,
+            "last_preflight_at": None,
+        }
+    if not isinstance(value, Mapping):
+        raise ValueError("serial_probe must be a JSON object")
+    schema_version = value.get("schema_version") or LAUNCHER_SERIAL_PREFLIGHT_STATUS_VERSION
+    if schema_version != LAUNCHER_SERIAL_PREFLIGHT_STATUS_VERSION:
+        raise ValueError(
+            "serial_probe.schema_version must be "
+            f"{LAUNCHER_SERIAL_PREFLIGHT_STATUS_VERSION}"
+        )
+    status = value.get("status") or "not_run"
+    if status not in {"available", "blocked", "not_run"}:
+        raise ValueError("serial_probe.status must be available, blocked, or not_run")
+    return SerialPreflightStatus(
+        schema_version=schema_version,
+        status=status,
+        tty_port=_optional_string_field(value, "tty_port"),
+        login_ok=_optional_bool_field(value, "login_ok"),
+        kernel_uname=_optional_string_field(value, "kernel_uname"),
+        xrt_present=_optional_bool_field(value, "xrt_present"),
+        last_preflight_at=_optional_string_field(
+            {"last_preflight_at": value.get("last_preflight_at", value.get("checked_at"))},
+            "last_preflight_at",
+        ),
+    )
 
 
 def _list_field(value: Mapping[str, Any], key: str) -> list[Any]:
@@ -329,3 +427,54 @@ def _hex_or_unavailable(value: int | None) -> str:
 
 def _yes_no(value: bool) -> str:
     return "yes" if value else "no"
+
+
+def _optional_yes_no(value: bool | None) -> str:
+    if value is None:
+        return "preflight not run"
+    return _yes_no(value)
+
+
+def _probe_value_state(probe: SerialPreflightStatus, present: bool) -> str:
+    if probe.status == "not_run":
+        return "not_run"
+    return "pass" if present else "blocked"
+
+
+def _probe_evidence(probe: SerialPreflightStatus, value: str | None) -> str:
+    if probe.status == "not_run":
+        return "preflight not run"
+    return value or "unavailable"
+
+
+def _bool_probe_item(
+    item_id: str,
+    label: str,
+    probe: SerialPreflightStatus,
+    value: bool | None,
+    true_text: str,
+    false_text: str,
+) -> PreflightItem:
+    if probe.status == "not_run":
+        return PreflightItem(
+            item_id=item_id,
+            label=label,
+            state="not_run",
+            satisfied=False,
+            evidence="preflight not run",
+        )
+    return PreflightItem(
+        item_id=item_id,
+        label=label,
+        state="pass" if value else "blocked",
+        satisfied=value is True,
+        evidence=true_text if value else false_text,
+    )
+
+
+def _truncate_uname(value: str | None, max_characters: int = 96) -> str:
+    if not value:
+        return "preflight not run"
+    if len(value) <= max_characters:
+        return value
+    return value[: max_characters - 3] + "..."
