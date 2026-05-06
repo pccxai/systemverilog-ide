@@ -1566,6 +1566,32 @@ async function testKv260StatusPanelCommandReturnsDataOnlySurface() {
   assert.equal(result.panel.safety.sshExecution, false);
 }
 
+async function testKv260StatusPanelCommandRendersExistingWebviewOnly() {
+  const webviewPanel = { webview: { html: "" } };
+  const vscodeApi = {
+    ViewColumn: { One: 1 },
+    window: {
+      createWebviewPanel(viewType, title, viewColumn, options) {
+        assert.equal(viewType, "pccxKv260Readiness");
+        assert.equal(title, "PCCX KV260 Readiness");
+        assert.equal(viewColumn, 1);
+        assert.deepEqual(options, { enableScripts: false });
+        return webviewPanel;
+      },
+      showInformationMessage() {},
+    },
+  };
+  const handler = createCommandHandler(SHOW_KV260_STATUS_PANEL_COMMAND, vscodeApi, {});
+
+  const result = await handler();
+
+  assert.equal(result.ok, true);
+  assert.equal(result.presentation, "webview");
+  assert.match(webviewPanel.webview.html, /class="aperture-mark"/);
+  assert.match(webviewPanel.webview.html, /status-pill status-pending">PENDING/);
+  assert.match(webviewPanel.webview.html, /<details class="evidence-path">/);
+}
+
 testKnownFacadeArgs();
 testUnknownCommandsRejected();
 testCheckedExampleDiagnosticsCommandStaysExampleMode();
@@ -1595,5 +1621,6 @@ await testContextBundleAuditCommandReturnsBoundedAudit();
 await testDiagnosticsHandoffSummaryCommandReturnsDataOnlySurface();
 await testPccxLabBackendStatusCommandReturnsStatusOnly();
 await testKv260StatusPanelCommandReturnsDataOnlySurface();
+await testKv260StatusPanelCommandRendersExistingWebviewOnly();
 
 console.log("vscode extension entrypoint tests ok");

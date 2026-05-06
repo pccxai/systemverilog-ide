@@ -75,6 +75,7 @@ import {
 import {
   createKv260StatusPanel,
   formatKv260StatusPanel,
+  renderKv260StatusPanelHtml,
 } from "./kv260-status-panel.mjs";
 
 const EXTENSION_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -450,6 +451,26 @@ function appendCommandOutput(outputChannel, commandId, result) {
     outputChannel.appendLine(result.error);
   }
   outputChannel.show?.(true);
+}
+
+function showKv260StatusWebview(vscodeApi, panel) {
+  const createWebviewPanel = vscodeApi?.window?.createWebviewPanel;
+  if (typeof createWebviewPanel !== "function") {
+    return null;
+  }
+  const viewColumn = vscodeApi?.ViewColumn?.Beside ?? vscodeApi?.ViewColumn?.One ?? 1;
+  const webviewPanel = createWebviewPanel.call(
+    vscodeApi.window,
+    "pccxKv260Readiness",
+    "PCCX KV260 Readiness",
+    viewColumn,
+    { enableScripts: false },
+  );
+  if (!webviewPanel?.webview) {
+    return null;
+  }
+  webviewPanel.webview.html = renderKv260StatusPanelHtml(panel);
+  return webviewPanel;
 }
 
 function facadeRunnerFromRuntime(runtime = {}) {
@@ -1125,6 +1146,10 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
           kind: "kv260-status-panel",
           panel,
         };
+        const webviewPanel = showKv260StatusWebview(vscodeApi, panel);
+        if (webviewPanel) {
+          result.presentation = "webview";
+        }
         vscodeApi?.window?.showInformationMessage?.(
           `KV260 status surface: ${panel.lab.frameCount} trace frame(s).`,
           result,
