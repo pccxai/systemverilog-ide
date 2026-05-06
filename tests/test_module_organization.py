@@ -5017,8 +5017,20 @@ def test_cli_module_roots_missing_path_exits_nonzero():
     assert "does not exist" in result.stderr
 
 
+def test_cli_module_leaves_missing_path_exits_nonzero():
+    result = _run_cli("module-leaves", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
 def test_cli_module_orphans_missing_path_exits_nonzero():
     result = _run_cli("module-orphans", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
+def test_cli_module_depths_missing_path_exits_nonzero():
+    result = _run_cli("module-depths", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
     assert "does not exist" in result.stderr
 
@@ -5061,6 +5073,12 @@ def test_cli_module_fanin_missing_path_exits_nonzero():
 
 def test_cli_module_summary_missing_path_exits_nonzero():
     result = _run_cli("module-summary", str(FIXTURE.parent / "missing.sv"))
+    assert result.returncode != 0
+    assert "does not exist" in result.stderr
+
+
+def test_cli_module_health_missing_path_exits_nonzero():
+    result = _run_cli("module-health", str(FIXTURE.parent / "missing.sv"))
     assert result.returncode != 0
     assert "does not exist" in result.stderr
 
