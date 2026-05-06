@@ -1786,6 +1786,28 @@ def test_build_module_summary_view_inherits_port_direction(tmp_path):
     assert ports["done_o"]["state"] == "detected"
 
 
+def test_build_module_summary_view_portless_module_is_read_only(tmp_path):
+    source = tmp_path / "portless.sv"
+    source.write_text("module control_block;\nendmodule\n", encoding="utf-8")
+
+    view = build_module_summary_view(str(source), source)
+    module = view["modules"][0]
+
+    assert view["kind"] == "module-summary-view"
+    assert view["summary_state"] == "available_as_data"
+    assert view["module_count"] == 1
+    assert view["port_count"] == 0
+    assert module["name"] == "control_block"
+    assert module["port_count"] == 0
+    assert module["ports"] == []
+    assert module["readiness"]["state"] == "ready-for-review"
+    assert view["safety"]["read_only"] is True
+    assert view["safety"]["writes_files"] is False
+    assert view["safety"]["applies_refactor"] is False
+    assert view["safety"]["runs_validation"] is False
+    assert '"argv"' not in json.dumps(view)
+
+
 def test_build_module_summary_view_empty_source_is_read_only():
     empty_fixture = REPO_ROOT / "fixtures" / "empty.sv"
     view = build_module_summary_view(str(empty_fixture), empty_fixture)
@@ -4010,6 +4032,21 @@ def test_cli_module_summary_text():
     assert result.returncode == 0, result.stderr
     assert "module summary: available_as_data" in result.stdout
     assert "input clk at line 5 (detected)" in result.stdout
+
+
+def test_cli_module_summary_portless_module_text(tmp_path):
+    source = tmp_path / "portless.sv"
+    source.write_text("module control_block;\nendmodule\n", encoding="utf-8")
+
+    result = _run_cli("module-summary", str(source), "--format", "text")
+    assert result.returncode == 0, result.stderr
+
+    assert "module summary: available_as_data" in result.stdout
+    assert "1 module" in result.stdout
+    assert "0 ports" in result.stdout
+    assert "module control_block (complete header, ready-for-review)" in result.stdout
+    assert "ports: none" in result.stdout
+    assert "read-only: no file writes" in result.stdout
 
 
 def test_cli_module_summary_empty_source_json():
