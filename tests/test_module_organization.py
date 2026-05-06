@@ -4095,6 +4095,30 @@ def test_cli_port_usage_json():
     assert payload["safety"]["writes_files"] is False
 
 
+def test_cli_port_usage_missing_module_json():
+    result = _run_cli(
+        "port-usage",
+        str(FIXTURE),
+        "--module",
+        "missing_mod",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+
+    assert payload["kind"] == "module-port-usage-view"
+    assert payload["target"] == "missing_mod"
+    assert payload["preflight"]["status"] == "blocked"
+    assert payload["preflight"]["reasons"] == ["module not found: missing_mod"]
+    assert payload["module"] is None
+    assert payload["ports"] == []
+    assert payload["usage_sites"] == []
+    assert payload["writes_files"] is False
+    assert payload["safety"]["writes_files"] is False
+    assert '"argv"' not in result.stdout
+
+
 def test_cli_port_usage_text():
     result = _run_cli(
         "port-usage",
@@ -4168,6 +4192,32 @@ def test_cli_module_context_json():
     assert payload["safety"]["writes_files"] is False
 
 
+def test_cli_module_context_missing_module_json():
+    result = _run_cli(
+        "module-context",
+        str(FIXTURE),
+        "--module",
+        "missing_mod",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+
+    assert payload["kind"] == "module-context-bundle"
+    assert payload["target"] == "missing_mod"
+    assert payload["context_state"] == "blocked"
+    assert payload["preflight"]["status"] == "blocked"
+    assert payload["preflight"]["reasons"] == ["module not found: missing_mod"]
+    assert payload["module"] is None
+    assert payload["summary_context"] is None
+    assert payload["port_context"]["ports"] == []
+    assert payload["refactor_context"]["review_targets"] == []
+    assert payload["writes_files"] is False
+    assert payload["safety"]["writes_files"] is False
+    assert '"argv"' not in result.stdout
+
+
 def test_cli_module_context_text():
     result = _run_cli(
         "module-context",
@@ -4197,6 +4247,29 @@ def test_cli_refactor_impact_json():
     assert payload["target"] == "leaf_mod"
     assert payload["direct_dependents"] == ["top_mod"]
     assert payload["safety"]["writes_files"] is False
+
+
+def test_cli_refactor_impact_missing_module_json():
+    result = _run_cli(
+        "refactor-impact",
+        str(FIXTURE),
+        "--module",
+        "missing_mod",
+        "--format",
+        "json",
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+
+    assert payload["kind"] == "module-refactor-impact-view"
+    assert payload["target"] == "missing_mod"
+    assert payload["preflight"]["status"] == "blocked"
+    assert payload["preflight"]["reasons"] == ["module not found: missing_mod"]
+    assert payload["module"] is None
+    assert payload["review_targets"] == []
+    assert payload["writes_files"] is False
+    assert payload["safety"]["writes_files"] is False
+    assert '"argv"' not in result.stdout
 
 
 def test_cli_refactor_impact_text():
