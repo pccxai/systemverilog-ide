@@ -17,6 +17,7 @@ import {
   PCCX_LAB_BACKEND_STATUS_COMMAND,
   SHOW_CONTEXT_BUNDLE_AUDIT_COMMAND,
   SHOW_DIAGNOSTICS_HANDOFF_SUMMARY_COMMAND,
+  SHOW_KV260_STATUS_PANEL_COMMAND,
   SHOW_LOCAL_WORKFLOW_STATUS_COMMAND,
   SHOW_PATCH_PROPOSAL_PREVIEW_COMMAND,
   SHOW_RECENT_VALIDATION_RESULTS_COMMAND,
@@ -1548,6 +1549,23 @@ async function testPccxLabBackendStatusCommandReturnsStatusOnly() {
   assert.ok(result.status.futureSafetyRequirements.includes("fixed args"));
 }
 
+async function testKv260StatusPanelCommandReturnsDataOnlySurface() {
+  const handler = createCommandHandler(SHOW_KV260_STATUS_PANEL_COMMAND, null, {});
+
+  const result = await handler();
+
+  assert.equal(result.ok, true);
+  assert.equal(result.commandId, SHOW_KV260_STATUS_PANEL_COMMAND);
+  assert.equal(result.kind, "kv260-status-panel");
+  assert.equal(result.panel.kind, "kv260-status-panel");
+  assert.equal(result.panel.source.launcherTypeMirror, "pccx.ide.launcher-npu-status.local-mirror.v0");
+  assert.equal(result.panel.source.labManifestParser, "real");
+  assert.equal(result.panel.safety.launcherExecution, false);
+  assert.equal(result.panel.safety.pccxLabExecution, false);
+  assert.equal(result.panel.safety.shellExecution, false);
+  assert.equal(result.panel.safety.sshExecution, false);
+}
+
 testKnownFacadeArgs();
 testUnknownCommandsRejected();
 testCheckedExampleDiagnosticsCommandStaysExampleMode();
@@ -1576,5 +1594,6 @@ await testLocalWorkflowStatusCommandReturnsFixtureOnlyBoundaryState();
 await testContextBundleAuditCommandReturnsBoundedAudit();
 await testDiagnosticsHandoffSummaryCommandReturnsDataOnlySurface();
 await testPccxLabBackendStatusCommandReturnsStatusOnly();
+await testKv260StatusPanelCommandReturnsDataOnlySurface();
 
 console.log("vscode extension entrypoint tests ok");

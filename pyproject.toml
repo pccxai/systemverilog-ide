@@ -22,6 +22,7 @@ test = ["pytest"]
 
 [project.scripts]
 pccx-ide = "pccx_ide_cli.__main__:main"
+sv-ide = "pccx_ide_cli.__main__:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pccx_ide_cli"]

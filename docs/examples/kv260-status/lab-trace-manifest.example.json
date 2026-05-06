@@ -1,0 +1,25 @@
+{
+  "schema_version": "pccx.lab.kv260.trace-manifest.v0",
+  "bitstream_uuid": "00000000-0000-0000-0000-000000000160",
+  "axi_base": "0x00000000a0000000",
+  "isa_version": "pccx_v002",
+  "frame_count": 1,
+  "checksums": [
+    {
+      "algorithm": "sha256",
+      "value": "fixture-only-not-a-hardware-capture",
+      "frame_idx": null
+    }
+  ],
+  "runbook_ref": "pccxai/pccx-lab#160",
+  "source_kind": "file_replay",
+  "frames": [
+    {
+      "frame_idx": 0,
+      "axi_stat_register_value": 1,
+      "engine_completion_mask": 3,
+      "cycle_count": 128,
+      "result_payload": "a55a0001"
+    }
+  ]
+}
