@@ -1,7 +1,3 @@
-// PCCX(TM) — reusable AI accelerator project.
-// SPDX-FileCopyrightText: 2026 Hyun Woo Kim
-// SPDX-License-Identifier: Apache-2.0
-
 // Minimal fixture; not a real design.
 module ok_module (
     input  logic clk,
