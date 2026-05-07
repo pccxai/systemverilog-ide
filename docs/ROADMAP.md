@@ -9,7 +9,8 @@ Direction and safety rules remain pinned in
 [`PROJECT_DIRECTION_AND_STYLE.md`](./PROJECT_DIRECTION_AND_STYLE.md).
 The external editor bridge shape is documented in
 [`EDITOR_BRIDGE_CONTRACT.md`](./EDITOR_BRIDGE_CONTRACT.md), and the
-cross-repo handoff notes live in [`HANDOFF.md`](./HANDOFF.md).
+cross-repo handoff notes live in [`HANDOFF.md`](./HANDOFF.md). The
+test taxonomy is documented in [`TEST_TAXONOMY.md`](./TEST_TAXONOMY.md).
 
 ## Now
 

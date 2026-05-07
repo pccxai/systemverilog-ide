@@ -28,6 +28,8 @@ The module organization workflow is documented in
 [`MODULE_ORGANIZATION_WORKFLOW.md`](./MODULE_ORGANIZATION_WORKFLOW.md).
 The diagnostics/xsim planning boundary for issue #3 is tracked in
 [`DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md`](./DIAGNOSTICS_XSIM_INTEGRATION_PLAN.md).
+The repository test taxonomy is tracked in
+[`TEST_TAXONOMY.md`](./TEST_TAXONOMY.md).
 
 ---
 
