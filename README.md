@@ -341,6 +341,8 @@ bash scripts/editor-bridge-smoke.sh
 
 The current pre-stable envelope shape is described in
 [`schema/diagnostics-v0.json`](./schema/diagnostics-v0.json).
+The experimental sv-ide settings shape for editor prototypes is described
+in [`schema/sv-ide-settings-v0.json`](./schema/sv-ide-settings-v0.json).
 Handoff notes for the eventual `pccx-lab` and xsim integration paths
 live in [`docs/HANDOFF.md`](./docs/HANDOFF.md).
 The initial roadmap for navigation, diagnostics, read-only handoff

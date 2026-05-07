@@ -166,6 +166,14 @@ The prototype-only settings are:
 - `pccxSystemVerilog.defaultNavigationRoot`, default `fixtures/modules`
 - `pccxSystemVerilog.defaultModule`, default `simple_mod`
 - `pccxSystemVerilog.defaultDeclarationKind`, default `module`
+- `pccxSystemVerilog.panel.dataSources`, default `diagnosticsHandoff`, `runtimeReadiness`, `deviceSession`, `localWorkflow`
+- `pccxSystemVerilog.panel.refreshIntervalMs`, default `5000`
+- `pccxSystemVerilog.logLevel`, default `info`
+
+The settings contribution in `package.json` mirrors the checked schema in
+[`../../schema/sv-ide-settings-v0.json`](../../schema/sv-ide-settings-v0.json)
+so VS Code reads the same schema shape for its Settings UI that tests use
+as the local settings contract.
 
 The default diagnostics publishing command is
 `pccxSystemVerilog.publishCheckedExampleDiagnostics`.  It is experimental

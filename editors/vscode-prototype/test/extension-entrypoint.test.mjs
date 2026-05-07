@@ -242,6 +242,9 @@ function testResolveCommandRequestUsesVsCodeSettings() {
     ["defaultNavigationRoot", "configured/modules"],
     ["defaultModule", "pkg_defs"],
     ["defaultDeclarationKind", "package"],
+    ["panel.dataSources", ["deviceSession", "localWorkflow"]],
+    ["panel.refreshIntervalMs", 15000],
+    ["logLevel", "debug"],
   ]);
   const vscodeApi = {
     workspace: {
@@ -281,6 +284,11 @@ function testResolveCommandRequestUsesVsCodeSettings() {
     defaultNavigationRoot: "configured/modules",
     defaultModule: "pkg_defs",
     defaultDeclarationKind: "package",
+    panel: {
+      dataSources: ["deviceSession", "localWorkflow"],
+      refreshIntervalMs: 15000,
+    },
+    logLevel: "debug",
   });
   assert.deepEqual(
     resolveCommandRequest("pccxSystemVerilog.runDiagnosticsLive", undefined, vscodeApi),
@@ -309,6 +317,11 @@ function testResolveCommandRequestUsesVsCodeSettings() {
       defaultNavigationRoot: "configured/modules",
       defaultModule: "pkg_defs",
       defaultDeclarationKind: "package",
+      panel: {
+        dataSources: ["deviceSession", "localWorkflow"],
+        refreshIntervalMs: 15000,
+      },
+      logLevel: "debug",
     },
   );
   assert.deepEqual(
@@ -338,6 +351,11 @@ function testResolveCommandRequestUsesVsCodeSettings() {
       defaultNavigationRoot: "configured/modules",
       defaultModule: "pkg_defs",
       defaultDeclarationKind: "package",
+      panel: {
+        dataSources: ["deviceSession", "localWorkflow"],
+        refreshIntervalMs: 15000,
+      },
+      logLevel: "debug",
     },
   );
   assert.deepEqual(
@@ -367,6 +385,11 @@ function testResolveCommandRequestUsesVsCodeSettings() {
       defaultNavigationRoot: "configured/modules",
       defaultModule: "pkg_defs",
       defaultDeclarationKind: "package",
+      panel: {
+        dataSources: ["deviceSession", "localWorkflow"],
+        refreshIntervalMs: 15000,
+      },
+      logLevel: "debug",
     },
   );
 }
