@@ -49,14 +49,38 @@ def comment_prefix(path: Path) -> str:
 
 
 def has_required_header(path: Path, text: str) -> bool:
+    """Accept either the repo-local two-line form or the org-wide
+    three-line PCCX(TM) form.
+
+    Two-line repo-local form (legacy):
+        <prefix> SPDX-License-Identifier: Apache-2.0
+        <prefix> Copyright 2026 pccxai
+
+    Three-line org-wide form (PCCX(TM) trademark + SPDX):
+        <prefix> PCCX(TM) — reusable AI accelerator project.
+        <prefix> SPDX-FileCopyrightText: 2026 Hyun Woo Kim
+        <prefix> SPDX-License-Identifier: Apache-2.0
+    """
     lines = text.splitlines()
     offset = 1 if lines and lines[0].startswith("#!") else 0
     prefix = comment_prefix(path)
-    expected = [
+
+    legacy_expected = [
         f"{prefix} SPDX-License-Identifier: Apache-2.0",
         f"{prefix} Copyright 2026 pccxai",
     ]
-    return lines[offset:offset + 2] == expected
+    if lines[offset:offset + 2] == legacy_expected:
+        return True
+
+    pccx_org_expected = [
+        f"{prefix} PCCX(TM) — reusable AI accelerator project.",
+        f"{prefix} SPDX-FileCopyrightText: 2026 Hyun Woo Kim",
+        f"{prefix} SPDX-License-Identifier: Apache-2.0",
+    ]
+    if lines[offset:offset + 3] == pccx_org_expected:
+        return True
+
+    return False
 
 
 def load_baseline() -> dict[str, str]:
