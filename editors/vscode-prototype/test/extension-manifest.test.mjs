@@ -32,7 +32,18 @@ const COMMAND_IDS = [
   "pccxSystemVerilog.showPccxLabBackendStatus",
   "pccxSystemVerilog.showDiagnosticsHandoffSummary",
   "pccxSystemVerilog.showKv260StatusPanel",
+  "pccxSystemVerilog.v0021.showKv260StatusPanel",
+  "pccxSystemVerilog.v0021.openRunbook",
+  "pccxSystemVerilog.v0021.openProjectBoard",
+  "pccxSystemVerilog.v0021.showTraceInspectHelp",
 ];
+
+const V0021_COMMAND_TITLES = new Map([
+  ["pccxSystemVerilog.v0021.showKv260StatusPanel", "PCCX: Show KV260 Status Panel"],
+  ["pccxSystemVerilog.v0021.openRunbook", "PCCX: Open v002.1 Runbook"],
+  ["pccxSystemVerilog.v0021.openProjectBoard", "PCCX: Open Project Board"],
+  ["pccxSystemVerilog.v0021.showTraceInspectHelp", "PCCX: Show Trace Inspect Help"],
+]);
 
 async function readText(path) {
   return readFile(path, "utf8");
@@ -104,6 +115,12 @@ async function testCommandContributions() {
     assert.ok(
       activationEvents.has(`onCommand:${commandId}`),
       `${commandId} missing activation event`,
+    );
+  }
+  for (const [commandId, title] of V0021_COMMAND_TITLES) {
+    assert.equal(
+      manifest.contributes.commands.find((command) => command.command === commandId)?.title,
+      title,
     );
   }
   assert.equal(contributedCommands.size, COMMAND_IDS.length);
