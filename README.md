@@ -31,6 +31,8 @@ The later-track external editor integration plan is tracked in
 [`docs/EXTERNAL_EDITOR_INTEGRATION_PLAN.md`](./docs/EXTERNAL_EDITOR_INTEGRATION_PLAN.md).
 The module organization workflow is tracked in
 [`docs/MODULE_ORGANIZATION_WORKFLOW.md`](./docs/MODULE_ORGANIZATION_WORKFLOW.md).
+The local VS Code prototype quickstart is tracked in
+[`editors/vscode-prototype/docs/SVIDE_QUICKSTART.md`](./editors/vscode-prototype/docs/SVIDE_QUICKSTART.md).
 
 ## Integration model
 
