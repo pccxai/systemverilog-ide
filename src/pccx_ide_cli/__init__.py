@@ -1,3 +1,7 @@
+# PCCX(TM) — reusable AI accelerator project.
+# SPDX-FileCopyrightText: 2026 Hyun Woo Kim
+# SPDX-License-Identifier: Apache-2.0
+
 """Scaffold CLI for the pccx SystemVerilog IDE spin-out.
 
 Real analysis is expected to land in pccx-lab and be consumed through its
