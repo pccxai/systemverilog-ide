@@ -4,6 +4,9 @@ This directory is an experimental local VS Code prototype for translating
 pre-stable editor bridge JSON into VS Code-style data records and for
 hosting a minimal local VS Code extension package scaffold.
 
+For a five-step local flow through install, panel, preflight, status, and
+export, see [`docs/SVIDE_QUICKSTART.md`](./docs/SVIDE_QUICKSTART.md).
+
 The extension scaffold is not published, has no marketplace packaging,
 has no LSP, and does not define a stable ABI/API.  It can consume the checked
 examples under `docs/examples/editor-bridge` and can also run limited
