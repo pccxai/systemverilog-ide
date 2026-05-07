@@ -455,3 +455,11 @@ Apache License 2.0 — see [LICENSE](./LICENSE).
 [pccx-launcher]: https://github.com/pccxai/pccx-llm-launcher
 [pccx-llm-v003]: https://github.com/pccxai/pccx-LLM-v003
 [pccx-vision-v001]: https://github.com/pccxai/pccx-vision-v001
+
+## Trademark
+
+`PCCX™` is a mark used by the PCCX project. Korean trademark
+applications are pending for PCCX in Classes 09 and 42. Registration
+has not been granted; do not use `PCCX®` until the central trademark
+policy is updated. See
+[`pccx/TRADEMARKS.md`](https://github.com/pccxai/pccx/blob/main/TRADEMARKS.md).
