@@ -57,7 +57,7 @@ runtime, MCP, LSP, marketplace, telemetry, upload, or write-back flows.
 
 This boundary does not:
 
-- execute `pccx-llm-launcher`
+- execute `pccx-launcher`
 - execute `pccx-lab`
 - invoke `pccx-lab diagnostics-handoff validate`
 - spawn shell commands

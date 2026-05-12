@@ -158,7 +158,7 @@
           "type": "string",
           "enum": [
             "none",
-            "pccx-llm-launcher",
+            "pccx-launcher",
             "mcp"
           ],
           "default": "none",

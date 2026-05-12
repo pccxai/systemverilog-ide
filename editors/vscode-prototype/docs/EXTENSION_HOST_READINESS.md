@@ -73,7 +73,7 @@ should earn CI promotion separately.
 - Marketplace install.
 - Enabled live workspace scanning, watchers, check-on-save, or arbitrary
   project indexing.
-- provider/runtime calls, pccx-llm-launcher runtime calls, chat backend
+- provider/runtime calls, pccx-launcher runtime calls, chat backend
   calls, or MCP server implementation.
 
 The runtime smoke is limited coverage for the activation, command facade,
@@ -144,9 +144,9 @@ yet.
 ## Workflow Boundary
 
 The prototype has a future SystemVerilog workflow boundary
-boundary, not a model integration.  pccx-llm-launcher is a future local LLM/chat backend candidate, and any later integration must use a reviewed
+boundary, not a model integration.  pccx-launcher is a future local LLM/chat backend candidate, and any later integration must use a reviewed
 contract.  The current extension code makes no provider/runtime calls, no
-pccx-llm-launcher runtime calls, and implements no MCP server. Workflow
+pccx-launcher runtime calls, and implements no MCP server. Workflow
 actions are modeled as proposals, including command proposal and
 validation proposal shapes, plus a checked patch proposal contract for
 future user-reviewed edits, rather than direct execution.  User approval
@@ -161,7 +161,7 @@ apply changes.
 The pccx-lab command descriptor contract is data-only future-state
 preparation and does not execute pccx-lab.
 The launcher status contract is fixture-only future-state metadata and
-does not call pccx-llm-launcher or communicate with devices.
+does not call pccx-launcher or communicate with devices.
 `pccxSystemVerilog.showLocalWorkflowStatus` summarizes local/fixture
 workflow state without pccx-lab execution, launcher calls, provider calls,
 MCP, or LSP.
@@ -202,7 +202,7 @@ shell command strings, secrets, tokens, private home paths, build
 blobs, model paths, or pccx-lab outputs.  It does not execute raw command
 strings, destructive commands, git write operations,
 release/tag/settings/secrets commands, pccx-lab commands, provider/runtime calls,
-pccx-llm-launcher runtime calls, MCP server operations, LSP, marketplace
+pccx-launcher runtime calls, MCP server operations, LSP, marketplace
 packaging, releases, or tags.  It does not add a UI approval dialog in
 this prototype; callers should invoke it only after a user-approved
 validation proposal.
@@ -259,7 +259,7 @@ system.
    marketplace flow.
 7. Do not make a marketplace, published-extension, or stable API claim.
 8. Do not make live workspace mode the default.
-9. Do not add provider/runtime calls, pccx-llm-launcher runtime calls, or MCP
+9. Do not add provider/runtime calls, pccx-launcher runtime calls, or MCP
    server implementation without a separate contract review.
 10. Keep approved validation execution disabled by default and restricted
     to allowlisted proposal IDs.

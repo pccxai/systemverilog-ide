@@ -25,12 +25,12 @@ analysis, diagnostics, declaration lookup, validation status, and log
 handoff should flow through the existing facade and CLI/core boundary
 rather than being duplicated inside this extension scaffold.
 
-`pccx-llm-launcher` is a future local LLM/chat/model backend candidate.
+`pccx-launcher` is a future local LLM/chat/model backend candidate.
 This prototype only adds workflow boundary status and context bundle commands
 behind a controlled tool boundary, plus a validation command proposal
 surface that returns data only and a disabled-by-default approved
 validation runner for allowlisted proposal IDs.  There are no provider/runtime calls, no
-pccx-llm-launcher runtime calls, and no MCP server implementation in this
+pccx-launcher runtime calls, and no MCP server implementation in this
 scaffold.
 
 ## Data Mapping
@@ -204,7 +204,7 @@ context bundle summary, and does not execute pccx-lab.
 `src/diagnostics-handoff-consumer.mjs` is a read-only adapter for the
 launcher diagnostics handoff JSON shape.  It validates the checked
 `pccx.diagnosticsHandoff.v0` fixture as data and returns a deterministic
-summary for future UI use.  It does not invoke `pccx-llm-launcher`, does
+summary for future UI use.  It does not invoke `pccx-launcher`, does
 not invoke `pccx-lab`, does not run the pccx-lab validator command, does
 not spawn shell commands, and does not implement MCP or LSP.  The boundary
 is documented in
@@ -277,7 +277,7 @@ navigation facade boundary used by
 VS Code `Location` results mapped from
 `navigation --mode example --source declarations`; it does not implement
 LSP, does not scan the live workspace by default, and does not silently
-switch modes.  It also does not call provider/runtimes, pccx-llm-launcher, or
+switch modes.  It also does not call provider/runtimes, pccx-launcher, or
 chat services.  Semantic cursor and symbol resolution are not complete
 in this phase, so the provider may ignore the cursor position and return
 the checked-example declaration location.  Live navigation remains an
@@ -357,7 +357,7 @@ excludes dependency caches, test runtime directories, lockfiles,
 agent instruction files, binary-like content, and internal instruction
 paths, and redacts secret-like assignment lines.  This is a
 JSON contract only: no provider/runtime calls, no
-pccx-llm-launcher runtime calls yet, no MCP server implementation, no
+pccx-launcher runtime calls yet, no MCP server implementation, no
 direct file modification, and no stable API claim.
 The boundary notes are tracked in
 [`docs/LIVE_WORKSPACE_BOUNDARY.md`](./docs/LIVE_WORKSPACE_BOUNDARY.md).
@@ -369,7 +369,7 @@ validation plan text, explicit risk level, and `requiresUserReview=true`.
 It rejects private paths, secret-like assignments, shell commands,
 build artifacts, model files, raw provider output, unknown command
 fields, and auto-apply flags.  It does not apply patches, write files,
-execute validation, call pccx-lab, call pccx-llm-launcher, call provider/runtime services
+execute validation, call pccx-lab, call pccx-launcher, call provider/runtime services
 provider, implement MCP, implement LSP, package the extension, create a
 release, or create a tag.  The contract notes are tracked in
 [`docs/patch-proposal-contract.md`](./docs/patch-proposal-contract.md).
@@ -397,7 +397,7 @@ are tracked in
 [`docs/pccx-lab-command-boundary.md`](./docs/pccx-lab-command-boundary.md).
 
 `src/launcher-status-contract.mjs` defines a status-only launcher
-integration contract for future pccx-llm-launcher work.  The default
+integration contract for future pccx-launcher work.  The default
 status is fixture-only and future-state, uses a deterministic timestamp,
 and rejects secrets, private paths, model artifacts, board logs, and board
 performance claims.  It does not call the launcher or communicate with a
@@ -456,7 +456,7 @@ and returns JSON with safety metadata.  The runner does not add a UI
 approval dialog in this prototype; callers should invoke it only after a
 user-approved validation proposal.  It does not execute destructive
 commands, git write operations, release/tag/settings/secrets commands,
-patch proposals, provider/runtime calls, pccx-llm-launcher runtime calls, MCP
+patch proposals, provider/runtime calls, pccx-launcher runtime calls, MCP
 server operations, or pccx-lab commands.
 
 Approved validation summaries are cached in memory only and kept brief.
@@ -470,7 +470,7 @@ max size, latest status, and redaction/truncation flags through a
 summary-only validation output channel.
 `pccxSystemVerilog.clearValidationResultCache` clears the in-memory cache.
 This cache boundary does not add provider/runtime calls, MCP, LSP, marketplace
-packaging, pccx-llm-launcher calls, real pccx-lab execution, releases, or
+packaging, pccx-launcher calls, real pccx-lab execution, releases, or
 tags.
 
 ## Theme-Neutral Presentation Boundary
@@ -519,7 +519,7 @@ Next:
 
 Later:
 
-- pccx-llm-launcher local workflow backend behind a reviewed contract
+- pccx-launcher local workflow backend behind a reviewed contract
 - MCP controlled tool boundary
 - richer editor UI/panels
 - optional theme presets through host/user theme tokens

@@ -172,7 +172,7 @@ async function testModuleSourceHasNoExecutionTerms() {
   assert.doesNotMatch(source, /\bfetch\s*\(|XMLHttpRequest|WebSocket|node:https|node:http|node:net|node:tls/);
   assert.doesNotMatch(source, /\b(?:openai|anthropic|gemini)\b/i);
   assert.doesNotMatch(source, /pccx-lab\s+.*(?:run|validate|analyze)/i);
-  assert.doesNotMatch(source, /pccx-llm-launcher\s+(?:run|status|launch|diagnostics)/i);
+  assert.doesNotMatch(source, /pccx-launcher\s+(?:run|status|launch|diagnostics)/i);
   assert.doesNotMatch(source, /modelcontextprotocol|McpServer|vscode-languageclient|LanguageClient/);
 }
 

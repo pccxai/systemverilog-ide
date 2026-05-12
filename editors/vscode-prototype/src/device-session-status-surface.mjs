@@ -138,8 +138,8 @@ export const DEFAULT_DEVICE_SESSION_STATUS_CONSUMER_SUMMARY = Object.freeze({
     "This is not a release, tag, versioned compatibility commitment, MCP, LSP, IDE, marketplace, or telemetry implementation.",
   ]),
   issueRefs: Object.freeze([
-    "pccxai/pccx-llm-launcher#10",
-    "pccxai/pccx-llm-launcher#2",
+    "pccxai/pccx-launcher#10",
+    "pccxai/pccx-launcher#2",
     "pccxai/pccx-lab#50",
   ]),
 });

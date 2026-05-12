@@ -94,9 +94,9 @@
   "fixtureVersion": "runtime-readiness.gemma3n-e4b-kv260.2026-05-03",
   "implementationState": "blocked",
   "issueRefs": [
-    "pccxai/pccx-llm-launcher#3",
-    "pccxai/pccx-llm-launcher#5",
-    "pccxai/pccx-llm-launcher#12"
+    "pccxai/pccx-launcher#3",
+    "pccxai/pccx-launcher#5",
+    "pccxai/pccx-launcher#12"
   ],
   "kv260SmokeState": "blocked",
   "lastUpdatedSource": "pccx_evidence_boundary_2026-05-03",

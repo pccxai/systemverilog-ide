@@ -94,7 +94,7 @@ jobs:
         run: |
           # Cheap sanity: ensure we still link to the four sibling pccxai repos.
           set -e
-          for repo in pccx pccx-lab pccx-FPGA-NPU-LLM-kv260 pccx-llm-launcher; do
+          for repo in pccx pccx-lab pccx-FPGA-NPU-LLM-kv260 pccx-launcher; do
             if ! grep -qE "pccxai/$repo" README.md; then
               echo "::error::README missing reference to pccxai/$repo"
               exit 1

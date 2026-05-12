@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -56,7 +59,7 @@ async function testValidFixtureSummaryIsDeterministic() {
   assert.equal(summary.handoffSchemaVersion, DIAGNOSTICS_HANDOFF_SCHEMA_VERSION);
   assert.equal(summary.handoffId, "launcher_diagnostics_handoff_gemma3n_e4b_kv260_placeholder");
   assert.equal(summary.handoffKind, "read_only_handoff");
-  assert.equal(summary.producerId, "pccx-llm-launcher");
+  assert.equal(summary.producerId, "pccx-launcher");
   assert.equal(summary.consumerId, "pccx-lab");
   assert.equal(summary.targetKind, "kv260");
   assert.equal(summary.diagnosticCount, 5);
@@ -177,7 +180,7 @@ async function testModuleSourceHasNoExecutionTerms() {
   assert.doesNotMatch(source, /\bfetch\s*\(|XMLHttpRequest|WebSocket|node:https|node:http|node:net|node:tls/);
   assert.doesNotMatch(source, /\b(?:openai|anthropic|gemini)\b/i);
   assert.doesNotMatch(source, /pccx-lab\s+diagnostics-handoff\s+validate/i);
-  assert.doesNotMatch(source, /pccx-llm-launcher\s+(?:run|status|launch|diagnostics)/i);
+  assert.doesNotMatch(source, /pccx-launcher\s+(?:run|status|launch|diagnostics)/i);
   assert.doesNotMatch(source, /modelcontextprotocol|McpServer|vscode-languageclient|LanguageClient/);
 }
 

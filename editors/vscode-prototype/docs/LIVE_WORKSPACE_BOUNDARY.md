@@ -36,7 +36,7 @@ Future local workflow mode
   -> bounded context bundle
   -> command proposal / validation proposal
   -> controlled tool boundary
-  -> pccx-lab or future pccx-llm-launcher contract
+  -> pccx-lab or future pccx-launcher contract
 ```
 
 `systemverilog-ide` owns editor presentation, command registration,
@@ -47,8 +47,8 @@ reusable analysis or verification behavior from pccx-lab.
 diagnostics, declaration lookup, validation status, and log handoff
 should flow through the facade or CLI/core boundary.
 
-`pccx-llm-launcher` is a future local LLM/chat/model backend candidate.
-There are no pccx-llm-launcher runtime calls in this prototype.  A later
+`pccx-launcher` is a future local LLM/chat/model backend candidate.
+There are no pccx-launcher runtime calls in this prototype.  A later
 integration needs an explicit contract for request shape, response shape,
 local process/session behavior, failure handling, and user approval
 boundaries.
@@ -90,7 +90,7 @@ only accepts allowlisted proposal IDs, not raw command strings.
 `pccxSystemVerilog.showPccxLabBackendStatus` reports the configured
 pccx-lab command boundary and future controlled operations without
 running pccx-lab.  There are no provider/runtime calls, no external API keys,
-no pccx-llm-launcher runtime calls yet, and no MCP server implementation.
+no pccx-launcher runtime calls yet, and no MCP server implementation.
 
 Allowed proposal kinds:
 
@@ -171,7 +171,7 @@ execution uses fixed executable/argument arrays, `shell=false`, bounded
 stdout/stderr, a timeout, and JSON-serializable status.  It blocks
 unknown IDs, raw command strings, destructive command patterns, git write
 operations, release/tag/settings/secrets commands, patch proposals,
-provider calls, pccx-llm-launcher runtime calls, MCP server operations,
+provider calls, pccx-launcher runtime calls, MCP server operations,
 and pccx-lab execution.  The runner does not add a UI approval dialog in
 this prototype; callers should invoke it only after a user-approved
 validation proposal.
@@ -212,7 +212,7 @@ is future-state preparation for a reviewed CLI/core boundary; it has no
 executable field and does not run pccx-lab.
 
 Launcher status is fixture-only in this prototype.  The contract can carry
-bounded future-state metadata, but it does not call pccx-llm-launcher,
+bounded future-state metadata, but it does not call pccx-launcher,
 communicate with devices, include model paths, include board logs, or make
 device performance claims.
 
@@ -266,7 +266,7 @@ Next:
 
 Later:
 
-- pccx-llm-launcher local workflow backend
+- pccx-launcher local workflow backend
 - MCP controlled tool boundary
 - richer editor UI/panels
 - optional theme presets via tokens

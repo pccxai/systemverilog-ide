@@ -84,7 +84,7 @@ async function testNoLauncherOrMcpRuntimeImplementation() {
 
   assert.doesNotMatch(
     source,
-    /(?:execFile|spawn|request|connect|run)[\s\S]{0,120}pccx-llm-launcher|pccx-llm-launcher[\s\S]{0,120}(?:execFile|spawn|request|connect|run)/i,
+    /(?:execFile|spawn|request|connect|run)[\s\S]{0,120}pccx-launcher|pccx-launcher[\s\S]{0,120}(?:execFile|spawn|request|connect|run)/i,
   );
   assert.doesNotMatch(source, /\bMcpServer\s*\(|modelcontextprotocol|mcp-server/i);
   assert.doesNotMatch(packageStrings, /modelcontextprotocol|mcp-server|llm-launcher/i);

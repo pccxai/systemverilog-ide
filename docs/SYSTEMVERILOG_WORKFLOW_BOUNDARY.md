@@ -31,7 +31,7 @@ validation.
   renders proposals, and records local validation summaries.
 - pccx-lab: owns reusable analysis, verification, trace/report handling,
   and any future controlled tool execution boundary.
-- pccx-llm-launcher: remains a future local runtime/backend candidate;
+- pccx-launcher: remains a future local runtime/backend candidate;
   this repository does not call it today.
 
 ## Workflow
@@ -78,7 +78,7 @@ validation.
 | Run validation | Blocked | Explicit allowlisted runner approval required |
 | Run pccx-lab | Blocked | Future reviewed CLI/core boundary only |
 | Run xsim or Vivado | Blocked | Future reviewed validation boundary only |
-| Call pccx-llm-launcher | Blocked | Future reviewed launcher contract only |
+| Call pccx-launcher | Blocked | Future reviewed launcher contract only |
 | Call provider/runtime services | Blocked | Outside this repository's current scope |
 | Implement MCP runtime | Blocked | Tracked separately by pccx-lab #22 |
 | Commit, push, merge, release, or tag | Blocked | User-owned repository action |

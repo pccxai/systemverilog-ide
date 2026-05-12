@@ -2,7 +2,7 @@
 
 This document describes the deterministic handoff from a validation summary
 to a patch proposal context seed.  It is contract-only: it does not generate
-patches, apply patches, write files, call pccx-lab, call pccx-llm-launcher,
+patches, apply patches, write files, call pccx-lab, call pccx-launcher,
 call provider/runtime services, implement MCP, or implement LSP.
 
 ## Seed Shape
