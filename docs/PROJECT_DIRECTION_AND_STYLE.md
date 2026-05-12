@@ -19,7 +19,7 @@ the owning repo boundaries.
 - `pccx-FPGA-NPU-LLM-kv260` remains active v002/v0.2.0 bring-up and
   evidence work. No KV260 inference works claim. No Gemma 3N E4B on
   KV260 claim. No 20 tok/s achieved claim. No timing closure claim.
-- `pccx-llm-launcher` owns launcher-facing local LLM workflow direction
+- `pccx-launcher` owns launcher-facing local LLM workflow direction
   and has diagnostics handoff plus runtime readiness contract work. This
   repository may consume checked diagnostics handoff and runtime readiness
   data through explicit read-only boundaries, but it does not call the

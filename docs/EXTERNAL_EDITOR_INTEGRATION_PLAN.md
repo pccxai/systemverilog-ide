@@ -51,7 +51,7 @@ contracts, not IDE-specific logic:
 - keep writes and validation behind explicit user approval
 
 No editor bridge should receive a privileged back channel into pccx-lab,
-pccx-llm-launcher, hardware, provider calls, or private repository state.
+pccx-launcher, hardware, provider calls, or private repository state.
 
 ## Contract Surfaces
 

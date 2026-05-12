@@ -2,7 +2,7 @@
 
 This is a provider-free, proposal-only patch contract for the experimental
 local VS Code prototype.  It describes possible edits for user review; it
-does not apply patches, write files, call pccx-lab, call pccx-llm-launcher,
+does not apply patches, write files, call pccx-lab, call pccx-launcher,
 call provider/runtime services, implement MCP, or implement LSP.
 
 ## Shape

@@ -168,7 +168,7 @@ async function testModuleSourceHasNoExecutionTerms() {
   assert.doesNotMatch(source, /pccx-FPGA-NPU-LLM-kv260/);
   assert.doesNotMatch(source, /pccx-lab\s+(?:status|validate|run)/i);
   assert.doesNotMatch(source, /pccx-lab\s+diagnostics-handoff\s+validate/i);
-  assert.doesNotMatch(source, /pccx-llm-launcher\s+(?:run|status|launch|diagnostics)/i);
+  assert.doesNotMatch(source, /pccx-launcher\s+(?:run|status|launch|diagnostics)/i);
   assert.doesNotMatch(source, /\b(?:openai|anthropic|gemini)\b/i);
   assert.doesNotMatch(source, /modelcontextprotocol|McpServer|vscode-languageclient|LanguageClient/);
 }

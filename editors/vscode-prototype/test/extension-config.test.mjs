@@ -132,7 +132,7 @@ function testNormalizeConfigRejectsInvalidSettings() {
   );
   assert.throws(
     () => normalizeConfig({ workflowBoundary: { backend: "openai" } }),
-    /pccxSystemVerilog\.workflowBoundary\.backend must be one of: none, pccx-llm-launcher, mcp/,
+    /pccxSystemVerilog\.workflowBoundary\.backend must be one of: none, pccx-launcher, mcp/,
   );
   assert.throws(
     () => normalizeConfig({ validationRunner: { enabled: "yes" } }),

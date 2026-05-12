@@ -6,7 +6,7 @@ export const RUNTIME_READINESS_CONSUMER_VERSION =
 export const RUNTIME_READINESS_SCHEMA_VERSION = "pccx.runtimeReadiness.v0";
 export const RUNTIME_READINESS_EXPECTED_STATUS_ANSWER =
   "blocked_not_yet_evidence_backed";
-const LAUNCHER_REPO_REF = ["pccxai", ["pccx-llm", "launcher"].join("-")].join("/");
+const LAUNCHER_REPO_REF = ["pccxai", ["pccx", "launcher"].join("-")].join("/");
 export const RUNTIME_READINESS_COORDINATION_REFS = Object.freeze([
   "pccxai/systemverilog-ide#58",
   `${LAUNCHER_REPO_REF}#21`,

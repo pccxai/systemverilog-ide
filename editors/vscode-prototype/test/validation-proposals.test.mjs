@@ -163,7 +163,7 @@ function testDiagnosticsHandoffAvailableContextImprovesProposalPreflight() {
   )));
   assert.doesNotMatch(serialized, UNSUPPORTED_READINESS_PATTERN);
   assert.doesNotMatch(serialized, /pccx-lab diagnostics-handoff validate/i);
-  assert.doesNotMatch(serialized, /pccx-llm-launcher\s+(?:run|status|launch|diagnostics)/i);
+  assert.doesNotMatch(serialized, /pccx-launcher\s+(?:run|status|launch|diagnostics)/i);
   assert.doesNotMatch(serialized, /launcher_diagnostics_handoff_gemma3n_e4b_kv260_placeholder/);
 }
 

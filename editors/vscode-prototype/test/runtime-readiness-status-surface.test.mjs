@@ -100,8 +100,8 @@ async function testSafetyFlagsRemainDataOnly() {
   assert.equal(surface.boundary.kv260RuntimeExecution, false);
   assert.deepEqual(surface.boundary.coordinationRefs, [
     "pccxai/systemverilog-ide#58",
-    "pccxai/pccx-llm-launcher#21",
-    "pccxai/pccx-llm-launcher#22",
+    "pccxai/pccx-launcher#21",
+    "pccxai/pccx-launcher#22",
   ]);
 }
 
@@ -164,7 +164,7 @@ async function testModuleSourceHasNoExecutionTerms() {
   assert.doesNotMatch(source, /\bfetch\s*\(|XMLHttpRequest|WebSocket|node:https|node:http|node:net|node:tls/);
   assert.doesNotMatch(source, /pccx-FPGA-NPU-LLM-kv260/);
   assert.doesNotMatch(source, /pccx-lab\s+(?:status|diagnostics|validate|run)/i);
-  assert.doesNotMatch(source, /pccx-llm-launcher\s+(?:run|status|launch|diagnostics)/i);
+  assert.doesNotMatch(source, /pccx-launcher\s+(?:run|status|launch|diagnostics)/i);
   assert.doesNotMatch(source, /\b(?:openai|anthropic|gemini)\b/i);
   assert.doesNotMatch(source, /modelcontextprotocol|McpServer|vscode-languageclient|LanguageClient/);
 }

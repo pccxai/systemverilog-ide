@@ -171,8 +171,8 @@ async function testBoundaryStatusIsExecutionFree() {
   assert.equal(status.expectedStatusAnswer, RUNTIME_READINESS_EXPECTED_STATUS_ANSWER);
   assert.deepEqual(status.coordinationRefs, [...RUNTIME_READINESS_COORDINATION_REFS]);
   assert.ok(status.coordinationRefs.includes("pccxai/systemverilog-ide#58"));
-  assert.ok(status.coordinationRefs.includes("pccxai/pccx-llm-launcher#21"));
-  assert.ok(status.coordinationRefs.includes("pccxai/pccx-llm-launcher#22"));
+  assert.ok(status.coordinationRefs.includes("pccxai/pccx-launcher#21"));
+  assert.ok(status.coordinationRefs.includes("pccxai/pccx-launcher#22"));
   assert.equal(status.dataOnly, true);
   assert.equal(status.readOnly, true);
   assert.equal(status.fixtureConsumer, true);
@@ -208,7 +208,7 @@ async function testModuleSourceHasNoExecutionOrRepoAccessTerms() {
   assert.doesNotMatch(source, /\bfetch\s*\(|XMLHttpRequest|WebSocket|node:https|node:http|node:net|node:tls/);
   assert.doesNotMatch(source, /pccx-FPGA-NPU-LLM-kv260/);
   assert.doesNotMatch(source, /pccx-lab\s+(?:status|diagnostics|validate|run)/i);
-  assert.doesNotMatch(source, /pccx-llm-launcher\s+(?:run|status|launch|diagnostics)/i);
+  assert.doesNotMatch(source, /pccx-launcher\s+(?:run|status|launch|diagnostics)/i);
   assert.doesNotMatch(source, /\b(?:openai|anthropic|gemini)\b/i);
   assert.doesNotMatch(source, /modelcontextprotocol|McpServer|vscode-languageclient|LanguageClient/);
   assert.doesNotMatch(source, /\b(?:telemetry|upload|write-back)\s+(?:enabled|true)\b/i);

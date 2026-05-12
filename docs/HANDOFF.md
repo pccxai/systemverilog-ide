@@ -43,7 +43,7 @@ Current cross-repo direction:
   evidence work. This handoff does not claim KV260 inference works, does
   not claim Gemma 3N E4B runs on KV260, does not claim 20 tok/s achieved,
   and does not claim timing closure.
-- `pccx-llm-launcher` owns launcher-facing local LLM workflow direction,
+- `pccx-launcher` owns launcher-facing local LLM workflow direction,
   diagnostics handoff contract work, and runtime readiness data for the
   planned Gemma 3N E4B plus KV260 path. This repository consumes checked
   launcher data only through read-only adapter surfaces.
@@ -172,7 +172,7 @@ wording, unsupported execution wording, and diagnostics handoff
 context-only handling. The audit returns bounded JSON/text status and
 does not execute commands or expand the runner allowlist.
 
-This path is data-only. It does not execute `pccx-llm-launcher`, does not
+This path is data-only. It does not execute `pccx-launcher`, does not
 execute `pccx-lab`, does not invoke the pccx-lab validator command, does
 not spawn shell commands, does not implement MCP or LSP, does not call
 providers, and does not touch hardware.
@@ -200,7 +200,7 @@ The local workflow context bundle can include the same summary as
 include raw xsim log lines or full logs.
 
 This path does not run xsim or Vivado, execute `pccx-lab`, execute
-`pccx-llm-launcher`, spawn shell commands, read raw log files in the UI
+`pccx-launcher`, spawn shell commands, read raw log files in the UI
 layer, echo raw log lines into context bundles, access hardware or KV260
 runtime paths, load model weights, call providers, implement MCP or LSP,
 package for marketplace distribution, upload telemetry, or write back
@@ -223,7 +223,7 @@ local example lives at
 `docs/examples/runtime-readiness/launcher-runtime-readiness.gemma3n-e4b-kv260.example.json`.
 This read-only context work is tracked by `pccxai/systemverilog-ide#58`
 and follows the launcher readiness contract/status work in
-`pccxai/pccx-llm-launcher#21` and `pccxai/pccx-llm-launcher#22`.
+`pccxai/pccx-launcher#21` and `pccxai/pccx-launcher#22`.
 
 The current consumed launcher answer is
 `blocked_not_yet_evidence_backed` for Gemma 3N E4B plus KV260. The
@@ -248,7 +248,7 @@ Current evidence represented by the launcher data:
 - Throughput measurement is absent; the throughput value remains a target
   only.
 
-This path does not execute `pccx-llm-launcher`, execute `pccx-lab`, invoke
+This path does not execute `pccx-launcher`, execute `pccx-lab`, invoke
 the pccx-lab validator, access the FPGA repository, execute KV260 runtime
 code, load model weights, call providers, implement MCP or LSP, package
 for marketplace distribution, upload telemetry, or write back state. It
@@ -265,7 +265,7 @@ checked local example lives at
 `docs/examples/device-session-status/launcher-device-session-status.gemma3n-e4b-kv260.example.json`.
 This read-only context work is tracked by `pccxai/systemverilog-ide#61`
 and follows the launcher status panel work in
-`pccxai/pccx-llm-launcher#2` and `pccxai/pccx-llm-launcher#10`, plus the
+`pccxai/pccx-launcher#2` and `pccxai/pccx-launcher#10`, plus the
 pccx-lab validation boundary in `pccxai/pccx-lab#50`.
 
 The current consumed launcher answer is
@@ -281,7 +281,7 @@ Missing or invalid device/session data is reported as unavailable or
 invalid context. The context does not parse raw launcher JSON in UI layers
 and does not execute a backend command.
 
-This path does not execute `pccx-llm-launcher`, execute `pccx-lab`, invoke
+This path does not execute `pccx-launcher`, execute `pccx-lab`, invoke
 the pccx-lab validator, open serial ports, write serial data, scan
 networks, execute SSH, attempt authentication, access hardware, execute
 KV260 runtime code, load model weights, call providers, implement MCP or
@@ -604,7 +604,7 @@ python -m pccx_ide_cli problems from-xsim-log fixtures/xsim/mixed.log --format t
 - Whether the `additionalProperties: false` constraint on diagnostics
   should relax at v1 to allow forward-compatible extension fields.
 - How a future local workflow mode should pass token-saving
-  context bundles to pccx-llm-launcher or an MCP-style controlled tool
+  context bundles to pccx-launcher or an MCP-style controlled tool
   boundary.  The current VS Code prototype only has boundary types,
   status/context commands, and tests: no provider/runtime calls, no local chat
   backend runtime calls, no MCP server implementation, and no direct

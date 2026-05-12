@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import assert from "node:assert/strict";
 
 import {
@@ -150,7 +153,7 @@ function testDiagnosticsHandoffContextsRemainContextOnly() {
 
 function testLauncherExecutionIsBlocked() {
   const proposal = cloneProposal();
-  proposal.command.argv = ["pccx-llm-launcher", "run"];
+  proposal.command.argv = ["pccx-launcher", "run"];
 
   const audit = createValidationProposalPreflightAudit({ proposal });
 

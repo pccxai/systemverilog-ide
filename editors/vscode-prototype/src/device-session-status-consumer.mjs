@@ -8,8 +8,8 @@ export const DEVICE_SESSION_STATUS_EXPECTED_STATUS_ANSWER =
   "device_session_status_placeholder_blocked";
 export const DEVICE_SESSION_STATUS_COORDINATION_REFS = Object.freeze([
   "pccxai/systemverilog-ide#61",
-  "pccxai/pccx-llm-launcher#2",
-  "pccxai/pccx-llm-launcher#10",
+  "pccxai/pccx-launcher#2",
+  "pccxai/pccx-launcher#10",
   "pccxai/pccx-lab#50",
 ]);
 

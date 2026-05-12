@@ -1,6 +1,6 @@
 # Launcher Integration Boundary
 
-This document defines a status-only contract for future pccx-llm-launcher
+This document defines a status-only contract for future pccx-launcher
 integration.  The current VS Code prototype does not call the launcher, does
 not communicate with devices, does not load models, does not include model
 paths or board logs, and makes no board inference or performance claim.

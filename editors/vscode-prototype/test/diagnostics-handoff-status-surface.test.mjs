@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -139,7 +142,7 @@ async function testModuleSourceHasNoExecutionTerms() {
   assert.doesNotMatch(source, /\bfetch\s*\(|XMLHttpRequest|WebSocket|node:https|node:http|node:net|node:tls/);
   assert.doesNotMatch(source, /\b(?:openai|anthropic|gemini)\b/i);
   assert.doesNotMatch(source, /pccx-lab\s+diagnostics-handoff\s+validate/i);
-  assert.doesNotMatch(source, /pccx-llm-launcher\s+(?:run|status|launch|diagnostics)/i);
+  assert.doesNotMatch(source, /pccx-launcher\s+(?:run|status|launch|diagnostics)/i);
   assert.doesNotMatch(source, /modelcontextprotocol|McpServer|vscode-languageclient|LanguageClient/);
 }
 

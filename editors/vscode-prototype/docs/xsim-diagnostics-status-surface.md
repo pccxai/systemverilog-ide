@@ -57,7 +57,7 @@ This boundary does not:
 
 - run xsim or Vivado
 - execute `pccx-lab`
-- execute `pccx-llm-launcher`
+- execute `pccx-launcher`
 - spawn shell commands
 - read raw log files in the UI layer
 - echo raw log lines into context bundles

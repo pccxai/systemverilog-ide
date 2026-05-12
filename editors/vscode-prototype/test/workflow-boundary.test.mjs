@@ -51,7 +51,7 @@ function testLauncherBackendRemainsProposalBoundary() {
     {
       workflowBoundary: {
         enabled: true,
-        backend: "pccx-llm-launcher",
+        backend: "pccx-launcher",
       },
     },
     {
@@ -66,7 +66,7 @@ function testLauncherBackendRemainsProposalBoundary() {
   );
 
   assert.equal(request.status, WORKFLOW_BOUNDARY_STATUSES.PROPOSAL_BOUNDARY);
-  assert.equal(request.backend, "pccx-llm-launcher");
+  assert.equal(request.backend, "pccx-launcher");
   assert.equal(request.providerCalls, false);
   assert.equal(request.runtimeCalls, false);
   assert.deepEqual(

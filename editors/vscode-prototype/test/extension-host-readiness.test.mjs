@@ -127,7 +127,7 @@ async function testReadinessDocsAndCiPolicy() {
   assert.match(`${readme}\n${readiness}`, /launcher status contract/i);
   assert.match(`${readme}\n${readiness}`, /pccx-lab backend status/i);
   assert.match(`${readme}\n${readiness}`, /workflow boundary .*boundary/i);
-  assert.match(`${readme}\n${readiness}`, /pccx-llm-launcher .*future local LLM\/chat backend/i);
+  assert.match(`${readme}\n${readiness}`, /pccx-launcher .*future local LLM\/chat backend/i);
   assert.match(`${readme}\n${readiness}`, /no LSP provider/i);
   assert.match(`${readme}\n${readiness}`, /host theme first/i);
   assert.match(`${readme}\n${readiness}`, /not a completed\s+custom theme system/i);

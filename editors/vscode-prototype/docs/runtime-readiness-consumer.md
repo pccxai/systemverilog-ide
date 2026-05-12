@@ -17,12 +17,12 @@ The implementation lives in:
 ## What It Does
 
 The consumer validates the checked Gemma 3N E4B plus KV260 readiness
-fixture shape from `pccx-llm-launcher` PR #21. The current launcher
+fixture shape from `pccx-launcher` PR #21. The current launcher
 answer is `blocked_not_yet_evidence_backed`.
 
 Coordination is tracked in `pccxai/systemverilog-ide#58`. The launcher
 status summary used by this boundary is referenced from
-`pccxai/pccx-llm-launcher#22`.
+`pccxai/pccx-launcher#22`.
 
 The summary records:
 
@@ -48,7 +48,7 @@ unavailable or invalid context and does not trigger execution.
 
 This boundary does not:
 
-- execute `pccx-llm-launcher`
+- execute `pccx-launcher`
 - execute `pccx-lab`
 - invoke the pccx-lab validator
 - access the FPGA repository

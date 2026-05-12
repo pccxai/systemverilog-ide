@@ -131,7 +131,7 @@ workflow boundary status and context bundle commands expose local status,
 bounded context, selected-symbol context, validation command proposal
 data, disabled-by-default approved validation runner status/result data,
 summary-only validation cache status, and proposal actions, with no provider/runtime
-provider calls, no pccx-llm-launcher runtime calls yet, and no MCP server
+provider calls, no pccx-launcher runtime calls yet, and no MCP server
 implementation.
 
 The same directory now includes an experimental local VS Code extension
@@ -199,7 +199,7 @@ content for passing validation results and does not apply changes.
 pccx-lab command descriptors are data-only preparation for a future
 CLI/core boundary and do not execute pccx-lab.
 Launcher status contracts are also status-only and do not call
-pccx-llm-launcher, include model paths, include board logs, or make device
+pccx-launcher, include model paths, include board logs, or make device
 performance claims.
 Approved validation execution must use fixed argument arrays, bounded
 output, an explicit user-approved command invocation, no shell
@@ -330,5 +330,5 @@ xsim path, and text surface sketches is documented in
 - No provider/runtime calls or local chat backend integration in this repo
   today.
 - No MCP server implementation in this repo today.
-- No pccx-llm-launcher runtime call yet; future integration requires an
+- No pccx-launcher runtime call yet; future integration requires an
   explicit reviewed contract.

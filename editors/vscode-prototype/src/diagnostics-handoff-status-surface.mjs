@@ -18,7 +18,7 @@ export const DEFAULT_DIAGNOSTICS_HANDOFF_CONSUMER_SUMMARY = Object.freeze({
   handoffSchemaVersion: DIAGNOSTICS_HANDOFF_SCHEMA_VERSION,
   handoffId: "launcher_diagnostics_handoff_gemma3n_e4b_kv260_placeholder",
   handoffKind: "read_only_handoff",
-  producerId: "pccx-llm-launcher",
+  producerId: "pccx-launcher",
   consumerId: "pccx-lab",
   targetKind: "kv260",
   diagnosticCount: 5,

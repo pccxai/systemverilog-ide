@@ -61,11 +61,11 @@ launcher/lab execution island.
 - `pccx-lab` is the CLI-first verification/tooling backend. Reusable
   analysis and validation behavior should flow through the facade and
   CLI/core contract instead of being duplicated here.
-- `pccx-llm-launcher` is a future local LLM/chat backend candidate for
+- `pccx-launcher` is a future local LLM/chat backend candidate for
   local workflow mode. This repository currently contains only
   boundary work for SystemVerilog workflow experiments: workflow boundary
   status/context commands, no provider/runtime calls,
-  no pccx-llm-launcher runtime calls yet, and no MCP server implementation.
+  no pccx-launcher runtime calls yet, and no MCP server implementation.
 
 ## Initial track (near-term)
 
@@ -443,7 +443,7 @@ formal enough to bind to.
 - [pccxai/pccx-FPGA-NPU-LLM-kv260][pccx-fpga] — RTL / KV260 / hardware evidence (v002 LLM line)
 - [pccxai/pccx-LLM-v003][pccx-llm-v003] — active LLM RTL track in a separate repository
 - [pccxai/pccx-vision-v001][pccx-vision-v001] — active vision track for related KV260-oriented work
-- [pccxai/pccx-llm-launcher][pccx-launcher] — user-facing local LLM launcher
+- [pccxai/pccx-launcher][pccx-launcher] — user-facing local LLM launcher
 
 ## License
 
@@ -452,7 +452,7 @@ Apache License 2.0 — see [LICENSE](./LICENSE).
 [pccx]: https://github.com/pccxai/pccx
 [pccx-lab]: https://github.com/pccxai/pccx-lab
 [pccx-fpga]: https://github.com/pccxai/pccx-FPGA-NPU-LLM-kv260
-[pccx-launcher]: https://github.com/pccxai/pccx-llm-launcher
+[pccx-launcher]: https://github.com/pccxai/pccx-launcher
 [pccx-llm-v003]: https://github.com/pccxai/pccx-LLM-v003
 [pccx-vision-v001]: https://github.com/pccxai/pccx-vision-v001
 

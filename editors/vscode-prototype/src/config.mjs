@@ -64,7 +64,7 @@ export const COMMAND_IDS = Object.freeze([
 ]);
 
 export const MODES = Object.freeze(["checkedExample", "liveWorkspace"]);
-export const WORKFLOW_BOUNDARY_BACKENDS = Object.freeze(["none", "pccx-llm-launcher", "mcp"]);
+export const WORKFLOW_BOUNDARY_BACKENDS = Object.freeze(["none", "pccx-launcher", "mcp"]);
 export const DECLARATION_KINDS = Object.freeze(["module", "package", "interface", "any"]);
 export const VALIDATION_RUNNER_MODES = Object.freeze(["disabled", "allowlisted"]);
 export const VALIDATION_RUNNER_CWD_KINDS = Object.freeze(["repo-root", "workspace"]);
