@@ -34,7 +34,8 @@
     "onCommand:pccxSystemVerilog.showLocalWorkflowStatus",
     "onCommand:pccxSystemVerilog.showContextBundleAudit",
     "onCommand:pccxSystemVerilog.showPccxLabBackendStatus",
-    "onCommand:pccxSystemVerilog.showDiagnosticsHandoffSummary"
+    "onCommand:pccxSystemVerilog.showDiagnosticsHandoffSummary",
+    "onCommand:pccxSystemVerilog.showKv260StatusPanel"
   ],
   "contributes": {
     "commands": [
@@ -125,6 +126,10 @@
       {
         "command": "pccxSystemVerilog.showDiagnosticsHandoffSummary",
         "title": "PCCX SystemVerilog: Show Diagnostics Handoff Summary (Experimental)"
+      },
+      {
+        "command": "pccxSystemVerilog.showKv260StatusPanel",
+        "title": "PCCX SystemVerilog: Show KV260 Status Panel (Experimental)"
       }
     ],
     "configuration": {

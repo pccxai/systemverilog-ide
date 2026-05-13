@@ -151,6 +151,7 @@ async function testProposalAndStatusModulesAreDataOnly() {
     resolve(EXTENSION_ROOT, "src/launcher-status-contract.mjs"),
     resolve(EXTENSION_ROOT, "src/diagnostics-handoff-consumer.mjs"),
     resolve(EXTENSION_ROOT, "src/diagnostics-handoff-status-surface.mjs"),
+    resolve(EXTENSION_ROOT, "src/kv260-status-panel.mjs"),
     resolve(EXTENSION_ROOT, "src/runtime-readiness-consumer.mjs"),
     resolve(EXTENSION_ROOT, "src/runtime-readiness-status-surface.mjs"),
     resolve(EXTENSION_ROOT, "src/local-workflow-status.mjs"),
