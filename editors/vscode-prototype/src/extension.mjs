@@ -72,6 +72,10 @@ import {
   createDiagnosticsHandoffStatusSurface,
   formatDiagnosticsHandoffStatusSurface,
 } from "./diagnostics-handoff-status-surface.mjs";
+import {
+  createKv260StatusPanel,
+  formatKv260StatusPanel,
+} from "./kv260-status-panel.mjs";
 
 const EXTENSION_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_DIAGNOSTIC_FILE_ROOT = resolve(EXTENSION_ROOT, "../..");
@@ -113,6 +117,8 @@ export const PCCX_LAB_BACKEND_STATUS_COMMAND =
   "pccxSystemVerilog.showPccxLabBackendStatus";
 export const SHOW_DIAGNOSTICS_HANDOFF_SUMMARY_COMMAND =
   "pccxSystemVerilog.showDiagnosticsHandoffSummary";
+export const SHOW_KV260_STATUS_PANEL_COMMAND =
+  "pccxSystemVerilog.showKv260StatusPanel";
 
 const NAVIGATION_LOCATION_COMMAND_IDS = Object.freeze([
   CHECKED_EXAMPLE_NAVIGATION_COMMAND,
@@ -427,6 +433,9 @@ function appendCommandOutput(outputChannel, commandId, result) {
   }
   if (result.kind === "diagnostics-handoff-status") {
     outputChannel.appendLine(formatDiagnosticsHandoffStatusSurface(result.surface));
+  }
+  if (result.kind === "kv260-status-panel") {
+    outputChannel.appendLine(formatKv260StatusPanel(result.panel));
   }
   if (result.status?.kind === "pccx-lab-backend-status") {
     outputChannel.appendLine(JSON.stringify(result.status, null, 2));
@@ -1096,6 +1105,28 @@ export function createCommandHandler(commandId, vscodeApi, runtime = {}) {
         };
         vscodeApi?.window?.showInformationMessage?.(
           `Diagnostics handoff summary: ${surface.display.summary}.`,
+          result,
+        );
+      } catch (error) {
+        result = { ok: false, commandId, error: error.message };
+        vscodeApi?.window?.showWarningMessage?.(result.error, result);
+      }
+      appendCommandOutput(runtime.outputChannel, commandId, result);
+      return result;
+    }
+
+    if (commandId === SHOW_KV260_STATUS_PANEL_COMMAND) {
+      let result;
+      try {
+        const panel = createKv260StatusPanel(runtime.kv260StatusInputs);
+        result = {
+          ok: true,
+          commandId,
+          kind: "kv260-status-panel",
+          panel,
+        };
+        vscodeApi?.window?.showInformationMessage?.(
+          `KV260 status surface: ${panel.lab.frameCount} trace frame(s).`,
           result,
         );
       } catch (error) {

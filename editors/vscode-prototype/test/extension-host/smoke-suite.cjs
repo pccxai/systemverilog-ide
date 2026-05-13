@@ -81,6 +81,7 @@ async function run() {
     "pccxSystemVerilog.showContextBundleAudit",
     "pccxSystemVerilog.showPccxLabBackendStatus",
     "pccxSystemVerilog.showDiagnosticsHandoffSummary",
+    "pccxSystemVerilog.showKv260StatusPanel",
   ]);
 
   const manifest = readManifest();
@@ -594,6 +595,22 @@ async function run() {
   assert.equal(diagnosticsHandoffStatus.surface.safety.runtimeCalls, false);
   assert.equal(diagnosticsHandoffStatus.surface.safety.mcpCalls, false);
   assert.equal(diagnosticsHandoffStatus.surface.safety.lspImplemented, false);
+
+  const kv260Status = await vscode.commands.executeCommand(
+    "pccxSystemVerilog.showKv260StatusPanel",
+  );
+  assert.equal(kv260Status.ok, true);
+  assert.equal(kv260Status.kind, "kv260-status-panel");
+  assert.equal(kv260Status.panel.kind, "kv260-status-panel");
+  assert.equal(
+    kv260Status.panel.source.launcherTypeMirror,
+    "pccx.ide.launcher-npu-status.local-mirror.v0",
+  );
+  assert.equal(kv260Status.panel.source.labManifestParser, "real");
+  assert.equal(kv260Status.panel.safety.launcherExecution, false);
+  assert.equal(kv260Status.panel.safety.pccxLabExecution, false);
+  assert.equal(kv260Status.panel.safety.shellExecution, false);
+  assert.equal(kv260Status.panel.safety.sshExecution, false);
 
   const extensionModule = await importExtensionEntrypoint();
   assert.equal(typeof extensionModule.deactivate, "function");

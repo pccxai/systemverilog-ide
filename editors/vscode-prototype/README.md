@@ -147,6 +147,7 @@ The contributed commands are:
 - `pccxSystemVerilog.showContextBundleAudit`
 - `pccxSystemVerilog.showPccxLabBackendStatus`
 - `pccxSystemVerilog.showDiagnosticsHandoffSummary`
+- `pccxSystemVerilog.showKv260StatusPanel`
 
 The prototype-only settings are:
 
@@ -559,6 +560,7 @@ node editors/vscode-prototype/test/runtime-readiness-consumer.test.mjs
 node editors/vscode-prototype/test/runtime-readiness-status-surface.test.mjs
 node editors/vscode-prototype/test/device-session-status-consumer.test.mjs
 node editors/vscode-prototype/test/device-session-status-surface.test.mjs
+node editors/vscode-prototype/test/kv260-status-panel.test.mjs
 node editors/vscode-prototype/test/local-workflow-status.test.mjs
 node editors/vscode-prototype/test/context-bundle-audit.test.mjs
 node editors/vscode-prototype/test/validation-result-summary.test.mjs
@@ -597,3 +599,8 @@ node editors/vscode-prototype/src/adapter.mjs diagnostics \
 node editors/vscode-prototype/src/adapter.mjs navigation \
   docs/examples/editor-bridge/declarations.example.json
 ```
+
+The KV260 status surface is a read-only panel over local launcher NPU status
+and pccx-lab trace manifest data. `pccxSystemVerilog.showKv260StatusPanel`
+renders the bundled tiny fixture data and does not invoke the launcher,
+pccx-lab, shell, SSH, or hardware paths.

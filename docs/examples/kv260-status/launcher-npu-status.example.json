@@ -1,0 +1,16 @@
+{
+  "bitstream_loaded": false,
+  "bitstream_uuid": null,
+  "axi_base_addr": null,
+  "axi_stat_register_value": null,
+  "last_error": "fixture only; lower-layer evidence not supplied",
+  "serial_probe": {
+    "schema_version": "pccx.launcher.kv260-serial-preflight.v0",
+    "status": "not_run",
+    "tty_port": null,
+    "login_ok": null,
+    "kernel_uname": null,
+    "xrt_present": null,
+    "last_preflight_at": null
+  }
+}

@@ -31,6 +31,7 @@ const COMMAND_IDS = [
   "pccxSystemVerilog.showContextBundleAudit",
   "pccxSystemVerilog.showPccxLabBackendStatus",
   "pccxSystemVerilog.showDiagnosticsHandoffSummary",
+  "pccxSystemVerilog.showKv260StatusPanel",
 ];
 
 async function readText(path) {
@@ -139,6 +140,7 @@ async function testDocsKeepExperimentalScope() {
   assert.match(combined, /allowlisted proposal IDs/i);
   assert.match(combined, /pccx-lab backend status/i);
   assert.match(combined, /showDiagnosticsHandoffSummary/);
+  assert.match(combined, /KV260 status surface/i);
   assert.match(combined, /no provider\/runtime calls/i);
   assert.match(combined, /no MCP server implementation/i);
 }
