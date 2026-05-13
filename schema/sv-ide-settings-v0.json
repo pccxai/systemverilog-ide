@@ -1,133 +1,10 @@
 {
-  "name": "pccx-systemverilog-ide-prototype",
-  "displayName": "PCCX SystemVerilog IDE Prototype",
-  "description": "Experimental local VS Code extension scaffold for the PCCX SystemVerilog IDE prototype; not published.",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "main": "./src/extension.cjs",
-  "engines": {
-    "vscode": "^1.90.0"
-  },
-  "categories": [
-    "Other"
-  ],
-  "activationEvents": [
-    "onCommand:pccxSystemVerilog.publishCheckedExampleDiagnostics",
-    "onCommand:pccxSystemVerilog.showCheckedExampleNavigation",
-    "onCommand:pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
-    "onCommand:pccxSystemVerilog.showLiveWorkspaceNavigation",
-    "onCommand:pccxSystemVerilog.showDiagnosticsExample",
-    "onCommand:pccxSystemVerilog.showNavigationExample",
-    "onCommand:pccxSystemVerilog.runDiagnosticsLive",
-    "onCommand:pccxSystemVerilog.runNavigationLive",
-    "onCommand:pccxSystemVerilog.showWorkflowBoundaryStatus",
-    "onCommand:pccxSystemVerilog.buildWorkflowContextBundle",
-    "onCommand:pccxSystemVerilog.proposeValidationCommand",
-    "onCommand:pccxSystemVerilog.auditValidationProposalPreflight",
-    "onCommand:pccxSystemVerilog.runApprovedValidationCommand",
-    "onCommand:pccxSystemVerilog.showRecentValidationResults",
-    "onCommand:pccxSystemVerilog.showValidationCacheStatus",
-    "onCommand:pccxSystemVerilog.clearValidationResultCache",
-    "onCommand:pccxSystemVerilog.showPatchProposalPreview",
-    "onCommand:pccxSystemVerilog.clearPatchProposalPreview",
-    "onCommand:pccxSystemVerilog.showLocalWorkflowStatus",
-    "onCommand:pccxSystemVerilog.showContextBundleAudit",
-    "onCommand:pccxSystemVerilog.showPccxLabBackendStatus",
-    "onCommand:pccxSystemVerilog.showDiagnosticsHandoffSummary"
-  ],
-  "contributes": {
-    "commands": [
-      {
-        "command": "pccxSystemVerilog.publishCheckedExampleDiagnostics",
-        "title": "PCCX SystemVerilog: Publish Checked Example Diagnostics (Experimental)"
-      },
-      {
-        "command": "pccxSystemVerilog.showCheckedExampleNavigation",
-        "title": "PCCX SystemVerilog: Show Checked Example Navigation (Experimental)"
-      },
-      {
-        "command": "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
-        "title": "PCCX SystemVerilog: Publish Live Workspace Diagnostics (Experimental, Opt-In)"
-      },
-      {
-        "command": "pccxSystemVerilog.showLiveWorkspaceNavigation",
-        "title": "PCCX SystemVerilog: Show Live Workspace Navigation (Experimental, Opt-In)"
-      },
-      {
-        "command": "pccxSystemVerilog.showDiagnosticsExample",
-        "title": "PCCX SystemVerilog: Show Diagnostics Example"
-      },
-      {
-        "command": "pccxSystemVerilog.showNavigationExample",
-        "title": "PCCX SystemVerilog: Show Navigation Example"
-      },
-      {
-        "command": "pccxSystemVerilog.runDiagnosticsLive",
-        "title": "PCCX SystemVerilog: Run Diagnostics Live (Experimental, Opt-In Alias)"
-      },
-      {
-        "command": "pccxSystemVerilog.runNavigationLive",
-        "title": "PCCX SystemVerilog: Run Navigation Live (Experimental, Opt-In Alias)"
-      },
-      {
-        "command": "pccxSystemVerilog.showWorkflowBoundaryStatus",
-        "title": "PCCX SystemVerilog: Show Workflow Boundary Status (Experimental)"
-      },
-      {
-        "command": "pccxSystemVerilog.buildWorkflowContextBundle",
-        "title": "PCCX SystemVerilog: Build Workflow Context Bundle (Experimental)"
-      },
-      {
-        "command": "pccxSystemVerilog.proposeValidationCommand",
-        "title": "PCCX SystemVerilog: Propose Validation Command (Experimental)"
-      },
-      {
-        "command": "pccxSystemVerilog.auditValidationProposalPreflight",
-        "title": "PCCX SystemVerilog: Audit Validation Proposal Preflight (Experimental)"
-      },
-      {
-        "command": "pccxSystemVerilog.runApprovedValidationCommand",
-        "title": "PCCX SystemVerilog: Run Approved Validation Command (Experimental, Opt-In)"
-      },
-      {
-        "command": "pccxSystemVerilog.showRecentValidationResults",
-        "title": "PCCX SystemVerilog: Show Recent Validation Results (Experimental)"
-      },
-      {
-        "command": "pccxSystemVerilog.showValidationCacheStatus",
-        "title": "PCCX SystemVerilog: Show Validation Cache Status (Experimental)"
-      },
-      {
-        "command": "pccxSystemVerilog.clearValidationResultCache",
-        "title": "PCCX SystemVerilog: Clear Validation Result Cache (Experimental)"
-      },
-      {
-        "command": "pccxSystemVerilog.showPatchProposalPreview",
-        "title": "PCCX SystemVerilog: Show Patch Proposal Preview (Experimental)"
-      },
-      {
-        "command": "pccxSystemVerilog.clearPatchProposalPreview",
-        "title": "PCCX SystemVerilog: Clear Patch Proposal Preview (Experimental)"
-      },
-      {
-        "command": "pccxSystemVerilog.showLocalWorkflowStatus",
-        "title": "PCCX SystemVerilog: Show Local Workflow Status (Experimental)"
-      },
-      {
-        "command": "pccxSystemVerilog.showContextBundleAudit",
-        "title": "PCCX SystemVerilog: Show Context Bundle Audit (Experimental)"
-      },
-      {
-        "command": "pccxSystemVerilog.showPccxLabBackendStatus",
-        "title": "PCCX SystemVerilog: Show pccx-lab Backend Status (Experimental)"
-      },
-      {
-        "command": "pccxSystemVerilog.showDiagnosticsHandoffSummary",
-        "title": "PCCX SystemVerilog: Show Diagnostics Handoff Summary (Experimental)"
-      }
-    ],
-    "configuration": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/pccxai/systemverilog-ide/schema/sv-ide-settings-v0.json",
+  "title": "pccx IDE settings schema (v0, scaffold)",
+  "description": "Schema source for experimental local sv-ide settings surfaced by editor prototypes. v0 is scaffold-only and not a stable API.",
+  "$defs": {
+    "vscodeConfiguration": {
       "title": "PCCX SystemVerilog IDE Prototype",
       "properties": {
         "pccxSystemVerilog.mode": {
@@ -158,7 +35,7 @@
           "type": "string",
           "enum": [
             "none",
-            "pccx-launcher",
+            "pccx-llm-launcher",
             "mcp"
           ],
           "default": "none",
@@ -278,8 +155,5 @@
         }
       }
     }
-  },
-  "devDependencies": {
-    "@vscode/test-electron": "2.5.2"
   }
 }

@@ -10,7 +10,9 @@ import {
   WORKFLOW_BOUNDARY_BACKENDS,
   DECLARATION_KINDS,
   FACADE_COMMAND_IDS,
+  LOG_LEVELS,
   MODES,
+  PANEL_DATA_SOURCES,
   VALIDATION_RUNNER_CWD_KINDS,
   VALIDATION_RUNNER_MODES,
   buildFacadeArgsForCommand,
@@ -20,6 +22,7 @@ import {
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const PACKAGE_JSON = resolve(ROOT, "editors/vscode-prototype/package.json");
+const SETTINGS_SCHEMA_JSON = resolve(ROOT, "schema/sv-ide-settings-v0.json");
 
 const REQUIRED_SETTINGS = new Map([
   ["pccxSystemVerilog.mode", { type: "string", default: "checkedExample" }],
@@ -38,6 +41,15 @@ const REQUIRED_SETTINGS = new Map([
   ["pccxSystemVerilog.defaultNavigationRoot", { type: "string", default: "fixtures/modules" }],
   ["pccxSystemVerilog.defaultModule", { type: "string", default: "simple_mod" }],
   ["pccxSystemVerilog.defaultDeclarationKind", { type: "string", default: "module" }],
+  [
+    "pccxSystemVerilog.panel.dataSources",
+    {
+      type: "array",
+      default: ["diagnosticsHandoff", "runtimeReadiness", "deviceSession", "localWorkflow"],
+    },
+  ],
+  ["pccxSystemVerilog.panel.refreshIntervalMs", { type: "integer", default: 5000 }],
+  ["pccxSystemVerilog.logLevel", { type: "string", default: "info" }],
 ]);
 
 const LIVE_WORKSPACE_CONFIG = {
@@ -49,10 +61,16 @@ async function readPackageJson() {
   return JSON.parse(await readFile(PACKAGE_JSON, "utf8"));
 }
 
+async function readSettingsSchema() {
+  return JSON.parse(await readFile(SETTINGS_SCHEMA_JSON, "utf8"));
+}
+
 async function testPackageConfigurationSchema() {
   const manifest = await readPackageJson();
+  const settingsSchema = await readSettingsSchema();
   const configuration = manifest.contributes?.configuration;
   assert.ok(configuration);
+  assert.deepEqual(configuration, settingsSchema.$defs.vscodeConfiguration);
   assert.equal(configuration.title, "PCCX SystemVerilog IDE Prototype");
   assert.deepEqual(
     Object.keys(configuration.properties ?? {}).sort(),
@@ -64,7 +82,7 @@ async function testPackageConfigurationSchema() {
     const property = configuration.properties?.[setting];
     assert.ok(property, `${setting} missing`);
     assert.equal(property.type, expected.type);
-    assert.equal(property.default, expected.default);
+    assert.deepEqual(property.default, expected.default);
     assert.match(property.description, /experimental local prototype/i);
     assert.match(property.description, /not a stable API/i);
   }
@@ -86,6 +104,11 @@ async function testPackageConfigurationSchema() {
     configuration.properties["pccxSystemVerilog.validationRunner.defaultWorkingDirectory"].enum,
     VALIDATION_RUNNER_CWD_KINDS,
   );
+  assert.deepEqual(
+    configuration.properties["pccxSystemVerilog.panel.dataSources"].items.enum,
+    PANEL_DATA_SOURCES,
+  );
+  assert.deepEqual(configuration.properties["pccxSystemVerilog.logLevel"].enum, LOG_LEVELS);
 }
 
 function testDefaultConfig() {
@@ -114,6 +137,11 @@ function testDefaultConfig() {
     defaultNavigationRoot: "fixtures/modules",
     defaultModule: "simple_mod",
     defaultDeclarationKind: "module",
+    panel: {
+      dataSources: ["diagnosticsHandoff", "runtimeReadiness", "deviceSession", "localWorkflow"],
+      refreshIntervalMs: 5000,
+    },
+    logLevel: "info",
   });
 }
 
@@ -169,6 +197,26 @@ function testNormalizeConfigRejectsInvalidSettings() {
   assert.throws(
     () => normalizeConfig({ defaultNavigationRoot: "fixtures/modules && whoami" }),
     /pccxSystemVerilog\.defaultNavigationRoot must not contain shell control syntax/,
+  );
+  assert.throws(
+    () => normalizeConfig({ panel: { dataSources: "diagnosticsHandoff" } }),
+    /pccxSystemVerilog\.panel\.dataSources must be an array/,
+  );
+  assert.throws(
+    () => normalizeConfig({ panel: { dataSources: ["diagnosticsHandoff", "unknown"] } }),
+    /pccxSystemVerilog\.panel\.dataSources entries must be one of: diagnosticsHandoff, runtimeReadiness, deviceSession, localWorkflow/,
+  );
+  assert.throws(
+    () => normalizeConfig({ panel: { dataSources: ["deviceSession", "deviceSession"] } }),
+    /pccxSystemVerilog\.panel\.dataSources entries must be unique/,
+  );
+  assert.throws(
+    () => normalizeConfig({ panel: { refreshIntervalMs: 999 } }),
+    /pccxSystemVerilog\.panel\.refreshIntervalMs must be between 1000 and 60000/,
+  );
+  assert.throws(
+    () => normalizeConfig({ logLevel: "verbose" }),
+    /pccxSystemVerilog\.logLevel must be one of: error, warn, info, debug, trace/,
   );
 }
 

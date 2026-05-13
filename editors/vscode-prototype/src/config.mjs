@@ -20,6 +20,9 @@ export const CONFIG_KEYS = Object.freeze([
   "defaultNavigationRoot",
   "defaultModule",
   "defaultDeclarationKind",
+  "panel.dataSources",
+  "panel.refreshIntervalMs",
+  "logLevel",
 ]);
 
 export const FACADE_COMMAND_IDS = Object.freeze([
@@ -68,6 +71,13 @@ export const WORKFLOW_BOUNDARY_BACKENDS = Object.freeze(["none", "pccx-launcher"
 export const DECLARATION_KINDS = Object.freeze(["module", "package", "interface", "any"]);
 export const VALIDATION_RUNNER_MODES = Object.freeze(["disabled", "allowlisted"]);
 export const VALIDATION_RUNNER_CWD_KINDS = Object.freeze(["repo-root", "workspace"]);
+export const PANEL_DATA_SOURCES = Object.freeze([
+  "diagnosticsHandoff",
+  "runtimeReadiness",
+  "deviceSession",
+  "localWorkflow",
+]);
+export const LOG_LEVELS = Object.freeze(["error", "warn", "info", "debug", "trace"]);
 export const LIVE_WORKSPACE_COMMAND_IDS = Object.freeze([
   "pccxSystemVerilog.publishLiveWorkspaceDiagnostics",
   "pccxSystemVerilog.showLiveWorkspaceNavigation",
@@ -100,6 +110,16 @@ const DEFAULT_CONFIG = Object.freeze({
   defaultNavigationRoot: "fixtures/modules",
   defaultModule: "simple_mod",
   defaultDeclarationKind: "module",
+  panel: Object.freeze({
+    dataSources: Object.freeze([
+      "diagnosticsHandoff",
+      "runtimeReadiness",
+      "deviceSession",
+      "localWorkflow",
+    ]),
+    refreshIntervalMs: 5000,
+  }),
+  logLevel: "info",
 });
 
 const SHELL_CONTROL_PATTERN = /(?:&&|\|\||;|`|\$\()/;
@@ -185,6 +205,30 @@ function integerSetting(rawConfig, key, fallback, options = {}) {
   return value;
 }
 
+function enumArraySetting(rawConfig, key, fallback, allowedValues) {
+  const value = rawConfigValue(rawConfig, key);
+  if (value == null) {
+    return [...fallback];
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`${CONFIG_SECTION}.${key} must be an array`);
+  }
+
+  const seen = new Set();
+  for (const item of value) {
+    if (typeof item !== "string" || !allowedValues.includes(item)) {
+      throw new Error(
+        `${CONFIG_SECTION}.${key} entries must be one of: ${allowedValues.join(", ")}`,
+      );
+    }
+    if (seen.has(item)) {
+      throw new Error(`${CONFIG_SECTION}.${key} entries must be unique`);
+    }
+    seen.add(item);
+  }
+  return [...value];
+}
+
 export function defaultConfig() {
   return {
     ...DEFAULT_CONFIG,
@@ -192,6 +236,10 @@ export function defaultConfig() {
     pccxLab: { ...DEFAULT_CONFIG.pccxLab },
     workflowBoundary: { ...DEFAULT_CONFIG.workflowBoundary },
     validationRunner: { ...DEFAULT_CONFIG.validationRunner },
+    panel: {
+      dataSources: [...DEFAULT_CONFIG.panel.dataSources],
+      refreshIntervalMs: DEFAULT_CONFIG.panel.refreshIntervalMs,
+    },
   };
 }
 
@@ -267,6 +315,21 @@ export function normalizeConfig(rawConfig = {}) {
       DEFAULT_CONFIG.defaultDeclarationKind,
       DECLARATION_KINDS,
     ),
+    panel: {
+      dataSources: enumArraySetting(
+        rawConfig,
+        "panel.dataSources",
+        DEFAULT_CONFIG.panel.dataSources,
+        PANEL_DATA_SOURCES,
+      ),
+      refreshIntervalMs: integerSetting(
+        rawConfig,
+        "panel.refreshIntervalMs",
+        DEFAULT_CONFIG.panel.refreshIntervalMs,
+        { min: 1000, max: 60000 },
+      ),
+    },
+    logLevel: enumSetting(rawConfig, "logLevel", DEFAULT_CONFIG.logLevel, LOG_LEVELS),
   };
 }
 
