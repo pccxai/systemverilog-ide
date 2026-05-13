@@ -6,6 +6,7 @@
   "private": true,
   "type": "module",
   "main": "./src/extension.cjs",
+  "icon": "assets/logo/aperture-mark-128.png",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -125,6 +126,13 @@
       {
         "command": "pccxSystemVerilog.showDiagnosticsHandoffSummary",
         "title": "PCCX SystemVerilog: Show Diagnostics Handoff Summary (Experimental)"
+      }
+    ],
+    "themes": [
+      {
+        "label": "pccx SystemVerilog Light",
+        "uiTheme": "vs",
+        "path": "./themes/pccx-systemverilog-light-color-theme.json"
       }
     ],
     "configuration": {
