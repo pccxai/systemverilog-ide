@@ -90,8 +90,6 @@ def test_direction_style_doc_pins_current_role_and_boundaries():
         "evidence over optimism",
         "readable code for ordinary engineers",
         "validation-driven changes",
-        "no shallow module churn",
-        "no broad rewrite without tests",
         "preserve physical/verification/runtime evidence boundaries",
         "do not hide architecture risk behind polished UI",
         "input logic IN_*",

@@ -68,8 +68,6 @@ this repository:
 - evidence over optimism
 - readable code for ordinary engineers
 - validation-driven changes
-- no shallow module churn
-- no broad rewrite without tests
 - preserve physical/verification/runtime evidence boundaries
 - do not hide architecture risk behind polished UI
 
